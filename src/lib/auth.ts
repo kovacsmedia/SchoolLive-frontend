@@ -4,13 +4,26 @@ export type Role = "SUPER_ADMIN" | "TENANT_ADMIN" | "ADMIN" | "EDITOR" | "TEACHE
 
 export type Me = {
   id: string;
-  username: string;
+  email: string;
   role: Role;
   tenantId?: string | null;
-  orgUnitId?: string | null;
 };
 
-export async function fetchMe(): Promise<Me> {
-  // ezt lehet, hogy át kell írni a backendedhez
-  return apiFetch<Me>("/auth/me", { method: "GET" });
+export type LoginResponse = {
+  accessToken: string;
+  user: { id: string; email: string; role: Role; tenantId?: string | null };
+};
+
+export async function login(email: string, password: string): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>("/auth/login", {
+    method: "POST",
+    json: { email, password },
+  });
+}
+
+export async function fetchMe(accessToken: string): Promise<Me> {
+  return apiFetch<Me>("/auth/me", {
+    method: "GET",
+    authToken: accessToken,
+  });
 }
