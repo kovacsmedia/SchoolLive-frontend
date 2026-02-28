@@ -7,7 +7,7 @@ import { apiFetch, apiPost } from "./api";
  * - export function clearSession()
  * - export function getAccessToken()
  * - export function login()
- * - export function me()
+ * - export function me()  --> returns Me (NOT wrapper object)
  */
 
 export type LoginResponse = {
@@ -24,7 +24,7 @@ export type Me = {
   [k: string]: any;
 };
 
-export type MeResponse = {
+type MeApiResponse = {
   ok: true;
   user: Me;
 };
@@ -63,8 +63,9 @@ export async function login(email: string, password: string): Promise<LoginRespo
 }
 
 /**
- * Fetch current user
+ * Fetch current user (returns Me directly, to match AuthContext expectations)
  */
-export async function me(): Promise<MeResponse> {
-  return apiFetch<MeResponse>("/auth/me");
+export async function me(): Promise<Me> {
+  const res = await apiFetch<MeApiResponse>("/auth/me");
+  return res.user;
 }
