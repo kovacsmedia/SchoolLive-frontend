@@ -1,7 +1,8 @@
+// src/auth/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { fetchMe } from "../lib/auth";
 import type { Me } from "../lib/auth";
-import { getStoredToken, storeToken, clearToken } from "./token";
+import { clearToken, getStoredToken, storeToken } from "./token";
 
 type AuthState =
   | { status: "loading" }
@@ -10,7 +11,7 @@ type AuthState =
 
 type AuthCtx = {
   state: AuthState;
-  setToken: (token: string, persist: boolean) => Promise<void>;
+  setToken: (token: string, persistRequested: boolean) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 };
@@ -21,8 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: "loading" });
 
   const refresh = async () => {
-    const token =
-      state.status === "authed" ? state.accessToken : getStoredToken();
+    const token = state.status === "authed" ? state.accessToken : getStoredToken();
 
     if (!token) {
       setState({ status: "guest" });
@@ -39,13 +39,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setToken = async (token: string, persist: boolean) => {
-    // Ideiglenes: először lekérjük a usert, és csak utána döntünk persist-ről (admin tiltás miatt)
+  const setToken = async (token: string, persistRequested: boolean) => {
+    // előbb lekérjük a usert, utána döntünk a persist-ről (adminnál tiltjuk)
     const me = await fetchMe(token);
 
     const isAdmin = me.role === "SUPER_ADMIN" || me.role === "TENANT_ADMIN" || me.role === "ADMIN";
-    if (persist && !isAdmin) storeToken(token);
-    else clearToken(); // adminnál biztosan ne maradjon
+
+    if (persistRequested && !isAdmin) {
+      storeToken(token);
+    } else {
+      // adminnál biztosan ne maradjon tárolt token
+      clearToken();
+    }
 
     setState({ status: "authed", me, accessToken: token });
   };
