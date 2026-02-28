@@ -1,77 +1,89 @@
-// src/auth/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMe } from "../lib/auth";
+import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 import type { Me } from "../lib/auth";
-import { clearToken, getStoredToken, storeToken } from "./token";
+import { me as fetchMe, clearSession, getAccessToken, login as apiLogin, type LoginResponse } from "../lib/auth";
+
+type AuthStatus = "loading" | "guest" | "authed";
 
 type AuthState =
   | { status: "loading" }
   | { status: "guest" }
-  | { status: "authed"; me: Me; accessToken: string };
+  | { status: "authed"; user: Me };
 
-type AuthCtx = {
+type AuthAction =
+  | { type: "GUEST" }
+  | { type: "AUTHED"; user: Me }
+  | { type: "LOADING" };
+
+function reducer(_state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case "LOADING":
+      return { status: "loading" };
+    case "GUEST":
+      return { status: "guest" };
+    case "AUTHED":
+      return { status: "authed", user: action.user };
+    default:
+      return { status: "guest" };
+  }
+}
+
+type AuthContextValue = {
   state: AuthState;
-  setToken: (token: string, persistRequested: boolean) => Promise<void>;
-  logout: () => void;
   refresh: () => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
+  logout: () => void;
 };
 
-const Ctx = createContext<AuthCtx | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({ status: "loading" });
+  const [state, dispatch] = useReducer(reducer, { status: "loading" } as AuthState);
 
-  const refresh = async () => {
-    const token = state.status === "authed" ? state.accessToken : getStoredToken();
+  async function refresh() {
+    dispatch({ type: "LOADING" });
 
+    const token = getAccessToken();
     if (!token) {
-      setState({ status: "guest" });
+      dispatch({ type: "GUEST" });
       return;
     }
 
-    setState({ status: "loading" });
     try {
-      const me = await fetchMe(token);
-      setState({ status: "authed", me, accessToken: token });
+      const user = await fetchMe();
+      dispatch({ type: "AUTHED", user });
     } catch {
-      clearToken();
-      setState({ status: "guest" });
+      clearSession();
+      dispatch({ type: "GUEST" });
     }
-  };
+  }
 
-  const setToken = async (token: string, persistRequested: boolean) => {
-    // előbb lekérjük a usert, utána döntünk a persist-ről (adminnál tiltjuk)
-    const me = await fetchMe(token);
+  async function login(email: string, password: string) {
+    const res = await apiLogin(email, password);
+    // login már elmenti a tokent, most frissítjük a user state-et
+    await refresh();
+    return res;
+  }
 
-    const isAdmin = me.role === "SUPER_ADMIN" || me.role === "TENANT_ADMIN" || me.role === "ADMIN";
-
-    if (persistRequested && !isAdmin) {
-      storeToken(token);
-    } else {
-      // adminnál biztosan ne maradjon tárolt token
-      clearToken();
-    }
-
-    setState({ status: "authed", me, accessToken: token });
-  };
-
-  const logout = () => {
-    clearToken();
-    setState({ status: "guest" });
-  };
+  function logout() {
+    clearSession();
+    dispatch({ type: "GUEST" });
+  }
 
   useEffect(() => {
-    void refresh();
+    refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo(() => ({ state, setToken, logout, refresh }), [state]);
+  const value = useMemo<AuthContextValue>(
+    () => ({ state, refresh, login, logout }),
+    [state]
+  );
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(Ctx);
+  const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
