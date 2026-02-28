@@ -27,12 +27,12 @@ jobs:
 
       # Feltöltés SFTP-n
       - name: Deploy via FTP
-  uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-  with:
-    server: ${{ secrets.FTP_HOST }}
-    username: ${{ secrets.FTP_USER }}
-    password: ${{ secrets.FTP_PASS }}
-    port: 21
-    protocol: ftp
-    local-dir: dist/
-    server-dir: /
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          port: 21
+          protocol: ftp
+          local-dir: dist/
+          server-dir: /
