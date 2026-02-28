@@ -1,68 +1,77 @@
-// src/pages/Login.tsx
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { login } from "../lib/auth";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Login() {
+  const { login, state } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation() as any;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
-  const nav = useNavigate();
-  const loc = useLocation();
-  const { setToken } = useAuth();
+  const from = location?.state?.from || "/app";
 
-  const from = (loc.state as any)?.from ?? "/app/devices";
-
-  const onSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
+    setError(null);
     setBusy(true);
+
     try {
-      const res = await login(email, password);
-      await setToken(res.accessToken, remember);
-      nav(from, { replace: true });
-    } catch (e: any) {
-      setErr(e?.message ?? "Login failed");
+      await login(email.trim(), password);
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
     } finally {
       setBusy(false);
     }
-  };
+  }
+
+  if (state.status === "authed") {
+    navigate("/app", { replace: true });
+    return null;
+  }
 
   return (
-    <div style={{ padding: 24, fontFamily: "system-ui", maxWidth: 420 }}>
-      <h1>Bejelentkezés</h1>
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <form onSubmit={onSubmit} className="w-full max-w-sm rounded-md border p-6">
+        <h1 className="text-xl font-semibold mb-4">Login</h1>
 
-      <form onSubmit={onSubmit}>
-        <label>Email</label>
-        <input
-          style={{ width: "100%", padding: 8, margin: "6px 0 12px" }}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-        />
+        {error && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {error}
+          </div>
+        )}
 
-        <label>Jelszó</label>
-        <input
-          type="password"
-          style={{ width: "100%", padding: 8, margin: "6px 0 12px" }}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          Emlékezz rám (adminnál úgysem marad)
+        <label className="block text-sm mb-2">
+          Email
+          <input
+            className="mt-1 w-full rounded-md border px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+          />
         </label>
 
-        {err && <div style={{ color: "crimson", marginBottom: 12 }}>{err}</div>}
+        <label className="block text-sm mb-4">
+          Password
+          <input
+            className="mt-1 w-full rounded-md border px-3 py-2"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </label>
 
-        <button style={{ padding: "8px 12px" }} disabled={busy}>
-          {busy ? "Beléptetés..." : "Belépés"}
+        <button
+          className="w-full rounded-md border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-60"
+          disabled={busy}
+          type="submit"
+        >
+          {busy ? "Signing in…" : "Sign in"}
         </button>
       </form>
     </div>

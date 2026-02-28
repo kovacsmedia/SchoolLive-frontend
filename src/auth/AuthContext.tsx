@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
-import type { Me } from "../lib/auth";
-import { me as fetchMe, clearSession, getAccessToken, login as apiLogin, type LoginResponse } from "../lib/auth";
-
-type AuthStatus = "loading" | "guest" | "authed";
+import type { Me, LoginResponse } from "../lib/auth";
+import { me as fetchMe, clearSession, getAccessToken, login as apiLogin } from "../lib/auth";
 
 type AuthState =
   | { status: "loading" }
@@ -59,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     const res = await apiLogin(email, password);
-    // login már elmenti a tokent, most frissítjük a user state-et
     await refresh();
     return res;
   }
@@ -74,10 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ state, refresh, login, logout }),
-    [state]
-  );
+  const value = useMemo<AuthContextValue>(() => ({ state, refresh, login, logout }), [state]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
