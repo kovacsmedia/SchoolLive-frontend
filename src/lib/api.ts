@@ -1,36 +1,28 @@
-// src/lib/api.ts
+const API_BASE =
+  (import.meta as any).env?.VITE_API_BASE?.toString()?.replace(/\/+$/, "") ||
+  "https://api.schoollive.hu";
 
-export type ApiError = {
-  status: number;
-  message: string;
-  details?: unknown;
+type ApiFetchOptions = RequestInit & {
+  json?: unknown;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-
-function parseJsonMaybe(text: string): unknown {
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-export async function apiFetch<T>(
-  path: string,
-  options: RequestInit & { json?: unknown; authToken?: string } = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+/**
+ * API fetch wrapper:
+ * - automatikusan hozzáad Authorization: Bearer <token> ha van
+ * - JSON body-t küld, ha options.json meg van adva
+ * - JSON választ parse-ol, ha lehet
+ */
+export async function apiFetch<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
 
   const headers = new Headers(options.headers || {});
   headers.set("Accept", "application/json");
 
-  if (options.authToken) {
-    headers.set("Authorization", `Bearer ${options.authToken}`);
-  }
+  const token = localStorage.getItem("accessToken");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let body = options.body;
+  let body: BodyInit | undefined = options.body as any;
+
   if (options.json !== undefined) {
     headers.set("Content-Type", "application/json");
     body = JSON.stringify(options.json);
@@ -39,21 +31,23 @@ export async function apiFetch<T>(
   const res = await fetch(url, {
     ...options,
     headers,
-    body,
+    body
   });
 
-  const text = await res.text();
-  const data = parseJsonMaybe(text);
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  const data = isJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
 
   if (!res.ok) {
     const msg =
-      data && typeof data === "object" && data !== null && "message" in (data as any)
-        ? String((data as any).message)
-        : `HTTP ${res.status}`;
-
-    const err: ApiError = { status: res.status, message: msg, details: data };
-    throw err;
+      (data && typeof data === "object" && "error" in data && (data as any).error) ||
+      (typeof data === "string" && data) ||
+      `HTTP ${res.status}`;
+    throw new Error(msg);
   }
 
   return data as T;
 }
+
+export { API_BASE };
