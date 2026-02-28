@@ -1,4 +1,3 @@
-// src/lib/api.ts
 export type ApiError = {
   status: number;
   message: string;
@@ -10,11 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 async function parseJsonSafe(res: Response) {
   const text = await res.text();
   if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  try { return JSON.parse(text); } catch { return text; }
 }
 
 export async function apiFetch<T>(
@@ -36,19 +31,16 @@ export async function apiFetch<T>(
     ...options,
     headers,
     body,
-    // KRITIKUS: cross-subdomain cookie auth-hoz
-    credentials: "include",
+    credentials: "include", // cookie-based auth
   });
 
   if (!res.ok) {
     const data = await parseJsonSafe(res);
-    const message =
-      (data && typeof data === "object" && "message" in data && typeof (data as any).message === "string")
-        ? (data as any).message
+    const msg =
+      data && typeof data === "object" && "message" in (data as any)
+        ? String((data as any).message)
         : `HTTP ${res.status}`;
-
-    const err: ApiError = { status: res.status, message, details: data };
-    throw err;
+    throw { status: res.status, message: msg, details: data } as ApiError;
   }
 
   return (await parseJsonSafe(res)) as T;
