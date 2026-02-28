@@ -1,10 +1,28 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import AppShell from "./pages/AppShell";
+import Devices from "./pages/Devices";
+import Messages from "./pages/Messages";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+
+        <Route path="/app" element={<AppShell />}>
+          <Route index element={<Navigate to="/app/devices" replace />} />
+          <Route path="devices" element={<Devices />} />
+          <Route path="messages" element={<Messages />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  </React.StrictMode>
+);
