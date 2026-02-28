@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { fetchMe, Me } from "../lib/auth";
+import { fetchMe } from "../lib/auth";
+import type { Me } from "../lib/auth";
 
 type AuthState =
   | { status: "loading" }
