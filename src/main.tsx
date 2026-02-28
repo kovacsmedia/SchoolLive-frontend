@@ -21,7 +21,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="messages" element={<Messages />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<div style={{ padding: 24, fontFamily: "system-ui" }}>
+        <h1>404</h1>
+        <p>Ismeretlen útvonal.</p>
+        </div>} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
