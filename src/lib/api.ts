@@ -1,53 +1,64 @@
-const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE?.toString()?.replace(/\/+$/, "") ||
-  "https://api.schoollive.hu";
-
-type ApiFetchOptions = RequestInit & {
-  json?: unknown;
+// src/lib/api.ts
+export type ApiError = {
+  ok: false;
+  error: string;
+  details?: any;
 };
 
-/**
- * API fetch wrapper:
- * - automatikusan hozzáad Authorization: Bearer <token> ha van
- * - JSON body-t küld, ha options.json meg van adva
- * - JSON választ parse-ol, ha lehet
- */
-export async function apiFetch<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const url = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+export type ApiOk<T> = {
+  ok: true;
+} & T;
 
-  const headers = new Headers(options.headers || {});
-  headers.set("Accept", "application/json");
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
-  const token = localStorage.getItem("accessToken");
+function getToken(): string | null {
+  try {
+    return localStorage.getItem("accessToken");
+  } catch {
+    return null;
+  }
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const token = getToken();
+
+  const headers = new Headers(init.headers ?? {});
+  headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  let body: BodyInit | undefined = options.body as any;
-
-  if (options.json !== undefined) {
-    headers.set("Content-Type", "application/json");
-    body = JSON.stringify(options.json);
-  }
-
-  const res = await fetch(url, {
-    ...options,
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
     headers,
-    body
   });
 
-  const contentType = res.headers.get("content-type") || "";
-  const isJson = contentType.includes("application/json");
-
-  const data = isJson ? await res.json().catch(() => null) : await res.text().catch(() => null);
+  const text = await res.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
 
   if (!res.ok) {
-    const msg =
-      (data && typeof data === "object" && "error" in data && (data as any).error) ||
-      (typeof data === "string" && data) ||
-      `HTTP ${res.status}`;
-    throw new Error(msg);
+    // backend formátum: { ok:false, error:"...", ... }
+    const errMsg =
+      (data && typeof data === "object" && data.error) ||
+      `HTTP_${res.status}`;
+    throw Object.assign(new Error(errMsg), { status: res.status, data });
   }
 
   return data as T;
 }
 
-export { API_BASE };
+export async function apiPost<TResponse>(
+  path: string,
+  body: any
+): Promise<TResponse> {
+  return apiFetch<TResponse>(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
