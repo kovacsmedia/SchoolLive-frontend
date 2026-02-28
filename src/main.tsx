@@ -8,24 +8,38 @@ import AppShell from "./pages/AppShell";
 import Devices from "./pages/Devices";
 import Messages from "./pages/Messages";
 
+import { AuthProvider } from "./auth/AuthContext";
+import RequireAuth from "./auth/RequireAuth";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/app" element={<AppShell />}>
-          <Route index element={<Navigate to="/app/devices" replace />} />
-          <Route path="devices" element={<Devices />} />
-          <Route path="messages" element={<Messages />} />
-        </Route>
+          {/* 🔒 PROTECTED ZÓNA */}
+          <Route element={<RequireAuth />}>
+            <Route path="/app" element={<AppShell />}>
+              <Route index element={<Navigate to="/app/devices" replace />} />
+              <Route path="devices" element={<Devices />} />
+              <Route path="messages" element={<Messages />} />
+            </Route>
+          </Route>
 
-        <Route path="*" element={<div style={{ padding: 24, fontFamily: "system-ui" }}>
-        <h1>404</h1>
-        <p>Ismeretlen útvonal.</p>
-        </div>} />
-      </Routes>
-    </BrowserRouter>
+          {/* 404 */}
+          <Route
+            path="*"
+            element={
+              <div style={{ padding: 24, fontFamily: "system-ui" }}>
+                <h1>404</h1>
+                <p>Ismeretlen útvonal.</p>
+              </div>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   </React.StrictMode>
 );
