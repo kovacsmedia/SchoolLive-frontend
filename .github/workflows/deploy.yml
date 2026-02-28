@@ -26,14 +26,13 @@ jobs:
           VITE_API_BASE_URL: https://api.schoollive.hu
 
       # Feltöltés SFTP-n
-      - name: Deploy via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          username: ${{ secrets.SFTP_USER }}
-          password: ${{ secrets.SFTP_PASS }}
-          server: ${{ secrets.SFTP_HOST }}
-          port: ${{ secrets.SFTP_PORT }}
-          local_path: ./dist/*
-          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
-          sftp_only: false
-          delete_remote_files: false
+      - name: Deploy via FTP
+  uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+  with:
+    server: ${{ secrets.FTP_HOST }}
+    username: ${{ secrets.FTP_USER }}
+    password: ${{ secrets.FTP_PASS }}
+    port: 21
+    protocol: ftp
+    local-dir: dist/
+    server-dir: /
