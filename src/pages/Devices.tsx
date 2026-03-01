@@ -7,13 +7,19 @@ type DeviceHealthItem = {
   name?: string | null;
   lastSeenAt?: string | null; // ISO
   isOnline: boolean;
-  // bármi más, amit a backend adhat
   [k: string]: any;
 };
 
-type HealthResponse = {
+type HealthResponseLoose = {
   ok: true;
-  devices: DeviceHealthItem[];
+  // különböző verziók / backend implementációk miatt:
+  devices?: DeviceHealthItem[];
+  rows?: DeviceHealthItem[];
+  items?: DeviceHealthItem[];
+  data?: DeviceHealthItem[];
+  count?: number;
+  total?: number;
+  totalRegistered?: number;
 };
 
 type CreateCommandResponse = {
@@ -48,18 +54,18 @@ type GetCommandResponse = {
   };
 };
 
-function statusBadgeClass(status: string): string {
+function statusBadgeStyle(status: string): React.CSSProperties {
   switch (status) {
     case "ACKED":
-      return "bg-green-100 text-green-800 border-green-200";
+      return { background: "#d1e7dd", borderColor: "#badbcc", color: "#0f5132" };
     case "SENT":
-      return "bg-blue-100 text-blue-800 border-blue-200";
+      return { background: "#cfe2ff", borderColor: "#b6d4fe", color: "#084298" };
     case "QUEUED":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      return { background: "#fff3cd", borderColor: "#ffecb5", color: "#664d03" };
     case "FAILED":
-      return "bg-red-100 text-red-800 border-red-200";
+      return { background: "#f8d7da", borderColor: "#f5c2c7", color: "#842029" };
     default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
+      return { background: "#e2e3e5", borderColor: "#d3d6d8", color: "#41464b" };
   }
 }
 
@@ -67,10 +73,24 @@ function isTerminalStatus(status: string): boolean {
   return status === "ACKED" || status === "FAILED" || status === "CANCELLED";
 }
 
+function normalizeDevices(resp: HealthResponseLoose): DeviceHealthItem[] {
+  const candidates = [
+    resp.devices,
+    resp.rows,
+    resp.items,
+    resp.data,
+  ].find((x) => Array.isArray(x));
+
+  return (candidates as DeviceHealthItem[] | undefined) ?? [];
+}
+
 export default function Devices() {
   const [devices, setDevices] = useState<DeviceHealthItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  // ha a backend külön ad "összes regisztrált eszköz" számot, itt el tudjuk tenni
+  const [registeredCount, setRegisteredCount] = useState<number | null>(null);
 
   // per-device volume input
   const [volumeByDevice, setVolumeByDevice] = useState<Record<string, number>>(
@@ -96,8 +116,26 @@ export default function Devices() {
   async function loadHealth() {
     try {
       setErr(null);
-      const data = await apiFetch<HealthResponse>("/admin/devices/health");
-      setDevices(data.devices ?? []);
+
+      // Lazább típus: prod/stage eltérés ellen véd
+      const data = await apiFetch<HealthResponseLoose>("/admin/devices/health");
+
+      const list = normalizeDevices(data);
+      setDevices(list);
+
+      // próbáljuk meg okosan “regisztrált db”-ként kiírni,
+      // de ha nincs ilyen adat, akkor a list hosszát használjuk.
+      const rc =
+        typeof data.totalRegistered === "number"
+          ? data.totalRegistered
+          : typeof data.total === "number"
+            ? data.total
+            : typeof data.count === "number"
+              ? data.count
+              : null;
+
+      setRegisteredCount(rc);
+
       setLoading(false);
     } catch (e: any) {
       setLoading(false);
@@ -110,7 +148,6 @@ export default function Devices() {
     healthTimer.current = window.setInterval(loadHealth, 10_000);
     return () => {
       if (healthTimer.current) window.clearInterval(healthTimer.current);
-      // clear command poll timers
       Object.values(cmdTimers.current).forEach((t) => window.clearInterval(t));
       cmdTimers.current = {};
     };
@@ -166,14 +203,11 @@ export default function Devices() {
   }
 
   function startPolling(deviceId: string, commandId: string) {
-    // ha már volt timer, állítsuk le
     const existing = cmdTimers.current[deviceId];
     if (existing) window.clearInterval(existing);
 
-    // azonnali poll
     pollCommand(deviceId, commandId);
 
-    // 2 mp-enként, amíg terminal nem lesz
     cmdTimers.current[deviceId] = window.setInterval(() => {
       pollCommand(deviceId, commandId);
     }, 2000);
@@ -204,15 +238,35 @@ export default function Devices() {
 
       startPolling(deviceId, cmd.id);
     } catch (e: any) {
+      // UX: ha 409 conflict (van aktív command), próbáljunk ráállni annak a commandId-jára pollolni
+      const status = e?.status;
+      const data = e?.data;
+      if (status === 409 && data?.active?.id && data?.active?.status) {
+        const existingId = data.active.id as string;
+        const existingStatus = data.active.status as string;
+        setCmdByDevice((prev) => ({
+          ...prev,
+          [deviceId]: { commandId: existingId, status: existingStatus },
+        }));
+        startPolling(deviceId, existingId);
+        return;
+      }
+
       setErr(e?.data?.error ?? e?.message ?? "Failed to send command");
     }
   }
 
+  const shownRegisteredCount =
+    registeredCount !== null ? registeredCount : devices.length;
+
   return (
     <div style={{ padding: 16 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-        Devices
-      </h1>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Devices</h1>
+        <span style={{ fontSize: 13, opacity: 0.75 }}>
+          {shownRegisteredCount} regisztrált eszköz
+        </span>
+      </div>
 
       {err && (
         <div
@@ -230,6 +284,22 @@ export default function Devices() {
 
       {loading ? (
         <div>Loading…</div>
+      ) : deviceRows.length === 0 ? (
+        <div
+          style={{
+            border: "1px dashed #cbd5e1",
+            borderRadius: 12,
+            padding: 16,
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>0 regisztrált eszköz</div>
+          <div style={{ fontSize: 13, opacity: 0.8 }}>
+            Ha ez nem stimmel, akkor valószínűleg a <code>/admin/devices/health</code> válaszában
+            más kulcs alatt jön a lista (pl. <code>rows</code>/<code>items</code>).
+            A mostani kód ezeket is kezeli, szóval ha továbbra is üres, akkor tényleg nincs device a tenantban.
+          </div>
+        </div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {deviceRows.map(({ d, v, cmd }) => (
@@ -270,13 +340,14 @@ export default function Devices() {
 
                   {cmd && (
                     <span
-                      className={statusBadgeClass(cmd.status)}
                       style={{
                         padding: "4px 8px",
                         borderRadius: 999,
                         border: "1px solid",
                         fontSize: 12,
+                        ...statusBadgeStyle(cmd.status),
                       }}
+                      title={cmd.commandId}
                     >
                       {cmd.status}
                     </span>
