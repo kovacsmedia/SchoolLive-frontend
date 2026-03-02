@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 
+import "./index.css";
+
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import AppShell from "./pages/AppShell";
