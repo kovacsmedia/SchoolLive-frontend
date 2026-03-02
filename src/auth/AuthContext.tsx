@@ -89,7 +89,8 @@ function enforceTokenStoragePolicy(user: Me) {
   const role = (user as any)?.role;
 
   if (role === "SUPER_ADMIN") {
-    const token = safeGet(localStorage, ACCESS_TOKEN_KEY) ?? safeGet(sessionStorage, ACCESS_TOKEN_KEY);
+    const token =
+      safeGet(localStorage, ACCESS_TOKEN_KEY) ?? safeGet(sessionStorage, ACCESS_TOKEN_KEY);
     if (token) {
       safeSet(sessionStorage, ACCESS_TOKEN_KEY, token);
       safeRemove(localStorage, ACCESS_TOKEN_KEY);
@@ -97,7 +98,7 @@ function enforceTokenStoragePolicy(user: Me) {
     return;
   }
 
-  // Non-superadmin: prefer persisted token; clear session token if any
+  // Non-superadmin: clear session token if any
   safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
 }
 
@@ -118,19 +119,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       enforceTokenStoragePolicy(user);
       dispatch({ type: "AUTHED", user });
     } catch {
-      // clearSession() is your existing helper, but we also clear sessionStorage explicitly
       clearSession();
-      safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
+      clearBothTokens();
       dispatch({ type: "GUEST" });
     }
   }
 
   async function login(email: string, password: string) {
-    // IMPORTANT: do not clear storages before apiLogin() here,
-    // because lib/auth may rely on its own storage flow.
-    const res = await apiLogin(email, password);
-    await refresh();
-    return res;
+    dispatch({ type: "LOADING" });
+
+    try {
+      // 1) perform login (lib/auth is responsible for storing the token)
+      const res = await apiLogin(email, password);
+
+      // 2) verify immediately (this is the critical part)
+      const user = await fetchMe();
+
+      // 3) enforce storage policy now that we know the role
+      enforceTokenStoragePolicy(user);
+
+      // 4) commit auth state
+      dispatch({ type: "AUTHED", user });
+
+      return res;
+    } catch (err: any) {
+      // if anything fails, make it explicit to the UI
+      clearSession();
+      clearBothTokens();
+      dispatch({ type: "GUEST" });
+
+      // propagate meaningful error
+      const status = err?.status;
+      const data = err?.data;
+      const msg =
+        (data && typeof data === "object" && (data.error || data.message)) ||
+        err?.message ||
+        "Sikertelen bejelentkezés.";
+
+      const full = status ? `${msg} (HTTP ${status})` : msg;
+      throw new Error(full);
+    }
   }
 
   function logout() {
