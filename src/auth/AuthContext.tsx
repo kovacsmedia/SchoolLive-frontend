@@ -126,10 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function login(email: string, password: string) {
-    // prevent mixing tokens between roles/sessions
-    clearSession();
-    clearBothTokens();
-
+    // IMPORTANT: do not clear storages before apiLogin() here,
+    // because lib/auth may rely on its own storage flow.
     const res = await apiLogin(email, password);
     await refresh();
     return res;
