@@ -274,11 +274,11 @@ export default function Landing() {
 
         <div className="sl-logoWrap">
           <picture>
-            <source srcSet="/brand/schoollive-logo.svg" type="image/svg+xml" />
+            <source srcSet="/brand/schoollive-logow.svg" type="image/svg+xml" />
             <img
               className="sl-logo"
               src="/brand/schoollive-logo.png"
-              alt="SchoolLive logó"
+              alt="SchoolLive logo"
               loading="eager"
               decoding="async"
             />
