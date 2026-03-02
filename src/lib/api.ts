@@ -11,18 +11,30 @@ export type ApiOk<T> = {
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
-function getToken(): string | null {
+function safeGetItem(storage: Storage, key: string): string | null {
   try {
-    return localStorage.getItem("accessToken");
+    return storage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
+/**
+ * Token resolution order:
+ * 1) sessionStorage (ephemeral session tokens, e.g. SUPER_ADMIN)
+ * 2) localStorage (persisted tokens, e.g. normal users)
+ */
+function getToken(): string | null {
+  const fromSession = safeGetItem(sessionStorage, "accessToken");
+  if (fromSession) return fromSession;
+
+  const fromLocal = safeGetItem(localStorage, "accessToken");
+  if (fromLocal) return fromLocal;
+
+  return null;
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
 
   const headers = new Headers(init.headers ?? {});
@@ -45,18 +57,14 @@ export async function apiFetch<T>(
   if (!res.ok) {
     // backend formátum: { ok:false, error:"...", ... }
     const errMsg =
-      (data && typeof data === "object" && data.error) ||
-      `HTTP_${res.status}`;
+      (data && typeof data === "object" && data.error) || `HTTP_${res.status}`;
     throw Object.assign(new Error(errMsg), { status: res.status, data });
   }
 
   return data as T;
 }
 
-export async function apiPost<TResponse>(
-  path: string,
-  body: any
-): Promise<TResponse> {
+export async function apiPost<TResponse>(path: string, body: any): Promise<TResponse> {
   return apiFetch<TResponse>(path, {
     method: "POST",
     body: JSON.stringify(body),
