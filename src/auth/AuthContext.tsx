@@ -60,6 +60,11 @@ function safeRemove(storage: Storage, key: string) {
   }
 }
 
+function clearBothTokens() {
+  safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
+  safeRemove(localStorage, ACCESS_TOKEN_KEY);
+}
+
 /**
  * Token resolution order:
  * 1) sessionStorage (SUPER_ADMIN session-only)
@@ -75,9 +80,32 @@ function getAnyAccessToken(): string | null {
   return null;
 }
 
-function clearBothTokens() {
-  safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
-  safeRemove(localStorage, ACCESS_TOKEN_KEY);
+/**
+ * Runtime guard: reject non-object / unexpected /auth/me responses
+ * (e.g. when API_BASE is wrong and we get HTML instead of JSON user object)
+ */
+function assertValidMe(value: unknown): asserts value is Me {
+  if (!value || typeof value !== "object") {
+    throw new Error("Auth hiba: hibás /auth/me válasz (nem objektum). Ellenőrizd a VITE_API_BASE beállítást.");
+  }
+
+  const v = value as Record<string, unknown>;
+
+  // These fields are typical for a "me" payload; adjust later if your Me differs.
+  // We keep it strict on purpose to prevent "HTML => authed" issues.
+  const hasRole = typeof v.role === "string";
+  const hasId = typeof v.id === "string" || typeof v.userId === "string";
+  const hasEmail = typeof v.email === "string" || typeof v.username === "string";
+
+  if (!hasRole || !hasId) {
+    throw new Error("Auth hiba: hibás /auth/me válasz (hiányzó mezők). Valószínűleg nem a backend válaszol.");
+  }
+
+  // email not mandatory everywhere, but if you have it, it's a nice extra sanity check
+  if (!hasEmail) {
+    // do not fail hard if your backend truly doesn't include it; comment out if needed
+    // throw new Error("Auth hiba: /auth/me válasz nem tartalmaz e-mailt/username-t.");
+  }
 }
 
 /**
@@ -115,9 +143,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const user = await fetchMe();
-      enforceTokenStoragePolicy(user);
-      dispatch({ type: "AUTHED", user });
+      const userRaw = await fetchMe();
+      assertValidMe(userRaw);
+      enforceTokenStoragePolicy(userRaw);
+      dispatch({ type: "AUTHED", user: userRaw });
     } catch {
       clearSession();
       clearBothTokens();
@@ -132,23 +161,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 1) perform login (lib/auth is responsible for storing the token)
       const res = await apiLogin(email, password);
 
-      // 2) verify immediately (this is the critical part)
-      const user = await fetchMe();
+      // 2) verify immediately
+      const userRaw = await fetchMe();
+      assertValidMe(userRaw);
 
-      // 3) enforce storage policy now that we know the role
-      enforceTokenStoragePolicy(user);
+      // 3) enforce policy now that role is known
+      enforceTokenStoragePolicy(userRaw);
 
       // 4) commit auth state
-      dispatch({ type: "AUTHED", user });
+      dispatch({ type: "AUTHED", user: userRaw });
 
       return res;
     } catch (err: any) {
-      // if anything fails, make it explicit to the UI
       clearSession();
       clearBothTokens();
       dispatch({ type: "GUEST" });
 
-      // propagate meaningful error
       const status = err?.status;
       const data = err?.data;
       const msg =
@@ -156,8 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         err?.message ||
         "Sikertelen bejelentkezés.";
 
-      const full = status ? `${msg} (HTTP ${status})` : msg;
-      throw new Error(full);
+      throw new Error(status ? `${msg} (HTTP ${status})` : msg);
     }
   }
 
