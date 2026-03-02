@@ -6,6 +6,19 @@ type LocationState = {
   from?: string;
 };
 
+function formatAuthError(err: any): string {
+  // apiFetch throws Error with extra fields: status, data
+  const status = err?.status;
+  const data = err?.data;
+
+  const apiMsg =
+    (data && typeof data === "object" && (data.error || data.message)) ||
+    err?.message;
+
+  if (status) return `${apiMsg || "Sikertelen bejelentkezés."} (HTTP ${status})`;
+  return apiMsg || "Sikertelen bejelentkezés.";
+}
+
 export default function Login() {
   const { login, state } = useAuth();
   const navigate = useNavigate();
@@ -22,11 +35,12 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // ✅ Only navigate when we are truly authed
   useEffect(() => {
     if (state.status === "authed") {
-      navigate("/app", { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [state.status, navigate]);
+  }, [state.status, navigate, from]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,10 +48,10 @@ export default function Login() {
     setBusy(true);
 
     try {
+      // ✅ Don't navigate here. Let the effect decide after auth state is updated.
       await login(email.trim(), password);
-      navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err?.message || "Sikertelen bejelentkezés.");
+      setError(formatAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -45,7 +59,7 @@ export default function Login() {
 
   return (
     <div className="sl-login">
-      {/* Route-scoped styling (later we can move these to index.css as a next step) */}
+      {/* Route-scoped styling */}
       <style>{`
         .sl-login {
           min-height: 100vh;
@@ -127,6 +141,7 @@ export default function Login() {
           border-radius: 14px;
           padding: 10px 12px;
           font-size: 13.5px;
+          white-space: pre-wrap;
         }
 
         .sl-actions {
@@ -148,7 +163,6 @@ export default function Login() {
           border: 1px solid var(--sl-border);
           background: rgba(94, 78, 161, 0.16);
           font-weight: 700;
-          text-decoration: none;
           user-select: none;
         }
 
@@ -185,13 +199,6 @@ export default function Login() {
           filter: drop-shadow(0 12px 22px rgba(0,0,0,0.14));
         }
 
-        .sl-note {
-          margin-top: 16px;
-          font-size: 12.5px;
-          line-height: 1.5;
-          color: var(--sl-muted);
-        }
-
         .sl-bg {
           position: fixed;
           inset: 0;
@@ -218,7 +225,7 @@ export default function Login() {
         <div className="sl-loginCard">
           <h1 className="sl-loginTitle">Bejelentkezés</h1>
           <p className="sl-loginSubtitle">
-            Lépj be az iskolád felületére, és kezeld az üzeneteket, eszközöket és jogosultságokat egy helyen.
+            Add meg az e-mail címed és jelszavad. Ha hiba van, itt kiírjuk részletesen.
           </p>
 
           {error && <div className="sl-error">{error}</div>}
@@ -238,7 +245,6 @@ export default function Login() {
                 inputMode="email"
                 required
                 disabled={busy}
-                placeholder="pl. admin@iskola.hu"
               />
             </div>
 
@@ -255,7 +261,6 @@ export default function Login() {
                 autoComplete="current-password"
                 required
                 disabled={busy}
-                placeholder="••••••••"
               />
             </div>
 
@@ -269,11 +274,6 @@ export default function Login() {
               </Link>
             </div>
           </form>
-
-          <div className="sl-note">
-            Tipp: ha több szerepkörrel dolgoztok (vezetőség, tanárok, üzemeltetés), mindenki a saját jogosultságával
-            lép be — így átlátható és biztonságos marad a működés.
-          </div>
         </div>
 
         <div className="sl-brand" aria-label="SchoolLive brand">
