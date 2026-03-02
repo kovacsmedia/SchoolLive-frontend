@@ -23,7 +23,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_BASE_URL: https://api.schoollive.hu
+          VITE_API_BASE: https://api.schoollive.hu
 
       # Feltöltés SFTP-n
       - name: Deploy via FTP
