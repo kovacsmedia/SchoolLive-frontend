@@ -53,17 +53,23 @@ export default function AppShell() {
     ? state.user?.name || state.user?.email || "Ismeretlen felhasználó"
     : "";
 
+  // Mobile nav drawer
+  const [navOpen, setNavOpen] = useState(false);
+
   // tenant state (SUPER_ADMIN only)
   const [tenants, setTenants] = useState<TenantListItem[]>([]);
   const [tenantsLoading, setTenantsLoading] = useState(false);
   const [tenantsError, setTenantsError] = useState<string | null>(null);
 
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
-    return safeGet(sessionStorage, ACTIVE_TENANT_KEY) || safeGet(localStorage, ACTIVE_TENANT_KEY) || "";
+    return (
+      safeGet(sessionStorage, ACTIVE_TENANT_KEY) ||
+      safeGet(localStorage, ACTIVE_TENANT_KEY) ||
+      ""
+    );
   });
 
   function onLogout() {
-    // clear tenant selection too (session-only UX)
     safeRemove(sessionStorage, ACTIVE_TENANT_KEY);
     safeRemove(localStorage, ACTIVE_TENANT_KEY);
 
@@ -71,19 +77,26 @@ export default function AppShell() {
     navigate("/login", { replace: true });
   }
 
+  // Close nav on route changes via link clicks (we handle onClick), and on wider screens
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 860) setNavOpen(false);
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   // Keep storage aligned with state
   useEffect(() => {
     if (!isAuthed) return;
 
     if (!isSuperAdmin) {
-      // Non-superadmin: tenant comes from token, do not allow cross-tenant selection
       safeRemove(sessionStorage, ACTIVE_TENANT_KEY);
       safeRemove(localStorage, ACTIVE_TENANT_KEY);
       setActiveTenantId("");
       return;
     }
 
-    // SUPER_ADMIN: persist in sessionStorage (preferred)
     if (activeTenantId) {
       safeSet(sessionStorage, ACTIVE_TENANT_KEY, activeTenantId);
       safeRemove(localStorage, ACTIVE_TENANT_KEY);
@@ -104,14 +117,14 @@ export default function AppShell() {
       setTenantsError(null);
 
       try {
-        const res = await apiFetch<TenantsResponse>("/admin/tenants", { method: "GET" });
+        const res = await apiFetch<TenantsResponse>("/admin/tenants", {
+          method: "GET",
+        });
         if (cancelled) return;
 
         const list = Array.isArray(res.tenants) ? res.tenants : [];
         setTenants(list);
 
-        // If no selection yet, keep empty (force user to choose)
-        // If selection exists but is no longer in list, clear it.
         if (activeTenantId && !list.some((t) => t.id === activeTenantId)) {
           setActiveTenantId("");
         }
@@ -126,7 +139,8 @@ export default function AppShell() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthed, isSuperAdmin]); // intentionally NOT depending on activeTenantId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthed, isSuperAdmin]);
 
   const activeTenantLabel = useMemo(() => {
     if (!isSuperAdmin) return "";
@@ -136,6 +150,19 @@ export default function AppShell() {
 
   const tenantGuardBlocked = isAuthed && isSuperAdmin && !activeTenantId;
 
+  function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+    return (
+      <nav className="sl-nav" aria-label="Navigáció">
+        <Link to="/app/devices" onClick={onNavigate}>
+          Eszközök
+        </Link>
+        <Link to="/app/messages" onClick={onNavigate}>
+          Üzenetek
+        </Link>
+      </nav>
+    );
+  }
+
   return (
     <div className="sl-appShell">
       <style>{`
@@ -144,6 +171,7 @@ export default function AppShell() {
           display: flex;
         }
 
+        /* Sidebar (desktop) */
         .sl-side {
           width: 260px;
           border-right: 1px solid var(--sl-border);
@@ -204,11 +232,36 @@ export default function AppShell() {
           gap: 12px;
         }
 
+        .sl-topLeft {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          min-width: 260px;
+        }
+
+        .sl-burger {
+          display: none;
+          height: 38px;
+          width: 42px;
+          border-radius: 12px;
+          border: 1px solid var(--sl-border);
+          background: rgba(127,127,127,0.08);
+          color: inherit;
+          font-weight: 900;
+          cursor: pointer;
+          align-items: center;
+          justify-content: center;
+          user-select: none;
+        }
+
+        .sl-burger:hover {
+          background: rgba(127,127,127,0.14);
+        }
+
         .sl-leftInfo {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          min-width: 260px;
         }
 
         .sl-userInfo {
@@ -294,15 +347,62 @@ export default function AppShell() {
           color: var(--sl-muted);
         }
 
+        /* Mobile drawer */
+        .sl-drawerBackdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.42);
+          backdrop-filter: blur(2px);
+          z-index: 50;
+        }
+
+        .sl-drawer {
+          position: fixed;
+          top: 0;
+          left: 0;
+          height: 100%;
+          width: min(82vw, 320px);
+          background: var(--sl-bg);
+          border-right: 1px solid var(--sl-border);
+          padding: 16px;
+          z-index: 60;
+          box-shadow: var(--sl-shadow);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .sl-drawerHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--sl-border);
+        }
+
+        .sl-close {
+          height: 38px;
+          width: 42px;
+          border-radius: 12px;
+          border: 1px solid var(--sl-border);
+          background: rgba(127,127,127,0.08);
+          color: inherit;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .sl-close:hover {
+          background: rgba(127,127,127,0.14);
+        }
+
         @media (max-width: 860px) {
           .sl-appShell {
             flex-direction: column;
           }
 
           .sl-side {
-            width: auto;
-            border-right: none;
-            border-bottom: 1px solid var(--sl-border);
+            display: none; /* desktop sidebar hidden on mobile */
           }
 
           .sl-content {
@@ -312,9 +412,14 @@ export default function AppShell() {
           .sl-brand img {
             width: 140px;
           }
+
+          .sl-burger {
+            display: inline-flex;
+          }
         }
       `}</style>
 
+      {/* Desktop sidebar */}
       <aside className="sl-side">
         <Link to="/app" className="sl-brand" aria-label="SchoolLive kezdőoldal">
           <picture>
@@ -337,61 +442,115 @@ export default function AppShell() {
           </picture>
         </Link>
 
-        <nav className="sl-nav">
-          <Link to="/app/devices">Eszközök</Link>
-          <Link to="/app/messages">Üzenetek</Link>
-          {/* később: Tenants / Users / Devices admin oldalak külön menüpontok */}
-        </nav>
+        <NavLinks />
       </aside>
+
+      {/* Mobile drawer */}
+      {navOpen && (
+        <>
+          <div
+            className="sl-drawerBackdrop"
+            onClick={() => setNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside className="sl-drawer" aria-label="Mobil menü">
+            <div className="sl-drawerHeader">
+              <Link
+                to="/app"
+                className="sl-brand"
+                aria-label="SchoolLive kezdőoldal"
+                onClick={() => setNavOpen(false)}
+                style={{ padding: 0, margin: 0, borderBottom: "none" }}
+              >
+                <picture>
+                  <source
+                    srcSet="/brand/schoollive-logow.svg"
+                    media="(prefers-color-scheme: dark)"
+                    type="image/svg+xml"
+                  />
+                  <source
+                    srcSet="/brand/schoollive-logo.svg"
+                    media="(prefers-color-scheme: light)"
+                    type="image/svg+xml"
+                  />
+                  <img
+                    src="/brand/schoollive-logo.svg"
+                    alt="SchoolLive logó"
+                    loading="eager"
+                    decoding="async"
+                    style={{ width: 140 }}
+                  />
+                </picture>
+              </Link>
+
+              <button className="sl-close" type="button" onClick={() => setNavOpen(false)}>
+                ✕
+              </button>
+            </div>
+
+            <NavLinks onNavigate={() => setNavOpen(false)} />
+          </aside>
+        </>
+      )}
 
       <div className="sl-main">
         <header className="sl-topbar">
-          <div className="sl-leftInfo">
-            <div className="sl-userInfo">
-              <div>
-                Bejelentkezett felhasználó: <strong>{userName}</strong>
+          <div className="sl-topLeft">
+            <button
+              className="sl-burger"
+              type="button"
+              onClick={() => setNavOpen(true)}
+              aria-label="Menü megnyitása"
+              title="Menü"
+            >
+              ☰
+            </button>
+
+            <div className="sl-leftInfo">
+              <div className="sl-userInfo">
+                <div>
+                  Bejelentkezett felhasználó: <strong>{userName}</strong>
+                </div>
+                <div>
+                  Szerepkör: <strong>{role}</strong>
+                </div>
               </div>
-              <div>
-                Szerepkör: <strong>{role}</strong>
-              </div>
-            </div>
 
-            {isAuthed && isSuperAdmin && (
-              <div className="sl-tenantRow">
-                <span className="sl-tenantLabel">Aktív tenant:</span>
+              {isAuthed && isSuperAdmin && (
+                <div className="sl-tenantRow">
+                  <span className="sl-tenantLabel">Aktív tenant:</span>
 
-                <select
-                  className="sl-tenantSelect"
-                  value={activeTenantId}
-                  onChange={(e) => setActiveTenantId(e.target.value)}
-                  disabled={tenantsLoading || !!tenantsError}
-                >
-                  <option value="">
-                    {tenantsLoading
-                      ? "Tenant lista betöltése…"
-                      : "Válassz tenantot…"}
-                  </option>
-
-                  {tenants.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                      {t.domain ? ` · ${t.domain}` : ""}
-                      {t.isActive === false ? " (inaktív)" : ""}
+                  <select
+                    className="sl-tenantSelect"
+                    value={activeTenantId}
+                    onChange={(e) => setActiveTenantId(e.target.value)}
+                    disabled={tenantsLoading || !!tenantsError}
+                  >
+                    <option value="">
+                      {tenantsLoading ? "Tenant lista betöltése…" : "Válassz tenantot…"}
                     </option>
-                  ))}
-                </select>
 
-                {tenantsError ? (
-                  <span className="sl-tenantHint">Hiba: {tenantsError}</span>
-                ) : activeTenantId ? (
-                  <span className="sl-tenantHint">Kiválasztva: {activeTenantLabel}</span>
-                ) : (
-                  <span className="sl-tenantHint">
-                    Tenant nélkül a SUPER_ADMIN nem módosít adatot.
-                  </span>
-                )}
-              </div>
-            )}
+                    {tenants.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                        {t.domain ? ` · ${t.domain}` : ""}
+                        {t.isActive === false ? " (inaktív)" : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  {tenantsError ? (
+                    <span className="sl-tenantHint">Hiba: {tenantsError}</span>
+                  ) : activeTenantId ? (
+                    <span className="sl-tenantHint">Kiválasztva: {activeTenantLabel}</span>
+                  ) : (
+                    <span className="sl-tenantHint">
+                      Tenant nélkül a SUPER_ADMIN nem módosít adatot.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <button className="sl-logoutBtn" onClick={onLogout} type="button">
@@ -399,15 +558,13 @@ export default function AppShell() {
           </button>
         </header>
 
-        {/* key forces remount on tenant change so pages refetch naturally */}
         <main className="sl-content" key={isSuperAdmin ? activeTenantId : "non-super"}>
           {tenantGuardBlocked ? (
             <div className="sl-guard">
               <h2>Tenant kiválasztása szükséges</h2>
               <p>
                 SUPER_ADMIN módban válassz ki egy tenantot a felső sávban. Ezután minden oldal az
-                aktuális tenant adatait fogja megjeleníteni, és egyszerre csak azt lehet
-                módosítani.
+                aktuális tenant adatait fogja megjeleníteni, és egyszerre csak azt lehet módosítani.
               </p>
             </div>
           ) : (
