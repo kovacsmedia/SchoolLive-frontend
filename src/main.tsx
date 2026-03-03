@@ -8,6 +8,7 @@ import AppShell from "./pages/AppShell";
 import Devices from "./pages/Devices";
 import Messages from "./pages/Messages";
 import Users from "./pages/Users";
+import "./index.css";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
