@@ -67,9 +67,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   try {
     const token =
-      sessionStorage.getItem("token") ??
-      localStorage.getItem("token") ??
-      "";
+    sessionStorage.getItem("accessToken") ??
+    localStorage.getItem("accessToken") ??
+    "";
 
     const headers = new Headers(init?.headers ?? {});
     if (!headers.has("Content-Type") && init?.body) {
