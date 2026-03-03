@@ -49,6 +49,9 @@ export default function AppShell() {
   const role = isAuthed ? state.user?.role || "n/a" : "n/a";
   const isSuperAdmin = role === "SUPER_ADMIN";
 
+  const canManageUsers =
+    role === "SUPER_ADMIN" || role === "TENANT_ADMIN" || role === "ORG_ADMIN";
+
   const userName = isAuthed
     ? state.user?.name || state.user?.email || "Ismeretlen felhasználó"
     : "";
@@ -159,6 +162,12 @@ export default function AppShell() {
         <Link to="/app/messages" onClick={onNavigate}>
           Üzenetek
         </Link>
+
+        {canManageUsers && (
+          <Link to="/app/users" onClick={onNavigate}>
+            Felhasználók
+          </Link>
+        )}
       </nav>
     );
   }
@@ -483,7 +492,11 @@ export default function AppShell() {
                 </picture>
               </Link>
 
-              <button className="sl-close" type="button" onClick={() => setNavOpen(false)}>
+              <button
+                className="sl-close"
+                type="button"
+                onClick={() => setNavOpen(false)}
+              >
                 ✕
               </button>
             </div>
@@ -527,7 +540,9 @@ export default function AppShell() {
                     disabled={tenantsLoading || !!tenantsError}
                   >
                     <option value="">
-                      {tenantsLoading ? "Tenant lista betöltése…" : "Válassz tenantot…"}
+                      {tenantsLoading
+                        ? "Tenant lista betöltése…"
+                        : "Válassz tenantot…"}
                     </option>
 
                     {tenants.map((t) => (
@@ -542,7 +557,9 @@ export default function AppShell() {
                   {tenantsError ? (
                     <span className="sl-tenantHint">Hiba: {tenantsError}</span>
                   ) : activeTenantId ? (
-                    <span className="sl-tenantHint">Kiválasztva: {activeTenantLabel}</span>
+                    <span className="sl-tenantHint">
+                      Kiválasztva: {activeTenantLabel}
+                    </span>
                   ) : (
                     <span className="sl-tenantHint">
                       Tenant nélkül a SUPER_ADMIN nem módosít adatot.
@@ -563,8 +580,9 @@ export default function AppShell() {
             <div className="sl-guard">
               <h2>Tenant kiválasztása szükséges</h2>
               <p>
-                SUPER_ADMIN módban válassz ki egy tenantot a felső sávban. Ezután minden oldal az
-                aktuális tenant adatait fogja megjeleníteni, és egyszerre csak azt lehet módosítani.
+                SUPER_ADMIN módban válassz ki egy tenantot a felső sávban. Ezután
+                minden oldal az aktuális tenant adatait fogja megjeleníteni, és
+                egyszerre csak azt lehet módosítani.
               </p>
             </div>
           ) : (
