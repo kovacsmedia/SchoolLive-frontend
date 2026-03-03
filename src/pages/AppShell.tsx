@@ -33,12 +33,22 @@ export default function AppShell() {
           border-right: 1px solid var(--sl-border);
           padding: 16px;
           background: rgba(127,127,127,0.03);
+          display: flex;
+          flex-direction: column;
         }
 
-        .sl-brandTitle {
-          font-weight: 800;
-          letter-spacing: -0.01em;
-          margin-bottom: 14px;
+        .sl-brand {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding-bottom: 16px;
+          margin-bottom: 12px;
+          border-bottom: 1px solid var(--sl-border);
+        }
+
+        .sl-brand img {
+          width: 160px;
+          height: auto;
         }
 
         .sl-nav {
@@ -123,11 +133,34 @@ export default function AppShell() {
           .sl-content {
             padding: 16px;
           }
+
+          .sl-brand img {
+            width: 140px;
+          }
         }
       `}</style>
 
       <aside className="sl-side">
-        <div className="sl-brandTitle">SchoolLive</div>
+        <Link to="/app" className="sl-brand" aria-label="SchoolLive kezdőoldal">
+          <picture>
+            <source
+              srcSet="/brand/schoollive-logow.svg"
+              media="(prefers-color-scheme: dark)"
+              type="image/svg+xml"
+            />
+            <source
+              srcSet="/brand/schoollive-logo.svg"
+              media="(prefers-color-scheme: light)"
+              type="image/svg+xml"
+            />
+            <img
+              src="/brand/schoollive-logo.svg"
+              alt="SchoolLive logó"
+              loading="eager"
+              decoding="async"
+            />
+          </picture>
+        </Link>
 
         <nav className="sl-nav">
           <Link to="/app/devices">Eszközök</Link>
