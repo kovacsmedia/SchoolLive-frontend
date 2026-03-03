@@ -722,7 +722,7 @@ export default function Users() {
         </Modal>
       ) : null}
 
-      {/* Messages modal */}
+      {/* Messages modal   */}
       {isMessagesOpen && selectedUser ? (
         <Modal title={`Üzenetek: ${selectedUser.email}`} onClose={() => setIsMessagesOpen(false)}>
           <div className="space-y-3">
