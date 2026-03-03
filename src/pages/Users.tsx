@@ -15,12 +15,12 @@ type UiRole = "ADMIN" | "EDITOR" | "CONTRIBUTOR" | "PLAYER";
 type UserDto = {
   id: string;
   email: string;
-  name?: string | null;
   role: BackendRole;
+  tenantId?: string | null;
+  orgUnitId?: string | null;
 
-  // ✅ Prisma szerint: lastLoginAt
+  isActive?: boolean;
   lastLoginAt?: string | null;
-
   createdAt?: string;
 };
 
@@ -29,13 +29,25 @@ type UsersListResponse = {
   users: UserDto[];
 };
 
+type UserSingleResponse = {
+  ok: boolean;
+  user: UserDto;
+};
+
 type UserMessageDto = {
   id: string;
   createdAt?: string;
   type?: string;
-  title?: string;
-  body?: string;
+  title?: string | null;
+  scheduledAt?: string | null;
+  targetType?: string;
+  targetId?: string | null;
   status?: string;
+};
+
+type UserMessagesResponse = {
+  ok: boolean;
+  messages: UserMessageDto[];
 };
 
 type ApiErrorShape = {
@@ -44,24 +56,14 @@ type ApiErrorShape = {
 };
 
 const API = {
-  // ✅ ez biztosan létezik (users.admin.routes.ts)
   USERS_LIST: "/admin/users",
-
-  // ⛔ ezek a route-ok a jelenlegi grep alapján még NINCSENEK meg – UI készen áll, backendhez igazítandó
   USERS_CREATE: "/admin/users",
   USERS_UPDATE: (userId: string) => `/admin/users/${encodeURIComponent(userId)}`,
   USERS_DELETE: (userId: string) => `/admin/users/${encodeURIComponent(userId)}`,
 
-  // ⛔ messages route sincs még (grep alapján), de itt lesz majd bekötve
   USER_MESSAGES: (userId: string) => `/admin/users/${encodeURIComponent(userId)}/messages`,
 } as const;
 
-/**
- * UI üzleti szerepkör → backend UserRole mapping (Prisma enum alapján).
- *
- * A listázáshoz a backend TENANT_ADMIN / ORG_ADMIN (és SUPER_ADMIN, tenant headerrel) jogosultságot néz,
- * tehát a “közreműködő” tipikusan OPERATOR-ként értelmezhető itt.
- */
 const UI_ROLE_OPTIONS: Array<{
   uiRole: UiRole;
   label: string;
@@ -71,29 +73,27 @@ const UI_ROLE_OPTIONS: Array<{
   {
     uiRole: "ADMIN",
     label: "Admin",
-    description:
-      "Tenant admin: csak a saját intézményét látja, mindent megtehet, amit a lenti szerepkörök.",
+    description: "Tenant admin: csak a saját intézményét látja, teljes körű tenant jogosultság.",
     backendRole: "TENANT_ADMIN",
   },
   {
     uiRole: "EDITOR",
     label: "Szerkesztő",
     description:
-      "Időzített jelzések (csengetések) kezelése, üzenetküldés eszközökre/csoportokra, időzített lejátszási listák.",
+      "Időzített jelzések kezelése, üzenetküldés eszközökre/csoportokra, időzített lejátszási listák.",
     backendRole: "ORG_ADMIN",
   },
   {
     uiRole: "CONTRIBUTOR",
     label: "Közreműködő",
-    description:
-      "Azonnali/időzített üzenetek küldése kiválasztott eszközökre/csoportokba és megtekintések.",
+    description: "Azonnali/időzített üzenetek küldése kiválasztott eszközökre/csoportokba.",
     backendRole: "OPERATOR",
   },
   {
     uiRole: "PLAYER",
     label: "Player",
     description:
-      "Belépés után a Player oldal fut (virtuális lejátszó). A userhez tartozó JWT-es device-ot az eszközök közt is monitorozni kell.",
+      "Belépés után a Player oldal fut. A userhez tartozó JWT-es device az eszközök közt is monitorozandó.",
     backendRole: "PLAYER",
   },
 ];
@@ -130,19 +130,28 @@ function RoleBadge({ role }: { role: BackendRole }) {
       ? "bg-blue-600/20 text-blue-200 border-blue-500/30"
       : role === "ORG_ADMIN"
         ? "bg-emerald-600/20 text-emerald-200 border-emerald-500/30"
-        : role === "OPERATOR"
+        : role === "OPERATOR" || role === "TEACHER"
           ? "bg-amber-600/20 text-amber-200 border-amber-500/30"
-          : role === "TEACHER"
-            ? "bg-amber-600/20 text-amber-200 border-amber-500/30"
-            : role === "PLAYER"
-              ? "bg-slate-600/20 text-slate-200 border-slate-500/30"
-              : role === "SUPER_ADMIN"
-                ? "bg-purple-600/20 text-purple-200 border-purple-500/30"
-                : "bg-gray-600/20 text-gray-200 border-gray-500/30";
+          : role === "PLAYER"
+            ? "bg-slate-600/20 text-slate-200 border-slate-500/30"
+            : role === "SUPER_ADMIN"
+              ? "bg-purple-600/20 text-purple-200 border-purple-500/30"
+              : "bg-gray-600/20 text-gray-200 border-gray-500/30";
 
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}`}>
       {role}
+    </span>
+  );
+}
+
+function ActiveBadge({ isActive }: { isActive: boolean }) {
+  const cls = isActive
+    ? "bg-emerald-600/20 text-emerald-200 border-emerald-500/30"
+    : "bg-red-600/20 text-red-200 border-red-500/30";
+  return (
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}`}>
+      {isActive ? "Aktív" : "Inaktív"}
     </span>
   );
 }
@@ -157,8 +166,12 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-2xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-3xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div className="text-sm font-semibold">{title}</div>
           <button
@@ -179,9 +192,9 @@ function Modal({
 
 type UserFormState = {
   email: string;
-  name: string;
   uiRole: UiRole;
   password: string;
+  isActive: boolean;
 };
 
 function uiRoleToBackendRole(uiRole: UiRole): BackendRole {
@@ -193,7 +206,6 @@ function guessUiRoleFromBackendRole(role: BackendRole): UiRole {
   if (role === "TENANT_ADMIN") return "ADMIN";
   if (role === "ORG_ADMIN") return "EDITOR";
   if (role === "PLAYER") return "PLAYER";
-  // OPERATOR/TEACHER (vagy bármi más tenant role) → CONTRIBUTOR
   return "CONTRIBUTOR";
 }
 
@@ -212,14 +224,14 @@ export default function Users() {
 
   const [form, setForm] = useState<UserFormState>({
     email: "",
-    name: "",
     uiRole: "CONTRIBUTOR",
     password: "",
+    isActive: true,
   });
 
-  const [busyAction, setBusyAction] = useState<null | "create" | "update" | "delete" | "messages">(null);
+  const [busyAction, setBusyAction] = useState<null | "create" | "update" | "delete">(null);
 
-  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [messages, setMessages] = useState<UserMessageDto[]>([]);
 
@@ -227,7 +239,6 @@ export default function Users() {
     setLoading(true);
     setError(null);
     try {
-      // ✅ backend válasz: { ok: true, users }
       const resp = await apiRequest<UsersListResponse>(API.USERS_LIST);
       const list = Array.isArray(resp?.users) ? resp.users : [];
       setUsers(list);
@@ -248,23 +259,16 @@ export default function Users() {
     if (!needle) return users;
 
     return users.filter((u) => {
-      const parts = [
-        u.email ?? "",
-        u.name ?? "",
-        u.role ?? "",
-        u.id ?? "",
-        u.lastLoginAt ?? "",
-      ]
+      const parts = [u.email ?? "", u.role ?? "", u.id ?? "", u.lastLoginAt ?? "", u.createdAt ?? ""]
         .join(" ")
         .toLowerCase();
-
       return parts.includes(needle);
     });
   }, [q, users]);
 
   function openCreate() {
     setSelectedUser(null);
-    setForm({ email: "", name: "", uiRole: "CONTRIBUTOR", password: "" });
+    setForm({ email: "", uiRole: "CONTRIBUTOR", password: "", isActive: true });
     setIsCreateOpen(true);
   }
 
@@ -272,9 +276,9 @@ export default function Users() {
     setSelectedUser(u);
     setForm({
       email: u.email ?? "",
-      name: u.name ?? "",
       uiRole: guessUiRoleFromBackendRole(u.role),
       password: "",
+      isActive: typeof u.isActive === "boolean" ? u.isActive : true,
     });
     setIsEditOpen(true);
   }
@@ -294,27 +298,23 @@ export default function Users() {
     try {
       const payload = {
         email: form.email.trim(),
-        name: form.name.trim() || null,
         role: uiRoleToBackendRole(form.uiRole),
         password: form.password,
+        isActive: form.isActive,
       };
 
-      await apiRequest<unknown>(API.USERS_CREATE, {
+      const resp = await apiRequest<UserSingleResponse>(API.USERS_CREATE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+
       setIsCreateOpen(false);
       await loadUsers();
     } catch (e) {
-      setError(
-        [
-          "Nem sikerült létrehozni a felhasználót.",
-          safeErrorMessage(e),
-          "Megjegyzés: a backendben jelenleg csak a GET /admin/users endpoint biztosan létezik. A create endpointot a backend oldalon kell hozzáadni, vagy itt az API konstansokhoz igazítani.",
-        ].join(" "),
-      );
+      setError(["Nem sikerült létrehozni a felhasználót.", safeErrorMessage(e)].join(" "));
     } finally {
       setBusyAction(null);
     }
@@ -331,52 +331,44 @@ export default function Users() {
 
     setBusyAction("update");
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         email: form.email.trim(),
-        name: form.name.trim() || null,
         role: uiRoleToBackendRole(form.uiRole),
-        ...(form.password.trim() ? { password: form.password } : {}),
+        isActive: form.isActive,
       };
 
-      await apiRequest<unknown>(API.USERS_UPDATE(selectedUser.id), {
+      if (form.password.trim()) payload.password = form.password;
+
+      const resp = await apiRequest<UserSingleResponse>(API.USERS_UPDATE(selectedUser.id), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+
       setIsEditOpen(false);
       setSelectedUser(null);
       await loadUsers();
     } catch (e) {
-      setError(
-        [
-          "Nem sikerült módosítani a felhasználót.",
-          safeErrorMessage(e),
-          "Megjegyzés: a backendben jelenleg a users admin routes-ban csak a listázás (GET /admin/users) látszik. Update endpointot a backend oldalon kell hozzáadni.",
-        ].join(" "),
-      );
+      setError(["Nem sikerült módosítani a felhasználót.", safeErrorMessage(e)].join(" "));
     } finally {
       setBusyAction(null);
     }
   }
 
   async function doDelete(u: UserDto) {
-    const ok = window.confirm(`Biztos törlöd? (${u.email})`);
+    const ok = window.confirm(`Biztos deaktiválod? (${u.email})`);
     if (!ok) return;
 
     setError(null);
     setBusyAction("delete");
     try {
-      await apiRequest<unknown>(API.USERS_DELETE(u.id), { method: "DELETE" });
+      const resp = await apiRequest<{ ok: boolean }>(API.USERS_DELETE(u.id), { method: "DELETE" });
+      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) {
-      setError(
-        [
-          "Nem sikerült törölni a felhasználót.",
-          safeErrorMessage(e),
-          "Megjegyzés: a backendben jelenleg a users admin routes-ban csak a listázás (GET /admin/users) látszik. Delete endpointot a backend oldalon kell hozzáadni.",
-        ].join(" "),
-      );
+      setError(["Nem sikerült törölni (deaktiválni) a felhasználót.", safeErrorMessage(e)].join(" "));
     } finally {
       setBusyAction(null);
     }
@@ -384,26 +376,20 @@ export default function Users() {
 
   async function openMessages(u: UserDto) {
     setSelectedUser(u);
-    setMessages([]);
-    setMessagesError(null);
     setIsMessagesOpen(true);
 
+    setMessages([]);
+    setMessagesError(null);
     setMessagesLoading(true);
-    setBusyAction("messages");
+
     try {
-      const data = await apiRequest<UserMessageDto[]>(API.USER_MESSAGES(u.id));
-      setMessages(Array.isArray(data) ? data : []);
+      const resp = await apiRequest<UserMessagesResponse>(API.USER_MESSAGES(u.id));
+      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      setMessages(Array.isArray(resp.messages) ? resp.messages : []);
     } catch (e) {
-      setMessagesError(
-        [
-          "Nem sikerült betölteni az üzeneteket.",
-          safeErrorMessage(e),
-          "A backend grep alapján jelenleg nincs messages endpoint. Ha elkészül (pl. GET /admin/users/:id/messages), itt csak az API.USER_MESSAGES útvonalat kell igazítani, és a válasz DTO mezőket pontosítani.",
-        ].join(" "),
-      );
+      setMessagesError(safeErrorMessage(e));
     } finally {
       setMessagesLoading(false);
-      setBusyAction(null);
     }
   }
 
@@ -413,14 +399,14 @@ export default function Users() {
         <div>
           <h1 className="text-xl font-semibold">Felhasználók</h1>
           <p className="mt-1 text-sm text-white/70">
-            Tenant-szintű felhasználók listája. Last login: <span className="font-mono">User.lastLoginAt</span>.
+            Tenant-szintű felhasználók kezelése (CRUD). Last login: <span className="font-mono">User.lastLoginAt</span>.
           </p>
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <input
-            className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none placeholder:text-white/40 focus:border-white/20 sm:w-80"
-            placeholder="Keresés (email, név, role, id, last login)"
+            className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none placeholder:text-white/40 focus:border-white/20 sm:w-96"
+            placeholder="Keresés (email, role, id, last login, created)"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -430,7 +416,7 @@ export default function Users() {
             className="inline-flex items-center justify-center rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-60"
             onClick={openCreate}
             disabled={loading}
-            title="Új felhasználó (backend create endpoint szükséges)"
+            title="Új felhasználó"
           >
             + Új
           </button>
@@ -448,13 +434,17 @@ export default function Users() {
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
+        </div>
       ) : null}
 
       <div className="rounded-lg border border-white/10 bg-zinc-950">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div className="text-sm font-semibold">Lista</div>
-          <div className="text-xs text-white/60">{loading ? "Betöltés..." : `${filtered.length} / ${users.length} felhasználó`}</div>
+          <div className="text-xs text-white/60">
+            {loading ? "Betöltés..." : `${filtered.length} / ${users.length} felhasználó`}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -462,8 +452,9 @@ export default function Users() {
             <thead className="text-xs uppercase text-white/60">
               <tr className="border-b border-white/10">
                 <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Név</th>
+                <th className="px-4 py-3">Státusz</th>
                 <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Létrehozva</th>
                 <th className="px-4 py-3">Utolsó belépés</th>
                 <th className="px-4 py-3 text-right">Műveletek</th>
               </tr>
@@ -476,10 +467,13 @@ export default function Users() {
                     <div className="font-medium">{u.email}</div>
                     <div className="text-xs text-white/50">{u.id}</div>
                   </td>
-                  <td className="px-4 py-3">{u.name ? u.name : <span className="text-white/40">—</span>}</td>
+                  <td className="px-4 py-3">
+                    <ActiveBadge isActive={typeof u.isActive === "boolean" ? u.isActive : true} />
+                  </td>
                   <td className="px-4 py-3">
                     <RoleBadge role={u.role} />
                   </td>
+                  <td className="px-4 py-3">{formatDateTime(u.createdAt ?? null)}</td>
                   <td className="px-4 py-3">{formatDateTime(u.lastLoginAt ?? null)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
@@ -487,8 +481,8 @@ export default function Users() {
                         type="button"
                         className="rounded-md bg-white/5 px-2 py-1 text-xs font-medium hover:bg-white/10 disabled:opacity-60"
                         onClick={() => void openMessages(u)}
-                        disabled={busyAction === "messages"}
-                        title="Üzenetek (backend endpoint még nem látszik a repóban)"
+                        disabled={messagesLoading && selectedUser?.id === u.id}
+                        title="Üzenetek"
                       >
                         Üzenetek
                       </button>
@@ -498,7 +492,7 @@ export default function Users() {
                         className="rounded-md bg-white/5 px-2 py-1 text-xs font-medium hover:bg-white/10 disabled:opacity-60"
                         onClick={() => openEdit(u)}
                         disabled={busyAction === "update" || busyAction === "delete"}
-                        title="Szerkesztés (backend update endpoint szükséges)"
+                        title="Szerkesztés"
                       >
                         Szerkeszt
                       </button>
@@ -508,9 +502,9 @@ export default function Users() {
                         className="rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/15 disabled:opacity-60"
                         onClick={() => void doDelete(u)}
                         disabled={busyAction === "delete"}
-                        title="Törlés (backend delete endpoint szükséges)"
+                        title="Deaktiválás (soft delete)"
                       >
-                        Töröl
+                        Deaktivál
                       </button>
                     </div>
                   </td>
@@ -519,7 +513,7 @@ export default function Users() {
 
               {!loading && filtered.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={6}>
                     Nincs találat.
                   </td>
                 </tr>
@@ -527,7 +521,7 @@ export default function Users() {
 
               {loading ? (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={6}>
                     Betöltés…
                   </td>
                 </tr>
@@ -541,10 +535,6 @@ export default function Users() {
       {isCreateOpen ? (
         <Modal title="Új felhasználó" onClose={() => setIsCreateOpen(false)}>
           <div className="space-y-4">
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              A backendben jelenleg csak a <span className="font-mono">GET /admin/users</span> látszik. A létrehozáshoz create endpoint kell.
-            </div>
-
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
                 <div className="text-xs text-white/60">E-mail</div>
@@ -556,12 +546,19 @@ export default function Users() {
               </label>
 
               <label className="space-y-1">
-                <div className="text-xs text-white/60">Név (opcionális)</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.name}
-                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                />
+                <div className="text-xs text-white/60">Státusz</div>
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    id="create-active"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={form.isActive}
+                    onChange={(e) => setForm((s) => ({ ...s, isActive: e.target.checked }))}
+                  />
+                  <label htmlFor="create-active" className="text-sm">
+                    Aktív
+                  </label>
+                </div>
               </label>
             </div>
 
@@ -578,7 +575,9 @@ export default function Users() {
                   </option>
                 ))}
               </select>
-              <div className="text-xs text-white/50">{UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}</div>
+              <div className="text-xs text-white/50">
+                {UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}
+              </div>
               <div className="text-xs text-white/40">
                 Backend role: <span className="font-mono">{uiRoleToBackendRole(form.uiRole)}</span>
               </div>
@@ -592,6 +591,7 @@ export default function Users() {
                 value={form.password}
                 onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
               />
+              <div className="text-xs text-white/50">Minimum 6 karakter.</div>
             </label>
 
             <div className="flex items-center justify-end gap-2">
@@ -620,10 +620,6 @@ export default function Users() {
       {isEditOpen && selectedUser ? (
         <Modal title={`Felhasználó szerkesztése: ${selectedUser.email}`} onClose={() => setIsEditOpen(false)}>
           <div className="space-y-4">
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              Update endpoint még nem látszik a backend users admin routes-ban. A UI készen áll, backend oldalon kell kiegészíteni.
-            </div>
-
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
                 <div className="text-xs text-white/60">E-mail</div>
@@ -635,12 +631,19 @@ export default function Users() {
               </label>
 
               <label className="space-y-1">
-                <div className="text-xs text-white/60">Név (opcionális)</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.name}
-                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                />
+                <div className="text-xs text-white/60">Státusz</div>
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    id="edit-active"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={form.isActive}
+                    onChange={(e) => setForm((s) => ({ ...s, isActive: e.target.checked }))}
+                  />
+                  <label htmlFor="edit-active" className="text-sm">
+                    Aktív
+                  </label>
+                </div>
               </label>
             </div>
 
@@ -657,7 +660,9 @@ export default function Users() {
                   </option>
                 ))}
               </select>
-              <div className="text-xs text-white/50">{UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}</div>
+              <div className="text-xs text-white/50">
+                {UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}
+              </div>
               <div className="text-xs text-white/40">
                 Backend role: <span className="font-mono">{uiRoleToBackendRole(form.uiRole)}</span>
               </div>
@@ -676,6 +681,8 @@ export default function Users() {
 
             <div className="flex items-center justify-between">
               <div className="text-xs text-white/60">
+                Létrehozva: <span className="font-medium">{formatDateTime(selectedUser.createdAt ?? null)}</span>
+                <span className="mx-2">•</span>
                 Utolsó belépés: <span className="font-medium">{formatDateTime(selectedUser.lastLoginAt ?? null)}</span>
               </div>
 
@@ -705,13 +712,11 @@ export default function Users() {
       {/* Messages modal */}
       {isMessagesOpen && selectedUser ? (
         <Modal title={`Üzenetek: ${selectedUser.email}`} onClose={() => setIsMessagesOpen(false)}>
-          <div className="space-y-3">
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              A backendben jelenleg nem találtunk messages endpointot. A Prisma modell szerint van <span className="font-mono">Message</span>, tehát route még hiányzik.
-            </div>
-
+          <div className="space-y-4">
             {messagesError ? (
-              <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{messagesError}</div>
+              <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {messagesError}
+              </div>
             ) : null}
 
             {messagesLoading ? (
@@ -730,29 +735,41 @@ export default function Users() {
                         <th className="px-4 py-3">Időpont</th>
                         <th className="px-4 py-3">Típus</th>
                         <th className="px-4 py-3">Cím</th>
+                        <th className="px-4 py-3">Ütemezve</th>
+                        <th className="px-4 py-3">Cél</th>
                         <th className="px-4 py-3">Státusz</th>
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-white/10">
                       {messages.map((m) => (
                         <tr key={m.id} className="hover:bg-white/5">
                           <td className="px-4 py-3">
-                            <div className="text-sm">{formatDateTime(m.createdAt ?? null)}</div>
+                            <div>{formatDateTime(m.createdAt ?? null)}</div>
                             <div className="text-xs text-white/50 font-mono">{m.id}</div>
                           </td>
+
                           <td className="px-4 py-3">{m.type ?? <span className="text-white/40">—</span>}</td>
+
+                          <td className="px-4 py-3">{m.title ?? <span className="text-white/40">—</span>}</td>
+
+                          <td className="px-4 py-3">{formatDateTime(m.scheduledAt ?? null)}</td>
+
                           <td className="px-4 py-3">
-                            <div className="font-medium">{m.title ?? <span className="text-white/40">—</span>}</div>
-                            {m.body ? <div className="mt-1 text-xs text-white/60">{m.body}</div> : null}
+                            {m.targetType ?? "-"}
+                            {m.targetId ? (
+                              <div className="text-xs text-white/50 font-mono">{m.targetId}</div>
+                            ) : null}
                           </td>
-                          <td className="px-4 py-3">{m.status ?? <span className="text-white/40">—</span>}</td>
+
+                          <td className="px-4 py-3">{m.status ?? "-"}</td>
                         </tr>
                       ))}
 
                       {messages.length === 0 ? (
                         <tr>
-                          <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={4}>
-                            Nincs megjeleníthető üzenet (vagy az endpoint még nincs implementálva).
+                          <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={6}>
+                            Nincs üzenet.
                           </td>
                         </tr>
                       ) : null}
