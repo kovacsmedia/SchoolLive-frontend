@@ -1,105 +1,125 @@
-// src/lib/api.ts
-export type ApiError = {
-  ok: false;
-  error: string;
-  details?: any;
+type ApiErrorData = {
+  error?: string;
+  message?: string;
 };
 
-export type ApiOk<T> = {
-  ok: true;
-} & T;
+export class ApiError extends Error {
+  status: number;
+  data?: unknown;
 
-// Prefer VITE_API_BASE_URL, keep VITE_API_BASE as fallback for compatibility
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_BASE ?? "";
+  constructor(message: string, status: number, data?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
 
-const ACCESS_TOKEN_KEY = "accessToken";
-const ACTIVE_TENANT_KEY = "activeTenantId";
+function getBaseUrl(): string {
+  const v = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
+  const base = (v ?? "").trim();
 
-function safeGetItem(storage: Storage, key: string): string | null {
+  // Ha üres, az NEM OK: inkább dobjunk értelmes hibát,
+  // mint hogy a fetch relatív /auth/login-ra menjen ismeretlen originre.
+  if (!base) return "";
+
+  // Lehet valaki "/"-ra végződőt ad meg; normalizáljuk
+  return base.endsWith("/") ? base.slice(0, -1) : base;
+}
+
+function joinUrl(base: string, path: string): string {
+  if (!base) return path; // majd a fetch dob; mi inkább előtte dobunk lent
+  if (!path.startsWith("/")) return `${base}/${path}`;
+  return `${base}${path}`;
+}
+
+function safeText(x: unknown): string {
+  if (typeof x === "string") return x;
+  return "";
+}
+
+async function readJsonSafe(res: Response): Promise<unknown> {
+  const ct = res.headers.get("content-type") ?? "";
+  if (!ct.includes("application/json")) {
+    const txt = await res.text().catch(() => "");
+    return txt ? { raw: txt } : undefined;
+  }
+  return res.json().catch(() => undefined);
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) {
+    // Ez a legjobb hely megfogni: ha itt vagyunk, a build/runtime env nincs rendben,
+    // vagy rossz .env.* ment ki prodba.
+    throw new ApiError(
+      "Hiányzik a VITE_API_BASE_URL (üres). Ellenőrizd a .env.local/.env.production értékét és a deploy buildet.",
+      0
+    );
+  }
+
+  const url = joinUrl(baseUrl, path);
+
+  // Timeout, hogy ne “fagyjon”
+  const controller = new AbortController();
+  const timeoutMs = 15000;
+  const t = window.setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    return storage.getItem(key);
-  } catch {
-    return null;
+    const token =
+      sessionStorage.getItem("token") ??
+      localStorage.getItem("token") ??
+      "";
+
+    const headers = new Headers(init?.headers ?? {});
+    if (!headers.has("Content-Type") && init?.body) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const res = await fetch(url, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const data = await readJsonSafe(res);
+      const d = (data ?? {}) as ApiErrorData;
+
+      const msg =
+        d?.message ??
+        d?.error ??
+        `HTTP ${res.status} (${res.statusText})`;
+
+      throw new ApiError(msg, res.status, data);
+    }
+
+    // 204 / üres body kezelése
+    if (res.status === 204) return undefined as unknown as T;
+
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct.includes("application/json")) {
+      return (await res.json()) as T;
+    }
+
+    // ha nem json, visszaadjuk textként
+    const txt = await res.text().catch(() => "");
+    return txt as unknown as T;
+  } catch (e) {
+    // Itt jön a “Failed to fetch” is: CORS/mixed content/DNS/connection refused
+    if (e instanceof ApiError) throw e;
+
+    const msg = safeText((e as any)?.message) || "Failed to fetch";
+    // Kibővítjük a hibaüzenetet a kulcs infóval:
+    // - milyen URL-t próbált hívni
+    // - ez tipikusan CORS/mixed content/rossz host
+    throw new ApiError(
+      `Hálózati hiba: ${msg}. URL: ${url}. (Tipikusan: rossz API host, CORS, vagy https/http mixed content)`,
+      0,
+      { url }
+    );
+  } finally {
+    window.clearTimeout(t);
   }
-}
-
-/**
- * Token resolution order:
- * 1) sessionStorage
- * 2) localStorage
- */
-function getToken(): string | null {
-  const fromSession = safeGetItem(sessionStorage, ACCESS_TOKEN_KEY);
-  if (fromSession) return fromSession;
-
-  const fromLocal = safeGetItem(localStorage, ACCESS_TOKEN_KEY);
-  if (fromLocal) return fromLocal;
-
-  return null;
-}
-
-/**
- * Active tenant resolution order:
- * 1) sessionStorage (recommended for SUPER_ADMIN)
- * 2) localStorage (fallback)
- */
-function getActiveTenantId(): string | null {
-  const s = safeGetItem(sessionStorage, ACTIVE_TENANT_KEY);
-  if (s) return s;
-
-  const l = safeGetItem(localStorage, ACTIVE_TENANT_KEY);
-  if (l) return l;
-
-  return null;
-}
-
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const activeTenantId = getActiveTenantId();
-
-  const headers = new Headers(init.headers ?? {});
-
-  // Only set Content-Type when we actually send a JSON body
-  // (prevents unnecessary preflight in some setups)
-  const hasBody = typeof init.body === "string" || init.body instanceof Blob;
-  if (hasBody && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  // SUPER_ADMIN tenant scoping (backend expects x-tenant-id)
-  if (activeTenantId) headers.set("x-tenant-id", activeTenantId);
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-  });
-
-  const text = await res.text();
-  let data: any = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (!res.ok) {
-    const errMsg =
-      (data && typeof data === "object" && (data.error || data.message)) ||
-      `HTTP_${res.status}`;
-    throw Object.assign(new Error(errMsg), { status: res.status, data });
-  }
-
-  return data as T;
-}
-
-export async function apiPost<TResponse>(path: string, body: any): Promise<TResponse> {
-  return apiFetch<TResponse>(path, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }
