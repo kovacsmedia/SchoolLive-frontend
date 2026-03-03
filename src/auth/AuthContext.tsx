@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+} from "react";
 import type { Me, LoginResponse } from "../lib/auth";
 import { me as fetchMe, clearSession, login as apiLogin } from "../lib/auth";
 
@@ -35,6 +42,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ACCESS_TOKEN_KEY = "accessToken";
+const SUPERADMIN_IDLE_MS = 5 * 60 * 1000;
 
 function safeGet(storage: Storage, key: string): string | null {
   try {
@@ -86,25 +94,24 @@ function getAnyAccessToken(): string | null {
  */
 function assertValidMe(value: unknown): asserts value is Me {
   if (!value || typeof value !== "object") {
-    throw new Error("Auth hiba: hibás /auth/me válasz (nem objektum). Ellenőrizd a VITE_API_BASE beállítást.");
+    throw new Error(
+      "Auth hiba: hibás /auth/me válasz (nem objektum). Ellenőrizd a VITE_API_BASE_URL / VITE_API_BASE beállítást."
+    );
   }
 
   const v = value as Record<string, unknown>;
-
-  // These fields are typical for a "me" payload; adjust later if your Me differs.
-  // We keep it strict on purpose to prevent "HTML => authed" issues.
-  const hasRole = typeof v.role === "string";
+  const hasRole = typeof v.role === "string" || v.role === null;
   const hasId = typeof v.id === "string" || typeof v.userId === "string";
-  const hasEmail = typeof v.email === "string" || typeof v.username === "string";
 
-  if (!hasRole || !hasId) {
-    throw new Error("Auth hiba: hibás /auth/me válasz (hiányzó mezők). Valószínűleg nem a backend válaszol.");
+  if (!hasId) {
+    throw new Error(
+      "Auth hiba: hibás /auth/me válasz (hiányzó id). Valószínűleg nem a backend válaszol."
+    );
   }
 
-  // email not mandatory everywhere, but if you have it, it's a nice extra sanity check
-  if (!hasEmail) {
-    // do not fail hard if your backend truly doesn't include it; comment out if needed
-    // throw new Error("Auth hiba: /auth/me válasz nem tartalmaz e-mailt/username-t.");
+  // role may be nullable in types; if backend always has it, we can tighten later
+  if (!hasRole) {
+    // not fatal
   }
 }
 
@@ -133,7 +140,13 @@ function enforceTokenStoragePolicy(user: Me) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, { status: "loading" } as AuthState);
 
-  async function refresh() {
+  const logout = useCallback(() => {
+    clearSession();
+    clearBothTokens();
+    dispatch({ type: "GUEST" });
+  }, []);
+
+  const refresh = useCallback(async () => {
     dispatch({ type: "LOADING" });
 
     const token = getAnyAccessToken();
@@ -148,58 +161,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       enforceTokenStoragePolicy(userRaw);
       dispatch({ type: "AUTHED", user: userRaw });
     } catch {
-      clearSession();
-      clearBothTokens();
-      dispatch({ type: "GUEST" });
+      logout();
     }
-  }
+  }, [logout]);
 
-  async function login(email: string, password: string) {
-    dispatch({ type: "LOADING" });
+  const login = useCallback(
+    async (email: string, password: string) => {
+      dispatch({ type: "LOADING" });
 
-    try {
-      // 1) perform login (lib/auth is responsible for storing the token)
-      const res = await apiLogin(email, password);
+      try {
+        const res = await apiLogin(email, password);
 
-      // 2) verify immediately
-      const userRaw = await fetchMe();
-      assertValidMe(userRaw);
+        const userRaw = await fetchMe();
+        assertValidMe(userRaw);
 
-      // 3) enforce policy now that role is known
-      enforceTokenStoragePolicy(userRaw);
+        enforceTokenStoragePolicy(userRaw);
+        dispatch({ type: "AUTHED", user: userRaw });
 
-      // 4) commit auth state
-      dispatch({ type: "AUTHED", user: userRaw });
+        return res;
+      } catch (err: any) {
+        logout();
 
-      return res;
-    } catch (err: any) {
-      clearSession();
-      clearBothTokens();
-      dispatch({ type: "GUEST" });
+        const status = err?.status;
+        const data = err?.data;
+        const msg =
+          (data && typeof data === "object" && (data.error || data.message)) ||
+          err?.message ||
+          "Sikertelen bejelentkezés.";
 
-      const status = err?.status;
-      const data = err?.data;
-      const msg =
-        (data && typeof data === "object" && (data.error || data.message)) ||
-        err?.message ||
-        "Sikertelen bejelentkezés.";
+        throw new Error(status ? `${msg} (HTTP ${status})` : msg);
+      }
+    },
+    [logout]
+  );
 
-      throw new Error(status ? `${msg} (HTTP ${status})` : msg);
-    }
-  }
-
-  function logout() {
-    clearSession();
-    clearBothTokens();
-    dispatch({ type: "GUEST" });
-  }
-
+  // Initial refresh once
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refresh]);
 
-  const value = useMemo<AuthContextValue>(() => ({ state, refresh, login, logout }), [state]);
+  /**
+   * SUPER_ADMIN idle timeout:
+   * - Only when authed and role === SUPER_ADMIN
+   * - Reset timer on typical user activity
+   * - On timeout: logout (clears token + state -> guest)
+   */
+  useEffect(() => {
+    if (state.status !== "authed") return;
+
+    const role = (state.user as any)?.role;
+    if (role !== "SUPER_ADMIN") return;
+
+    let t: number | null = null;
+
+    const reset = () => {
+      if (t) window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        logout();
+      }, SUPERADMIN_IDLE_MS);
+    };
+
+    const onActivity = () => reset();
+    const onVisibility = () => {
+      // when user returns to tab, restart timer
+      if (!document.hidden) reset();
+    };
+
+    // Start timer immediately
+    reset();
+
+    // Typical activity signals
+    window.addEventListener("mousemove", onActivity, { passive: true });
+    window.addEventListener("mousedown", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity);
+    window.addEventListener("scroll", onActivity, { passive: true });
+    window.addEventListener("touchstart", onActivity, { passive: true });
+    window.addEventListener("click", onActivity, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      if (t) window.clearTimeout(t);
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("mousedown", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("scroll", onActivity);
+      window.removeEventListener("touchstart", onActivity);
+      window.removeEventListener("click", onActivity);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [state, logout]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ state, refresh, login, logout }),
+    [state, refresh, login, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
