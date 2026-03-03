@@ -2,13 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 
-import "./index.css";
-
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import AppShell from "./pages/AppShell";
 import Devices from "./pages/Devices";
 import Messages from "./pages/Messages";
+import Users from "./pages/Users";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
@@ -27,6 +26,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route index element={<Navigate to="/app/devices" replace />} />
               <Route path="devices" element={<Devices />} />
               <Route path="messages" element={<Messages />} />
+              <Route path="users" element={<Users />} />
             </Route>
           </Route>
 
