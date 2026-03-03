@@ -7,7 +7,7 @@ import { apiFetch, apiPost } from "./api";
  * - export function clearSession()
  * - export function getAccessToken()
  * - export function login()
- * - export function me()  --> returns Me (NOT wrapper object)
+ * - export function me()  --> returns Me
  */
 
 export type LoginResponse = {
@@ -24,8 +24,10 @@ export type Me = {
   [k: string]: any;
 };
 
-type MeApiResponse = {
-  ok: true;
+// Some deployments return: { ok:true, user: Me }
+// Others return Me directly (or { ok:true, ...Me })
+type MeApiResponseWrapped = {
+  ok?: true;
   user: Me;
 };
 
@@ -57,8 +59,8 @@ function safeRemove(storage: Storage, key: string) {
 
 /**
  * Access token lookup:
- * 1) sessionStorage (session-only, e.g. SUPER_ADMIN after policy enforcement)
- * 2) localStorage (persisted for normal users)
+ * 1) sessionStorage
+ * 2) localStorage
  */
 export function getAccessToken(): string | null {
   const s = safeGet(sessionStorage, ACCESS_TOKEN_KEY);
@@ -103,9 +105,22 @@ export async function login(email: string, password: string): Promise<LoginRespo
 }
 
 /**
- * Fetch current user (returns Me directly, to match AuthContext expectations)
+ * Fetch current user (returns Me directly, supports multiple backend shapes)
  */
 export async function me(): Promise<Me> {
-  const res = await apiFetch<MeApiResponse>("/auth/me");
-  return res.user;
+  const res = await apiFetch<any>("/auth/me");
+
+  // Shape A: { ok:true, user: {...} }
+  if (res && typeof res === "object" && res.user && typeof res.user === "object") {
+    return (res as MeApiResponseWrapped).user;
+  }
+
+  // Shape B: Me directly: { id, role, ... }
+  // Shape C: { ok:true, id, role, ... }
+  if (res && typeof res === "object") {
+    return res as Me;
+  }
+
+  // If we ever get here, AuthContext guard will raise a clear error
+  return res as Me;
 }
