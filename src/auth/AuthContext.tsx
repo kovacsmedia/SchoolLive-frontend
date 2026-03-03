@@ -194,7 +194,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [logout]
   );
+        const res = await apiLogin(email, password);
 
+        // ⚠️ Itt kell ténylegesen eltárolni a tokent.
+        // Ha a backend { accessToken: "..." }-t ad:
+        const token = (res as any)?.accessToken ?? (res as any)?.token ?? null;
+        if (token && typeof token === "string") {
+          safeSet(localStorage, ACCESS_TOKEN_KEY, token);
+        }
   // Initial refresh once
   useEffect(() => {
     refresh();
