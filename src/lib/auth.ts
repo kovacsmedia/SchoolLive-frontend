@@ -29,21 +29,61 @@ type MeApiResponse = {
   user: Me;
 };
 
-export function getAccessToken(): string | null {
+const ACCESS_TOKEN_KEY = "accessToken";
+
+function safeGet(storage: Storage, key: string): string | null {
   try {
-    return localStorage.getItem("accessToken");
+    return storage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export function setAccessToken(token: string | null) {
+function safeSet(storage: Storage, key: string, value: string) {
   try {
-    if (!token) localStorage.removeItem("accessToken");
-    else localStorage.setItem("accessToken", token);
+    storage.setItem(key, value);
   } catch {
     // ignore
   }
+}
+
+function safeRemove(storage: Storage, key: string) {
+  try {
+    storage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Access token lookup:
+ * 1) sessionStorage (session-only, e.g. SUPER_ADMIN after policy enforcement)
+ * 2) localStorage (persisted for normal users)
+ */
+export function getAccessToken(): string | null {
+  const s = safeGet(sessionStorage, ACCESS_TOKEN_KEY);
+  if (s) return s;
+
+  const l = safeGet(localStorage, ACCESS_TOKEN_KEY);
+  if (l) return l;
+
+  return null;
+}
+
+/**
+ * Default behavior: store into localStorage.
+ * (SUPER_ADMIN will be moved to sessionStorage by AuthContext policy enforcement.)
+ *
+ * When token is null, remove from both storages for safety.
+ */
+export function setAccessToken(token: string | null) {
+  if (!token) {
+    safeRemove(localStorage, ACCESS_TOKEN_KEY);
+    safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
+    return;
+  }
+
+  safeSet(localStorage, ACCESS_TOKEN_KEY, token);
 }
 
 /**

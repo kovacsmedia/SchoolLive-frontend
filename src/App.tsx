@@ -23,7 +23,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "system-ui", padding: 24 }}>
       <h1>SchoolLive Frontend (MVP)</h1>
-      <p>API: {import.meta.env.VITE_API_BASE}</p>
+      <p>API: {import.meta.env.VITE_API_BASE_URL</p>
 
       {err && <pre style={{ color: "crimson" }}>{err}</pre>}
       {data && <pre>{JSON.stringify(data, null, 2)}</pre>}

@@ -9,7 +9,11 @@ export type ApiOk<T> = {
   ok: true;
 } & T;
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+// Prefer VITE_API_BASE_URL, keep VITE_API_BASE as fallback for compatibility
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_BASE ??
+  "";
 
 function safeGetItem(storage: Storage, key: string): string | null {
   try {
@@ -21,8 +25,8 @@ function safeGetItem(storage: Storage, key: string): string | null {
 
 /**
  * Token resolution order:
- * 1) sessionStorage (ephemeral session tokens, e.g. SUPER_ADMIN)
- * 2) localStorage (persisted tokens, e.g. normal users)
+ * 1) sessionStorage
+ * 2) localStorage
  */
 function getToken(): string | null {
   const fromSession = safeGetItem(sessionStorage, "accessToken");
