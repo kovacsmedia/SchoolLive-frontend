@@ -1,26 +1,22 @@
 // src/auth/token.ts
-const KEY = "sl_access_token";
 
-export function getStoredToken(): string | null {
-  try {
-    return localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
+// Egységes kulcs: ezt olvassa a src/lib/api.ts is
+export const KEY = "token";
+
+export function setToken(token: string): void {
+  const t = (token ?? "").trim();
+  if (!t) return;
+
+  // Biztos kompatibilitás: api.ts mindkettőt nézi
+  sessionStorage.setItem(KEY, t);
+  localStorage.setItem(KEY, t);
 }
 
-export function storeToken(token: string) {
-  try {
-    localStorage.setItem(KEY, token);
-  } catch {
-    // ignore
-  }
+export function getToken(): string | null {
+  return sessionStorage.getItem(KEY) ?? localStorage.getItem(KEY);
 }
 
-export function clearToken() {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    // ignore
-  }
+export function clearToken(): void {
+  sessionStorage.removeItem(KEY);
+  localStorage.removeItem(KEY);
 }
