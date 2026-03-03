@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+// src/pages/Devices.tsx
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, apiPost } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
@@ -45,12 +46,9 @@ type GetCommandResponse = {
 };
 
 function normalizeDevices(resp: HealthResponseLoose): DeviceHealthItem[] {
-  const candidates = [
-    resp.devices,
-    resp.rows,
-    resp.items,
-    resp.data,
-  ].find((x) => Array.isArray(x));
+  const candidates = [resp.devices, resp.rows, resp.items, resp.data].find((x) =>
+    Array.isArray(x)
+  );
 
   return (candidates as DeviceHealthItem[] | undefined) ?? [];
 }
@@ -68,7 +66,9 @@ export default function Devices() {
   const [err, setErr] = useState<string | null>(null);
   const [registeredCount, setRegisteredCount] = useState<number | null>(null);
 
-  const [volumeByDevice, setVolumeByDevice] = useState<Record<string, number>>({});
+  const [volumeByDevice, setVolumeByDevice] = useState<Record<string, number>>(
+    {}
+  );
   const [cmdByDevice, setCmdByDevice] = useState<
     Record<string, { commandId: string; status: string; error?: string | null }>
   >({});
@@ -249,9 +249,7 @@ export default function Devices() {
                 padding: 12,
               }}
             >
-              <div style={{ fontWeight: 700 }}>
-                {d.name ?? d.deviceId}
-              </div>
+              <div style={{ fontWeight: 700 }}>{d.name ?? d.deviceId}</div>
               <div style={{ fontSize: 12, opacity: 0.7 }}>
                 {d.isOnline ? "ONLINE" : "OFFLINE"}
               </div>
