@@ -123,3 +123,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     window.clearTimeout(t);
   }
 }
+// src/lib/api.ts
+
+export async function apiPost<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
+  return apiFetch<T>(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    body: typeof body === "undefined" ? undefined : JSON.stringify(body),
+    ...init,
+  });
+}
