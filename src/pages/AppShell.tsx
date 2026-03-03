@@ -10,9 +10,14 @@ export default function AppShell() {
     navigate("/login", { replace: true });
   }
 
-  const userLabel =
+  const userName =
     state.status === "authed"
-      ? `${state.user?.name || state.user?.email || "Felhasználó"}${state.user?.role ? ` · ${state.user.role}` : ""}`
+      ? state.user?.name || state.user?.email || "Ismeretlen felhasználó"
+      : "";
+
+  const role =
+    state.status === "authed"
+      ? state.user?.role || "n/a"
       : "";
 
   return (
@@ -30,22 +35,15 @@ export default function AppShell() {
           background: rgba(127,127,127,0.03);
         }
 
-        .sl-brandRow {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 6px 14px;
-        }
-
         .sl-brandTitle {
           font-weight: 800;
           letter-spacing: -0.01em;
+          margin-bottom: 14px;
         }
 
         .sl-nav {
           display: grid;
           gap: 8px;
-          margin-top: 10px;
         }
 
         .sl-nav a {
@@ -63,33 +61,37 @@ export default function AppShell() {
 
         .sl-main {
           flex: 1;
-          min-width: 0;
           display: flex;
           flex-direction: column;
+          min-width: 0;
         }
 
         .sl-topbar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          padding: 14px 18px;
+          padding: 14px 20px;
           border-bottom: 1px solid var(--sl-border);
           background: rgba(127,127,127,0.03);
+          flex-wrap: wrap;
+          gap: 12px;
         }
 
-        .sl-user {
+        .sl-userInfo {
+          display: flex;
+          flex-direction: column;
           font-size: 13px;
           color: var(--sl-muted);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 55vw;
+        }
+
+        .sl-userInfo strong {
+          color: var(--sl-text);
+          font-weight: 600;
         }
 
         .sl-logoutBtn {
           height: 38px;
-          padding: 0 12px;
+          padding: 0 14px;
           border-radius: 12px;
           border: 1px solid var(--sl-border);
           background: rgba(127,127,127,0.08);
@@ -105,39 +107,44 @@ export default function AppShell() {
         .sl-content {
           flex: 1;
           padding: 24px;
-          min-width: 0;
         }
 
         @media (max-width: 860px) {
           .sl-appShell {
             flex-direction: column;
           }
+
           .sl-side {
             width: auto;
             border-right: none;
             border-bottom: 1px solid var(--sl-border);
           }
+
           .sl-content {
             padding: 16px;
           }
         }
       `}</style>
 
-      <aside className="sl-side" aria-label="Oldalsáv">
-        <div className="sl-brandRow">
-          <div className="sl-brandTitle">SchoolLive</div>
-        </div>
+      <aside className="sl-side">
+        <div className="sl-brandTitle">SchoolLive</div>
 
-        <nav className="sl-nav" aria-label="Navigáció">
+        <nav className="sl-nav">
           <Link to="/app/devices">Eszközök</Link>
           <Link to="/app/messages">Üzenetek</Link>
-          {/* később role alapján */}
         </nav>
       </aside>
 
       <div className="sl-main">
-        <header className="sl-topbar" aria-label="Felső sáv">
-          <div className="sl-user">{userLabel}</div>
+        <header className="sl-topbar">
+          <div className="sl-userInfo">
+            <div>
+              Bejelentkezett felhasználó: <strong>{userName}</strong>
+            </div>
+            <div>
+              Szerepkör: <strong>{role}</strong>
+            </div>
+          </div>
 
           <button className="sl-logoutBtn" onClick={onLogout} type="button">
             Kijelentkezés
