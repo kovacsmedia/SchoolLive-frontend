@@ -89,6 +89,39 @@ function getAnyAccessToken(): string | null {
 }
 
 /**
+ * Login response token extractor.
+ * Accepts common shapes:
+ *  - { accessToken: "..." }
+ *  - { token: "..." }
+ *  - { jwt: "..." }
+ *  - { ok: true, accessToken/token/jwt: "..." }
+ *  - { data: { accessToken/token: "..." } } (just in case)
+ */
+function extractTokenFromLoginResponse(res: unknown): string | null {
+  if (!res || typeof res !== "object") return null;
+  const r = res as Record<string, unknown>;
+
+  const candidates = [
+    r.accessToken,
+    r.token,
+    r.jwt,
+    r.access_token,
+    r.id_token,
+    r.accessTokenJwt,
+    // nested fallback
+    r.data && typeof r.data === "object" ? (r.data as any).accessToken : undefined,
+    r.data && typeof r.data === "object" ? (r.data as any).token : undefined,
+    r.data && typeof r.data === "object" ? (r.data as any).jwt : undefined,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim()) return c.trim();
+  }
+
+  return null;
+}
+
+/**
  * Runtime guard: reject non-object / unexpected /auth/me responses
  * (e.g. when API_BASE is wrong and we get HTML instead of JSON user object)
  */
@@ -125,7 +158,9 @@ function enforceTokenStoragePolicy(user: Me) {
 
   if (role === "SUPER_ADMIN") {
     const token =
-      safeGet(localStorage, ACCESS_TOKEN_KEY) ?? safeGet(sessionStorage, ACCESS_TOKEN_KEY);
+      safeGet(localStorage, ACCESS_TOKEN_KEY) ??
+      safeGet(sessionStorage, ACCESS_TOKEN_KEY);
+
     if (token) {
       safeSet(sessionStorage, ACCESS_TOKEN_KEY, token);
       safeRemove(localStorage, ACCESS_TOKEN_KEY);
@@ -137,8 +172,21 @@ function enforceTokenStoragePolicy(user: Me) {
   safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
 }
 
+/**
+ * Default write policy (before we know role):
+ * - store in localStorage
+ * - clear session storage
+ * Later enforceTokenStoragePolicy() may move it for SUPER_ADMIN.
+ */
+function storeAccessToken(token: string) {
+  safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
+  safeSet(localStorage, ACCESS_TOKEN_KEY, token);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { status: "loading" } as AuthState);
+  const [state, dispatch] = useReducer(reducer, {
+    status: "loading",
+  } as AuthState);
 
   const logout = useCallback(() => {
     clearSession();
@@ -170,14 +218,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "LOADING" });
 
       try {
+        // 1) login
         const res = await apiLogin(email, password);
 
+        // 2) IMPORTANT: store token before calling /auth/me
+        const token = extractTokenFromLoginResponse(res);
+        if (token) {
+          storeAccessToken(token);
+        }
+
+        // 3) fetch current user
         const userRaw = await fetchMe();
         assertValidMe(userRaw);
 
+        // 4) role-based storage policy
         enforceTokenStoragePolicy(userRaw);
-        dispatch({ type: "AUTHED", user: userRaw });
 
+        dispatch({ type: "AUTHED", user: userRaw });
         return res;
       } catch (err: any) {
         logout();
@@ -185,7 +242,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const status = err?.status;
         const data = err?.data;
         const msg =
-          (data && typeof data === "object" && (data.error || data.message)) ||
+          (data &&
+            typeof data === "object" &&
+            ((data as any).error || (data as any).message)) ||
           err?.message ||
           "Sikertelen bejelentkezés.";
 
@@ -223,7 +282,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const onActivity = () => reset();
     const onVisibility = () => {
-      // when user returns to tab, restart timer
       if (!document.hidden) reset();
     };
 
@@ -256,7 +314,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [state, refresh, login, logout]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
