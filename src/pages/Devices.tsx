@@ -1,289 +1,588 @@
 // src/pages/Devices.tsx
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiFetch, apiPost } from "../lib/api";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
-type DeviceHealthItem = {
+type DeviceClass = "SPEAKER" | "DISPLAY" | "MULTI";
+
+type DeviceItem = {
   deviceId: string;
-  name?: string | null;
-  lastSeenAt?: string | null;
+  name: string;
+  deviceClass: DeviceClass;
+  firmwareVersion?: string | null;
+  ipAddress?: string | null;
   isOnline: boolean;
-  [k: string]: any;
+  secondsSinceLastSeen?: number | null;
+  volume: number;
+  muted: boolean;
+  createdAt?: string | null;
+  orgUnitId?: string | null;
+  authType?: string;
 };
 
-type HealthResponseLoose = {
+type HealthResponse = {
   ok: true;
-  devices?: DeviceHealthItem[];
-  rows?: DeviceHealthItem[];
-  items?: DeviceHealthItem[];
-  data?: DeviceHealthItem[];
-  count?: number;
-  total?: number;
-  totalRegistered?: number;
+  devices: DeviceItem[];
+  totalRegistered: number;
 };
 
-type CreateCommandResponse = {
+type PendingDevice = {
+  id: string;
+  mac: string;
+  ipAddress?: string | null;
+  firmwareVersion?: string | null;
+  lastSeenAt: string;
+};
+
+type PendingResponse = {
   ok: true;
-  command: {
-    id: string;
-    tenantId: string;
-    deviceId: string;
-    status: string;
+  pending: PendingDevice[];
+};
+
+type TenantItem = {
+  id: string;
+  name: string;
+};
+
+type TenantsResponse = {
+  ok: true;
+  tenants: TenantItem[];
+};
+
+const DEVICE_CLASS_OPTIONS: Array<{ value: DeviceClass; label: string; description: string }> = [
+  { value: "SPEAKER", label: "Hangszóró", description: "TTS és audio lejátszás" },
+  { value: "DISPLAY", label: "Kijelző", description: "Szöveges üzenetek megjelenítése" },
+  { value: "MULTI", label: "Multi (tablet/player)", description: "Hang + kijelző, virtuális eszközök is" },
+];
+
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("hu-HU");
+}
+
+function safeErrorMessage(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") {
+    const anyE = e as { message?: string; data?: { error?: string; message?: string } };
+    if (anyE?.data?.message) return anyE.data.message;
+    if (anyE?.data?.error) return anyE.data.error;
+    if (anyE?.message) return anyE.message;
+  }
+  return "Ismeretlen hiba";
+}
+
+function DeviceClassBadge({ cls }: { cls: DeviceClass }) {
+  const map: Record<DeviceClass, string> = {
+    SPEAKER: "bg-blue-600/20 text-blue-200 border-blue-500/30",
+    DISPLAY: "bg-violet-600/20 text-violet-200 border-violet-500/30",
+    MULTI: "bg-amber-600/20 text-amber-200 border-amber-500/30",
   };
-};
-
-type GetCommandResponse = {
-  ok: true;
-  command: {
-    id: string;
-    tenantId: string;
-    deviceId: string;
-    status: string;
-    error?: string | null;
-    lastError?: string | null;
+  const label: Record<DeviceClass, string> = {
+    SPEAKER: "Hangszóró",
+    DISPLAY: "Kijelző",
+    MULTI: "Multi",
   };
-};
-
-function normalizeDevices(resp: HealthResponseLoose): DeviceHealthItem[] {
-  const candidates = [resp.devices, resp.rows, resp.items, resp.data].find((x) =>
-    Array.isArray(x)
+  return (
+    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${map[cls] ?? ""}`}>
+      {label[cls] ?? cls}
+    </span>
   );
-
-  return (candidates as DeviceHealthItem[] | undefined) ?? [];
 }
 
-function isTerminalStatus(status: string): boolean {
-  return status === "ACKED" || status === "FAILED" || status === "CANCELLED";
+function OnlineBadge({ isOnline }: { isOnline: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${
+      isOnline
+        ? "bg-emerald-600/20 text-emerald-200 border-emerald-500/30"
+        : "bg-zinc-600/20 text-zinc-400 border-zinc-500/30"
+    }`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-zinc-500"}`} />
+      {isOnline ? "Online" : "Offline"}
+    </span>
+  );
 }
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-2xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="text-sm font-semibold">{title}</div>
+          <button className="rounded-md px-2 py-1 text-sm hover:bg-white/10" type="button" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+type ActivateForm = {
+  pendingId: string;
+  tenantId: string;
+  name: string;
+  deviceClass: DeviceClass;
+  wifiSsid: string;
+  wifiPassword: string;
+  orgUnitId: string;
+};
 
 export default function Devices() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
+  const { state } = useAuth();
+  const role = state.status === "authed" ? state.user?.role ?? "" : "";
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  const canWrite = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
 
-  const [devices, setDevices] = useState<DeviceHealthItem[]>([]);
+  const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [registeredCount, setRegisteredCount] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
 
-  const [volumeByDevice, setVolumeByDevice] = useState<Record<string, number>>(
-    {}
-  );
-  const [cmdByDevice, setCmdByDevice] = useState<
-    Record<string, { commandId: string; status: string; error?: string | null }>
-  >({});
+  const [pendingOpen, setPendingOpen] = useState(false);
+  const [pending, setPending] = useState<PendingDevice[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+
+  const [tenants, setTenants] = useState<TenantItem[]>([]);
+
+  const [activateForm, setActivateForm] = useState<ActivateForm | null>(null);
+  const [busyActivate, setBusyActivate] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
+  const [activateSuccess, setActivateSuccess] = useState<{ deviceKey: string; name: string } | null>(null);
 
   const healthTimer = useRef<number | null>(null);
-  const cmdTimers = useRef<Record<string, number>>({});
+  const pendingTimer = useRef<number | null>(null);
 
-  function handleAuthFailure(e: any) {
-    if (e?.status === 401) {
-      console.error("Auth failure on /devices:", e);
-      logout();
-      navigate("/login", { replace: true });
-      return true;
+  async function loadDevices() {
+    try {
+      const data = await apiFetch<HealthResponse>("/admin/devices/health");
+      setDevices(Array.isArray(data.devices) ? data.devices : []);
+      setError(null);
+    } catch (e) {
+      setError(safeErrorMessage(e));
+    } finally {
+      setLoading(false);
     }
-    return false;
   }
 
-  async function loadHealth() {
+  async function loadPending() {
+    setPendingLoading(true);
     try {
-      setErr(null);
+      const data = await apiFetch<PendingResponse>("/provision/pending");
+      setPending(Array.isArray(data.pending) ? data.pending : []);
+    } catch {
+      setPending([]);
+    } finally {
+      setPendingLoading(false);
+    }
+  }
 
-      const data = await apiFetch<HealthResponseLoose>("/admin/devices/health");
-
-      const list = normalizeDevices(data);
-      setDevices(list);
-
-      const rc =
-        typeof data.totalRegistered === "number"
-          ? data.totalRegistered
-          : typeof data.total === "number"
-          ? data.total
-          : typeof data.count === "number"
-          ? data.count
-          : null;
-
-      setRegisteredCount(rc);
-      setLoading(false);
-    } catch (e: any) {
-      if (handleAuthFailure(e)) return;
-
-      console.error("Device load error:", e);
-      setLoading(false);
-      setErr(e?.data?.error ?? e?.message ?? "Failed to load devices");
+  async function loadTenants() {
+    if (!isSuperAdmin) return;
+    try {
+      const data = await apiFetch<TenantsResponse>("/admin/tenants");
+      setTenants(Array.isArray(data.tenants) ? data.tenants : []);
+    } catch {
+      setTenants([]);
     }
   }
 
   useEffect(() => {
-    loadHealth();
-    healthTimer.current = window.setInterval(loadHealth, 10_000);
-
+    void loadDevices();
+    healthTimer.current = window.setInterval(loadDevices, 10_000);
+    if (canWrite) void loadTenants();
     return () => {
       if (healthTimer.current) window.clearInterval(healthTimer.current);
-      Object.values(cmdTimers.current).forEach((t) => window.clearInterval(t));
-      cmdTimers.current = {};
+      if (pendingTimer.current) window.clearInterval(pendingTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function pollCommand(deviceId: string, commandId: string) {
+  function openPending() {
+    setPendingOpen(true);
+    void loadPending();
+    pendingTimer.current = window.setInterval(loadPending, 5_000);
+  }
+
+  function closePending() {
+    setPendingOpen(false);
+    if (pendingTimer.current) {
+      window.clearInterval(pendingTimer.current);
+      pendingTimer.current = null;
+    }
+  }
+
+  function selectPending(p: PendingDevice) {
+    const activeTenantId = sessionStorage.getItem("activeTenantId") ?? "";
+    setActivateForm({
+      pendingId: p.id,
+      tenantId: activeTenantId,
+      name: "",
+      deviceClass: "SPEAKER",
+      wifiSsid: "",
+      wifiPassword: "",
+      orgUnitId: "",
+    });
+    setActivateError(null);
+    setActivateSuccess(null);
+    closePending();
+  }
+
+  async function submitActivate() {
+    if (!activateForm) return;
+    const { pendingId, tenantId, name, deviceClass, wifiSsid, wifiPassword } = activateForm;
+
+    if (!name.trim()) { setActivateError("Az eszköznév megadása kötelező."); return; }
+    if (!tenantId) { setActivateError("Tenant kiválasztása kötelező."); return; }
+    if (!wifiSsid.trim()) { setActivateError("WiFi SSID megadása kötelező."); return; }
+    if (!wifiPassword.trim()) { setActivateError("WiFi jelszó megadása kötelező."); return; }
+
+    setActivateError(null);
+    setBusyActivate(true);
+
     try {
-      const data = await apiFetch<GetCommandResponse>(
-        `/admin/commands/${commandId}`
+      const res = await apiFetch<{ ok: true; device: { name: string }; deviceKey: string }>(
+        "/provision/activate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pendingId,
+            tenantId,
+            name: name.trim(),
+            deviceClass,
+            wifiSsid: wifiSsid.trim(),
+            wifiPassword: wifiPassword.trim(),
+            orgUnitId: activateForm.orgUnitId.trim() || undefined,
+          }),
+        }
       );
 
-      const status = data.command.status;
-
-      setCmdByDevice((prev) => ({
-        ...prev,
-        [deviceId]: {
-          commandId,
-          status,
-          error: data.command.error ?? null,
-        },
-      }));
-
-      if (isTerminalStatus(status)) {
-        const t = cmdTimers.current[deviceId];
-        if (t) window.clearInterval(t);
-        delete cmdTimers.current[deviceId];
-      }
-    } catch (e: any) {
-      if (handleAuthFailure(e)) return;
-
-      setCmdByDevice((prev) => ({
-        ...prev,
-        [deviceId]: {
-          commandId,
-          status: "FAILED",
-          error: e?.data?.error ?? e?.message ?? "Polling failed",
-        },
-      }));
-
-      const t = cmdTimers.current[deviceId];
-      if (t) window.clearInterval(t);
-      delete cmdTimers.current[deviceId];
+      setActivateSuccess({ deviceKey: res.deviceKey, name: res.device.name });
+      setActivateForm(null);
+      void loadDevices();
+    } catch (e) {
+      setActivateError(safeErrorMessage(e));
+    } finally {
+      setBusyActivate(false);
     }
   }
 
-  function startPolling(deviceId: string, commandId: string) {
-    const existing = cmdTimers.current[deviceId];
-    if (existing) window.clearInterval(existing);
-
-    pollCommand(deviceId, commandId);
-
-    cmdTimers.current[deviceId] = window.setInterval(() => {
-      pollCommand(deviceId, commandId);
-    }, 2000);
-  }
-
-  async function sendSetVolume(deviceId: string) {
-    const volume = volumeByDevice[deviceId];
-
-    if (typeof volume !== "number" || volume < 0 || volume > 10) {
-      setErr("Volume must be between 0 and 10");
-      return;
-    }
-
-    try {
-      setErr(null);
-
-      const res = await apiPost<CreateCommandResponse>("/admin/commands", {
-        deviceId,
-        type: "SET_VOLUME",
-        payload: { volume },
-      });
-
-      const cmd = res.command;
-
-      setCmdByDevice((prev) => ({
-        ...prev,
-        [deviceId]: { commandId: cmd.id, status: cmd.status },
-      }));
-
-      startPolling(deviceId, cmd.id);
-    } catch (e: any) {
-      if (handleAuthFailure(e)) return;
-
-      console.error("Send command error:", e);
-      setErr(e?.data?.error ?? e?.message ?? "Failed to send command");
-    }
-  }
-
-  const shownRegisteredCount =
-    registeredCount !== null ? registeredCount : devices.length;
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return devices;
+    return devices.filter((d) =>
+      [d.name, d.deviceClass, d.ipAddress, d.firmwareVersion]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle)
+    );
+  }, [q, devices]);
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-        Devices ({shownRegisteredCount})
-      </h1>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Eszközök</h1>
+          <p className="mt-1 text-sm text-white/70">
+            Tenant-szintű eszközök listája és kezelése.
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <input
+            className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none placeholder:text-white/40 focus:border-white/20 sm:w-72"
+            placeholder="Keresés (név, típus, IP…)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {canWrite && (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15"
+              onClick={openPending}
+            >
+              + Új eszköz
+            </button>
+          )}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
+            onClick={() => void loadDevices()}
+            disabled={loading}
+          >
+            Frissítés
+          </button>
+        </div>
+      </div>
 
-      {err && (
-        <div
-          style={{
-            marginBottom: 12,
-            padding: 10,
-            border: "1px solid #f5c2c7",
-            background: "#f8d7da",
-            borderRadius: 8,
-          }}
-        >
-          {err}
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
         </div>
       )}
 
-      {loading ? (
-        <div>Loading…</div>
-      ) : devices.length === 0 ? (
-        <div>No devices found in this tenant.</div>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {devices.map((d) => (
-            <div
-              key={d.deviceId}
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 12,
-                padding: 12,
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>{d.name ?? d.deviceId}</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                {d.isOnline ? "ONLINE" : "OFFLINE"}
-              </div>
-
-              <div style={{ marginTop: 8 }}>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={volumeByDevice[d.deviceId] ?? 5}
-                  onChange={(e) =>
-                    setVolumeByDevice((prev) => ({
-                      ...prev,
-                      [d.deviceId]: Number(e.target.value),
-                    }))
-                  }
-                />
-                <button
-                  onClick={() => sendSetVolume(d.deviceId)}
-                  disabled={!d.isOnline}
-                  style={{ marginLeft: 8 }}
-                >
-                  Set volume
-                </button>
-              </div>
-
-              {cmdByDevice[d.deviceId]?.status && (
-                <div style={{ marginTop: 6, fontSize: 12 }}>
-                  Command status: {cmdByDevice[d.deviceId].status}
-                </div>
-              )}
-            </div>
-          ))}
+      {activateSuccess && (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200 space-y-1">
+          <div className="font-medium">✓ Eszköz aktiválva: {activateSuccess.name}</div>
+          <div className="text-xs">
+            Device key (csak egyszer látható!):{" "}
+            <span className="font-mono bg-white/10 px-1 rounded">{activateSuccess.deviceKey}</span>
+          </div>
+          <button className="text-xs underline opacity-70" onClick={() => setActivateSuccess(null)}>Bezár</button>
         </div>
+      )}
+
+      {/* Eszközlista */}
+      <div className="rounded-lg border border-white/10 bg-zinc-950">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="text-sm font-semibold">Lista</div>
+          <div className="text-xs text-white/60">
+            {loading ? "Betöltés..." : `${filtered.length} / ${devices.length} eszköz`}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-xs uppercase text-white/60">
+              <tr className="border-b border-white/10">
+                <th className="px-4 py-3">Név</th>
+                <th className="px-4 py-3">Típus</th>
+                <th className="px-4 py-3">Státusz</th>
+                <th className="px-4 py-3">IP cím</th>
+                <th className="px-4 py-3">Firmware</th>
+                <th className="px-4 py-3">Utolsó aktivitás</th>
+                {canWrite && <th className="px-4 py-3 text-right">Műveletek</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10">
+              {filtered.map((d) => (
+                <tr key={d.deviceId} className="hover:bg-white/5">
+                  <td className="px-4 py-3 font-medium">{d.name}</td>
+                  <td className="px-4 py-3">
+                    <DeviceClassBadge cls={d.deviceClass} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <OnlineBadge isOnline={d.isOnline} />
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {d.ipAddress ?? <span className="text-white/30">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {d.firmwareVersion ?? <span className="text-white/30">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined
+                      ? `${d.secondsSinceLastSeen}mp`
+                      : "—"}
+                  </td>
+                  {canWrite && (
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        className="rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/15"
+                        onClick={async () => {
+                          if (!window.confirm(`Törlöd? (${d.name})`)) return;
+                          try {
+                            await apiFetch(`/admin/devices/${d.deviceId}`, { method: "DELETE" });
+                            void loadDevices();
+                          } catch (e) {
+                            setError(safeErrorMessage(e));
+                          }
+                        }}
+                      >
+                        Törlés
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={canWrite ? 7 : 6}>
+                    Nincs eszköz.
+                  </td>
+                </tr>
+              )}
+              {loading && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={canWrite ? 7 : 6}>
+                    Betöltés…
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pending eszközök modal */}
+      {pendingOpen && (
+        <Modal title="Aktiválásra váró eszközök" onClose={closePending}>
+          <div className="space-y-3">
+            <p className="text-sm text-white/60">
+              Az alábbi eszközök provisioning módban vannak és várják az aktiválást.
+              Az eszköz kijelzőjén ellenőrizd a MAC és IP címet, majd kattints rá.
+            </p>
+            {pendingLoading && pending.length === 0 && (
+              <div className="text-sm text-white/60">Keresés…</div>
+            )}
+            {!pendingLoading && pending.length === 0 && (
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-4 text-center text-sm text-white/50">
+                Nincs aktiválásra váró eszköz. Győződj meg róla, hogy az ESP32 be van kapcsolva és
+                provisioning módban van (szervíz WiFi-n).
+              </div>
+            )}
+            <div className="space-y-2">
+              {pending.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-3 text-left hover:bg-white/10 transition-colors"
+                  onClick={() => selectPending(p)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm font-medium">{p.mac}</span>
+                    <span className="text-xs text-white/50">
+                      Utoljára látva: {formatDateTime(p.lastSeenAt)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex gap-4 text-xs text-white/50">
+                    {p.ipAddress && <span>IP: {p.ipAddress}</span>}
+                    {p.firmwareVersion && <span>FW: {p.firmwareVersion}</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                className="rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
+                onClick={() => void loadPending()}
+                disabled={pendingLoading}
+              >
+                {pendingLoading ? "Frissítés…" : "Frissítés"}
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
+                onClick={closePending}
+              >
+                Mégse
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Aktiválás modal */}
+      {activateForm && (
+        <Modal title="Eszköz aktiválása" onClose={() => setActivateForm(null)}>
+          <div className="space-y-4">
+            <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">
+              Pending ID: <span className="font-mono">{activateForm.pendingId}</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1">
+                <div className="text-xs text-white/60">Eszköznév *</div>
+                <input
+                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                  placeholder="pl. 14. terem"
+                  value={activateForm.name}
+                  onChange={(e) => setActivateForm((s) => s ? { ...s, name: e.target.value } : s)}
+                />
+              </label>
+
+              <label className="space-y-1">
+                <div className="text-xs text-white/60">Eszköz osztály *</div>
+                <select
+                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                  value={activateForm.deviceClass}
+                  onChange={(e) => setActivateForm((s) => s ? { ...s, deviceClass: e.target.value as DeviceClass } : s)}
+                >
+                  {DEVICE_CLASS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <div className="text-xs text-white/40">
+                  {DEVICE_CLASS_OPTIONS.find((o) => o.value === activateForm.deviceClass)?.description}
+                </div>
+              </label>
+            </div>
+
+            {isSuperAdmin && (
+              <label className="space-y-1">
+                <div className="text-xs text-white/60">Tenant *</div>
+                <select
+                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                  value={activateForm.tenantId}
+                  onChange={(e) => setActivateForm((s) => s ? { ...s, tenantId: e.target.value } : s)}
+                >
+                  <option value="">Válassz tenantot…</option>
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1">
+                <div className="text-xs text-white/60">WiFi SSID *</div>
+                <input
+                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                  placeholder="pl. Iskola-WiFi"
+                  value={activateForm.wifiSsid}
+                  onChange={(e) => setActivateForm((s) => s ? { ...s, wifiSsid: e.target.value } : s)}
+                />
+              </label>
+              <label className="space-y-1">
+                <div className="text-xs text-white/60">WiFi jelszó *</div>
+                <input
+                  type="password"
+                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                  value={activateForm.wifiPassword}
+                  onChange={(e) => setActivateForm((s) => s ? { ...s, wifiPassword: e.target.value } : s)}
+                />
+              </label>
+            </div>
+
+            {activateError && (
+              <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {activateError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
+                onClick={() => setActivateForm(null)}
+                disabled={busyActivate}
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-60"
+                onClick={() => void submitActivate()}
+                disabled={busyActivate}
+              >
+                {busyActivate ? "Aktiválás…" : "Aktivál"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
