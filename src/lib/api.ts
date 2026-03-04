@@ -46,7 +46,7 @@ async function readJsonSafe(res: Response): Promise<unknown> {
 
 /**
  * JWT payload dekódolása (csak base64, nem verifikálás).
- * Kell: tenantId a x-tenant-id headerhez.
+ * TENANT_ADMIN esetén a tenantId a tokenben van.
  */
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -58,6 +58,28 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Tenant ID feloldása:
+ * - SUPER_ADMIN: AppShell manuálisan választja ki → sessionStorage "activeTenantId"
+ * - TENANT_ADMIN / ORG_ADMIN: a saját JWT payloadjában van → tenantId mező
+ */
+function resolveTenantId(token: string): string | null {
+  // 1) SUPER_ADMIN: manuálisan kiválasztott tenant
+  const active =
+    sessionStorage.getItem("activeTenantId") ??
+    localStorage.getItem("activeTenantId") ??
+    null;
+  if (active) return active;
+
+  // 2) TENANT_ADMIN / ORG_ADMIN: JWT payloadból
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  const tid = payload.tenantId;
+  if (typeof tid === "string" && tid) return tid;
+
+  return null;
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -81,16 +103,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       localStorage.getItem("accessToken") ??
       "";
 
-    // ✅ ÚJ: tenantId kinyerése a JWT payloadból (x-tenant-id header)
-    const tenantId = token ? (decodeJwtPayload(token)?.tenantId as string | null) ?? null : null;
+    const tenantId = token ? resolveTenantId(token) : null;
 
     const headers = new Headers(init?.headers ?? {});
     if (!headers.has("Content-Type") && init?.body) {
       headers.set("Content-Type", "application/json");
     }
     if (token) headers.set("Authorization", `Bearer ${token}`);
-
-    // ✅ ÚJ: x-tenant-id header – a backend requireTenant middleware ezt várja
     if (tenantId) headers.set("x-tenant-id", tenantId);
 
     const res = await fetch(url, {
@@ -102,12 +121,10 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     if (!res.ok) {
       const data = await readJsonSafe(res);
       const d = (data ?? {}) as ApiErrorData;
-
       const msg =
         d?.message ??
         d?.error ??
         `HTTP ${res.status} (${res.statusText})`;
-
       throw new ApiError(msg, res.status, data);
     }
 
@@ -122,7 +139,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     return txt as unknown as T;
   } catch (e) {
     if (e instanceof ApiError) throw e;
-
     const msg = safeText((e as any)?.message) || "Failed to fetch";
     throw new ApiError(
       `Hálózati hiba: ${msg}. URL: ${url}. (Tipikusan: rossz API host, CORS, vagy https/http mixed content)`,
