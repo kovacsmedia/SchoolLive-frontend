@@ -8,6 +8,7 @@ import AppShell from "./pages/AppShell";
 import Devices from "./pages/Devices";
 import Messages from "./pages/Messages";
 import Users from "./pages/Users";
+import TenantsPage from "./pages/TenantsPage";
 import "./index.css";
 
 import { AuthProvider } from "./auth/AuthContext";
@@ -28,6 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="devices" element={<Devices />} />
               <Route path="messages" element={<Messages />} />
               <Route path="users" element={<Users />} />
+              <Route path="tenants" element={<TenantsPage />} />
             </Route>
           </Route>
 

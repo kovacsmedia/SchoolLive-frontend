@@ -154,23 +154,29 @@ export default function AppShell() {
   const tenantGuardBlocked = isAuthed && isSuperAdmin && !activeTenantId;
 
   function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-    return (
-      <nav className="sl-nav" aria-label="Navigáció">
-        <Link to="/app/devices" onClick={onNavigate}>
-          Eszközök
-        </Link>
-        <Link to="/app/messages" onClick={onNavigate}>
-          Üzenetek
-        </Link>
+  return (
+    <nav className="sl-nav" aria-label="Navigáció">
+      <Link to="/app/devices" onClick={onNavigate}>
+        Eszközök
+      </Link>
+      <Link to="/app/messages" onClick={onNavigate}>
+        Üzenetek
+      </Link>
 
-        {canManageUsers && (
-          <Link to="/app/users" onClick={onNavigate}>
-            Felhasználók
-          </Link>
-        )}
-      </nav>
-    );
-  }
+      {canManageUsers && (
+        <Link to="/app/users" onClick={onNavigate}>
+          Felhasználók
+        </Link>
+      )}
+
+      {isSuperAdmin && (
+        <Link to="/app/tenants" onClick={onNavigate}>
+          Tenantok
+        </Link>
+      )}
+    </nav>
+  );
+}
 
   return (
     <div className="sl-appShell">
