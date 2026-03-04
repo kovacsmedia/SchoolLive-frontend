@@ -108,11 +108,9 @@ function Modal({
 function TenantForm({
   form,
   setForm,
-  showPassword,
 }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
-  showPassword?: boolean;
 }) {
   const field = (key: keyof FormState) => (
     <input
