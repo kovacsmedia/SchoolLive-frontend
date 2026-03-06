@@ -162,7 +162,11 @@ export default function AppShell() {
       <Link to="/app/messages" onClick={onNavigate}>
         Üzenetek
       </Link>
-
+      {canManageUsers && (
+      <Link to="/app/bells" onClick={onNavigate}>
+      🔔 Csengetési rend
+      </Link>
+      )}
       {canManageUsers && (
         <Link to="/app/users" onClick={onNavigate}>
           Felhasználók

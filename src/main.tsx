@@ -10,9 +10,11 @@ import Messages from "./pages/Messages";
 import Users from "./pages/Users";
 import TenantsPage from "./pages/TenantsPage";
 import "./index.css";
+import BellSchedule from "./pages/BellSchedule";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
+<Route path="bells" element={<BellSchedule />} />
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
