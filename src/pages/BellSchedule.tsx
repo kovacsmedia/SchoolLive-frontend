@@ -37,20 +37,18 @@ type CalendarDay = {
   template: BellTemplate | null;
 };
 
-type LockInfo = {
-  userId: string;
-  lockedAt: string;
-};
+//type LockInfo = {
+//  userId: string;
+//  lockedAt: string;
+//};
 
 const MAX_TOTAL_BYTES = 500 * 1024;
-const DAYS_HU = ["V", "H", "K", "Sz", "Cs", "P", "Sz"];
 const MONTHS_HU = [
   "Január", "Február", "Március", "Április", "Május", "Június",
   "Július", "Augusztus", "Szeptember", "Október", "November", "December",
 ];
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
-function fmtTime(h: number, m: number) { return `${pad(h)}:${pad(m)}`; }
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
   return `${Math.round(b / 1024)} KB`;
@@ -97,7 +95,6 @@ export default function BellSchedule() {
 
   // Szerkesztési zár
   const [hasLock, setHasLock] = useState(false);
-  const [lockInfo, setLockInfo] = useState<LockInfo | null>(null);
   const [lockLoading, setLockLoading] = useState(false);
 
   // Üzenetek
