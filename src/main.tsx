@@ -14,7 +14,6 @@ import BellSchedule from "./pages/BellSchedule";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
-<Route path="bells" element={<BellSchedule />} />
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -30,6 +29,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route index element={<Navigate to="/app/devices" replace />} />
               <Route path="devices" element={<Devices />} />
               <Route path="messages" element={<Messages />} />
+              <Route path="bells" element={<BellSchedule />} />
               <Route path="users" element={<Users />} />
               <Route path="tenants" element={<TenantsPage />} />
             </Route>
