@@ -521,10 +521,10 @@ export default function BellSchedule() {
             {editTemplate.bells.sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute)).map((bell, idx) => (
               <div key={idx} style={{ display: "grid", gridTemplateColumns: "60px 70px 1fr auto", gap: 8, marginBottom: 6, alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 2 }}>
-                  <input type="number" className="sl-input" style={{ width: 28, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={bell.hour}
+                  <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={bell.hour}
                     onChange={e => updateBellEntry(idx, "hour", parseInt(e.target.value) || 0)} disabled={selectedTemplate?.isLocked} />
                   <span style={{ alignSelf: "center" }}>:</span>
-                  <input type="number" className="sl-input" style={{ width: 28, padding: "4px 2px", textAlign: "center" }} min={0} max={59} value={bell.minute}
+                  <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={59} value={bell.minute}
                     onChange={e => updateBellEntry(idx, "minute", parseInt(e.target.value) || 0)} disabled={selectedTemplate?.isLocked} />
                 </div>
                 <select className="sl-select" style={{ fontSize: 12 }} value={bell.type}
