@@ -519,7 +519,7 @@ export default function BellSchedule() {
             </div>
 
             {editTemplate.bells.sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute)).map((bell, idx) => (
-              <div key={idx} style={{ display: "grid", gridTemplateColumns: "60px 70px 1fr auto", gap: 8, marginBottom: 6, alignItems: "center" }}>
+              <div key={idx} style={{ display: "grid", gridTemplateColumns: "120px 70px 1fr auto", gap: 8, marginBottom: 6, alignItems: "center" }}>
                 <div style={{ display: "flex", gap: 2 }}>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={bell.hour}
                     onChange={e => updateBellEntry(idx, "hour", parseInt(e.target.value) || 0)} disabled={selectedTemplate?.isLocked} />
