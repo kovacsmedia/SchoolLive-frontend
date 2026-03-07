@@ -37,11 +37,6 @@ type CalendarDay = {
   template: BellTemplate | null;
 };
 
-//type LockInfo = {
-//  userId: string;
-//  lockedAt: string;
-//};
-
 const MAX_TOTAL_BYTES = 500 * 1024;
 const MONTHS_HU = [
   "Január", "Február", "Március", "Április", "Május", "Június",
@@ -53,7 +48,6 @@ function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
   return `${Math.round(b / 1024)} KB`;
 }
-
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -307,6 +301,18 @@ export default function BellSchedule() {
     }
   }
 
+  async function setDefaultTemplate(t: BellTemplate) {
+    if (!confirm(`Az "${t.name}" lesz az alapértelmezett (offline is működő) csengetési rend?`)) return;
+    try {
+      await apiFetch(`/bells/templates/${t.id}/set-default`, { method: "PUT" });
+      await loadTemplates();
+      setSuccess(`"${t.name}" beállítva alapértelmezettként! Az eszköz legközelebb szinkronizáláskor letölti.`);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (e: any) {
+      setError(e?.message ?? "Hiba az alapértelmezett beállításakor");
+    }
+  }
+
   // ─── Hangfájl feltöltés ──────────────────────────────────────────────────────
 
   const totalUsed = sounds.reduce((s, f) => s + f.sizeBytes, 0);
@@ -368,13 +374,12 @@ export default function BellSchedule() {
 
   function renderCalendar() {
     const daysInMonth = getDaysInMonth(calYear, calMonth);
-    const firstDay = (getFirstDayOfMonth(calYear, calMonth) + 6) % 7; // H=0
+    const firstDay = (getFirstDayOfMonth(calYear, calMonth) + 6) % 7;
     const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
     while (cells.length % 7 !== 0) cells.push(null);
 
     return (
       <div style={{ overflowX: "auto" }}>
-        {/* Naptár fejléc */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button className="sl-btn" onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}>◀</button>
           <span style={{ fontWeight: 700, fontSize: 18, minWidth: 180, textAlign: "center" }}>{MONTHS_HU[calMonth]} {calYear}</span>
@@ -385,14 +390,12 @@ export default function BellSchedule() {
           {hasLock && <button className="sl-btn" onClick={initHolidays} style={{ marginLeft: "auto" }}>🗓 Ünnepnapok betöltése</button>}
         </div>
 
-        {/* Hét napjai */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 2 }}>
           {["H", "K", "Sz", "Cs", "P", "Sz", "V"].map((d, i) => (
             <div key={i} style={{ textAlign: "center", fontWeight: 700, fontSize: 12, color: i >= 5 ? "#e55" : "#888", padding: "4px 0" }}>{d}</div>
           ))}
         </div>
 
-        {/* Naptár cellák */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
           {cells.map((day, idx) => {
             if (!day) return <div key={idx} />;
@@ -435,7 +438,6 @@ export default function BellSchedule() {
           })}
         </div>
 
-        {/* Nap szerkesztő panel */}
         {selectedDate && editDay && (
           <div style={{ marginTop: 20, background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, padding: 16 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>📅 {selectedDate} szerkesztése</h3>
@@ -484,19 +486,57 @@ export default function BellSchedule() {
           )}
         </div>
 
+        {/* Alapértelmezett tájékoztató */}
+        {!editTemplate && (
+          <div style={{ fontSize: 12, color: "#888", background: "#111", border: "1px solid #2a2a3a", borderRadius: 6, padding: "8px 12px", marginBottom: 12 }}>
+            ⭐ Az <strong style={{ color: "#ccc" }}>alapértelmezett</strong> sablon töltődik le az eszközre offline fallbackként.
+            Ha nincs szerveres csengetési rend, ez az iskola saját hardcoded rendje.
+            {!templates.some(t => t.isDefault) && (
+              <span style={{ color: "#e8a", marginLeft: 6 }}>⚠ Nincs alapértelmezett sablon beállítva!</span>
+            )}
+          </div>
+        )}
+
         {templatesLoading ? <div style={{ color: "#888" }}>Betöltés...</div> : (
           <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
             {templates.map(t => (
-              <div key={t.id} style={{ background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={t.id} style={{
+                background: t.isDefault ? "#111a11" : "#1a1a2e",
+                border: t.isDefault ? "1px solid #3a5a3a" : "1px solid #333",
+                borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12,
+              }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{t.name}
-                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#6c8ebf", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
-                    {t.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#3a2a1a", color: "#c86", borderRadius: 4, padding: "2px 6px" }}>🔒 Zárolt</span>}
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    {t.name}
+                    {t.isDefault && (
+                      <span style={{ marginLeft: 8, fontSize: 11, background: "#2a4a2a", color: "#8c8", borderRadius: 4, padding: "2px 6px" }}>
+                        ⭐ Alapértelmezett
+                      </span>
+                    )}
+                    {t.isLocked && (
+                      <span style={{ marginLeft: 8, fontSize: 11, background: "#3a2a1a", color: "#c86", borderRadius: 4, padding: "2px 6px" }}>
+                        🔒 Zárolt
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{t.bells.length} jelzés</div>
                 </div>
-                <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(t)}>👁 Megtekint{!t.isLocked ? " / Szerkeszt" : ""}</button>
-                {!t.isLocked && <button className="sl-btn sl-btn-danger" onClick={() => deleteTemplate(t)}>Töröl</button>}
+                <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(t)}>
+                  👁 Megtekint{!t.isLocked ? " / Szerkeszt" : ""}
+                </button>
+                {hasLock && !t.isDefault && (
+                  <button
+                    className="sl-btn"
+                    style={{ background: "#1a2a1a", color: "#8c8", border: "1px solid #3a5a3a", whiteSpace: "nowrap" }}
+                    onClick={() => setDefaultTemplate(t)}
+                    title="Beállítás offline alapértelmezett csengetési rendként"
+                  >
+                    ⭐ Alapért.
+                  </button>
+                )}
+                {!t.isLocked && (
+                  <button className="sl-btn sl-btn-danger" onClick={() => deleteTemplate(t)}>Töröl</button>
+                )}
               </div>
             ))}
           </div>
@@ -514,7 +554,7 @@ export default function BellSchedule() {
               </div>
             )}
 
-            <div style={{ marginBottom: 8, fontSize: 13, color: "#888", display: "grid", gridTemplateColumns: "60px 70px 100px 1fr 40px", gap: 8, padding: "0 4px" }}>
+            <div style={{ marginBottom: 8, fontSize: 13, color: "#888", display: "grid", gridTemplateColumns: "120px 70px 100px 1fr 40px", gap: 8, padding: "0 4px" }}>
               <span>Időpont</span><span>Típus</span><span>Hang</span><span></span><span></span>
             </div>
 
@@ -638,7 +678,6 @@ export default function BellSchedule() {
         </div>
       )}
 
-      {/* Tabok */}
       <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid #333" }}>
         {(["calendar", "templates", "sounds"] as const).map((t, i) => {
           const labels = ["📅 Naptár", "📋 Sablonok", "🔊 Hangfájlok"];
