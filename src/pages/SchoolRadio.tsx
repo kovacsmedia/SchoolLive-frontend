@@ -190,7 +190,7 @@ const CSS = `
 // ═══════════════════════════════════════════════════════════════════════════
 export default function SchoolRadio() {
   const { state } = useAuth();
-  const role = state.status === "authed" ? (state.user as any)?.role ?? "" : "";
+
 
   // ── Állapot ──────────────────────────────────────────────────────────────
   const [files,     setFiles]     = useState<RadioFile[]>([]);
@@ -224,7 +224,7 @@ export default function SchoolRadio() {
   const [formTargetId, setFormTargetId] = useState("");
   const [formBusy,     setFormBusy]     = useState(false);
   const [formError,    setFormError]    = useState<string|null>(null);
-  const [formConflict, setFormConflict] = useState<any>(null);
+  const [, setFormConflict] = useState<any>(null);
 
   // ── Betöltés ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
