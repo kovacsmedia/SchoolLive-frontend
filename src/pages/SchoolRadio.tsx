@@ -1,7 +1,7 @@
 // src/pages/SchoolRadio.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../lib/api";
-import { useAuth } from "../auth/AuthContext";
+//import { useAuth } from "../auth/AuthContext";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────
 type RadioFile = {
@@ -189,7 +189,7 @@ const CSS = `
 // Fő komponens
 // ═══════════════════════════════════════════════════════════════════════════
 export default function SchoolRadio() {
-  const { state } = useAuth();
+  //const { state } = useAuth();
 
 
   // ── Állapot ──────────────────────────────────────────────────────────────
@@ -275,7 +275,7 @@ export default function SchoolRadio() {
         // JWT token
         const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
         const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
-        
+
         xhr.open("POST", `${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/radio/files`);
         if (token)    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         if (tenantId) xhr.setRequestHeader("x-tenant-id", tenantId);
