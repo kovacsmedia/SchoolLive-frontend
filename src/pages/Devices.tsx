@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
 type DeviceClass = "SPEAKER" | "DISPLAY" | "MULTI";
+type WifiSecurity = "OPEN" | "WPA2_PERSONAL" | "WPA2_ENTERPRISE" | "WPA3_PERSONAL";
 
 type DeviceItem = {
   deviceId: string;
@@ -54,6 +55,13 @@ const DEVICE_CLASS_OPTIONS: Array<{ value: DeviceClass; label: string; descripti
   { value: "SPEAKER", label: "Hangszóró", description: "TTS és audio lejátszás" },
   { value: "DISPLAY", label: "Kijelző", description: "Szöveges üzenetek megjelenítése" },
   { value: "MULTI", label: "Multi (tablet/player)", description: "Hang + kijelző, virtuális eszközök is" },
+];
+
+const WIFI_SECURITY_OPTIONS: Array<{ value: WifiSecurity; label: string }> = [
+  { value: "OPEN",           label: "Nincs (nyílt hálózat)" },
+  { value: "WPA2_PERSONAL",  label: "WPA2 Personal" },
+  { value: "WPA3_PERSONAL",  label: "WPA3 Personal" },
+  { value: "WPA2_ENTERPRISE", label: "WPA2 Enterprise (802.1X)" },
 ];
 
 function formatDateTime(iso?: string | null): string {
@@ -116,8 +124,8 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-2xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div className="w-full max-w-2xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sticky top-0 bg-zinc-950 z-10">
           <div className="text-sm font-semibold">{title}</div>
           <button className="rounded-md px-2 py-1 text-sm hover:bg-white/10" type="button" onClick={onClose}>✕</button>
         </div>
@@ -132,8 +140,12 @@ type ActivateForm = {
   tenantId: string;
   name: string;
   deviceClass: DeviceClass;
+  // WiFi
   wifiSsid: string;
+  wifiHidden: boolean;
+  wifiSecurity: WifiSecurity;
   wifiPassword: string;
+  wifiUser: string;       // WPA2 Enterprise: login
   orgUnitId: string;
 };
 
@@ -222,14 +234,21 @@ export default function Devices() {
   }
 
   function selectPending(p: PendingDevice) {
-    const activeTenantId = sessionStorage.getItem("activeTenantId") ?? "";
+    // TENANT_ADMIN esetén az activeTenantId automatikusan kitöltődik
+    // SUPER_ADMIN esetén manuálisan kell kiválasztani
+    const activeTenantId = sessionStorage.getItem("activeTenantId")
+      ?? localStorage.getItem("activeTenantId")
+      ?? "";
     setActivateForm({
       pendingId: p.id,
       tenantId: activeTenantId,
       name: "",
       deviceClass: "SPEAKER",
       wifiSsid: "",
+      wifiHidden: false,
+      wifiSecurity: "WPA2_PERSONAL",
       wifiPassword: "",
+      wifiUser: "",
       orgUnitId: "",
     });
     setActivateError(null);
@@ -239,12 +258,20 @@ export default function Devices() {
 
   async function submitActivate() {
     if (!activateForm) return;
-    const { pendingId, tenantId, name, deviceClass, wifiSsid, wifiPassword } = activateForm;
+    const {
+      pendingId, tenantId, name, deviceClass,
+      wifiSsid, wifiHidden, wifiSecurity, wifiPassword, wifiUser,
+    } = activateForm;
 
     if (!name.trim()) { setActivateError("Az eszköznév megadása kötelező."); return; }
-    if (!tenantId) { setActivateError("Tenant kiválasztása kötelező."); return; }
+    if (!tenantId) { setActivateError("Intézmény kiválasztása kötelező."); return; }
     if (!wifiSsid.trim()) { setActivateError("WiFi SSID megadása kötelező."); return; }
-    if (!wifiPassword.trim()) { setActivateError("WiFi jelszó megadása kötelező."); return; }
+    if (wifiSecurity !== "OPEN" && !wifiPassword.trim()) {
+      setActivateError("WiFi jelszó megadása kötelező a kiválasztott biztonsági típusnál."); return;
+    }
+    if (wifiSecurity === "WPA2_ENTERPRISE" && !wifiUser.trim()) {
+      setActivateError("WPA2 Enterprise esetén a bejelentkezési név megadása kötelező."); return;
+    }
 
     setActivateError(null);
     setBusyActivate(true);
@@ -261,7 +288,10 @@ export default function Devices() {
             name: name.trim(),
             deviceClass,
             wifiSsid: wifiSsid.trim(),
-            wifiPassword: wifiPassword.trim(),
+            wifiHidden,
+            wifiSecurity,
+            wifiPassword: wifiSecurity !== "OPEN" ? wifiPassword.trim() : "",
+            wifiUser: wifiSecurity === "WPA2_ENTERPRISE" ? wifiUser.trim() : "",
             orgUnitId: activateForm.orgUnitId.trim() || undefined,
           }),
         }
@@ -295,7 +325,7 @@ export default function Devices() {
         <div>
           <h1 className="text-xl font-semibold">Eszközök</h1>
           <p className="mt-1 text-sm text-white/70">
-            Tenant-szintű eszközök listája és kezelése.
+            Intézményi eszközök listája és kezelése.
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -368,12 +398,8 @@ export default function Devices() {
               {filtered.map((d) => (
                 <tr key={d.deviceId} className="hover:bg-white/5">
                   <td className="px-4 py-3 font-medium">{d.name}</td>
-                  <td className="px-4 py-3">
-                    <DeviceClassBadge cls={d.deviceClass} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <OnlineBadge isOnline={d.isOnline} />
-                  </td>
+                  <td className="px-4 py-3"><DeviceClassBadge cls={d.deviceClass} /></td>
+                  <td className="px-4 py-3"><OnlineBadge isOnline={d.isOnline} /></td>
                   <td className="px-4 py-3 font-mono text-xs">
                     {d.ipAddress ?? <span className="text-white/30">—</span>}
                   </td>
@@ -492,6 +518,7 @@ export default function Devices() {
               Pending ID: <span className="font-mono">{activateForm.pendingId}</span>
             </div>
 
+            {/* Alapadatok */}
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
                 <div className="text-xs text-white/60">Eszköznév *</div>
@@ -502,7 +529,6 @@ export default function Devices() {
                   onChange={(e) => setActivateForm((s) => s ? { ...s, name: e.target.value } : s)}
                 />
               </label>
-
               <label className="space-y-1">
                 <div className="text-xs text-white/60">Eszköz osztály *</div>
                 <select
@@ -520,15 +546,16 @@ export default function Devices() {
               </label>
             </div>
 
+            {/* Intézmény – csak SuperAdmin választja, TENANT_ADMIN-nál auto */}
             {isSuperAdmin && (
               <label className="space-y-1">
-                <div className="text-xs text-white/60">Tenant *</div>
+                <div className="text-xs text-white/60">Intézmény *</div>
                 <select
                   className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
                   value={activateForm.tenantId}
                   onChange={(e) => setActivateForm((s) => s ? { ...s, tenantId: e.target.value } : s)}
                 >
-                  <option value="">Válassz tenantot…</option>
+                  <option value="">Válassz intézményt…</option>
                   {tenants.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
@@ -536,8 +563,12 @@ export default function Devices() {
               </label>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
+            {/* WiFi konfiguráció */}
+            <div className="rounded-md border border-white/10 bg-white/5 p-3 space-y-3">
+              <div className="text-xs font-semibold text-white/70 uppercase tracking-wide">WiFi konfiguráció</div>
+
+              {/* SSID + rejtett hálózat */}
+              <div className="space-y-1">
                 <div className="text-xs text-white/60">WiFi SSID *</div>
                 <input
                   className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
@@ -545,16 +576,84 @@ export default function Devices() {
                   value={activateForm.wifiSsid}
                   onChange={(e) => setActivateForm((s) => s ? { ...s, wifiSsid: e.target.value } : s)}
                 />
-              </label>
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">WiFi jelszó *</div>
-                <input
-                  type="password"
+                <label className="flex items-center gap-2 cursor-pointer mt-1">
+                  <input
+                    type="checkbox"
+                    checked={activateForm.wifiHidden}
+                    onChange={(e) => setActivateForm((s) => s ? { ...s, wifiHidden: e.target.checked } : s)}
+                    className="rounded"
+                  />
+                  <span className="text-xs text-white/50">Rejtett hálózat (SSID nem sugárzott)</span>
+                </label>
+              </div>
+
+              {/* Biztonság típusa */}
+              <div className="space-y-1">
+                <div className="text-xs text-white/60">WiFi biztonság</div>
+                <select
                   className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={activateForm.wifiPassword}
-                  onChange={(e) => setActivateForm((s) => s ? { ...s, wifiPassword: e.target.value } : s)}
-                />
-              </label>
+                  value={activateForm.wifiSecurity}
+                  onChange={(e) => setActivateForm((s) => s ? {
+                    ...s,
+                    wifiSecurity: e.target.value as WifiSecurity,
+                    wifiPassword: "",
+                    wifiUser: "",
+                  } : s)}
+                >
+                  {WIFI_SECURITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* WPA2/WPA3 Personal: csak jelszó */}
+              {(activateForm.wifiSecurity === "WPA2_PERSONAL" || activateForm.wifiSecurity === "WPA3_PERSONAL") && (
+                <div className="space-y-1">
+                  <div className="text-xs text-white/60">WiFi jelszó *</div>
+                  <input
+                    type="password"
+                    className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                    placeholder="WiFi jelszó"
+                    value={activateForm.wifiPassword}
+                    onChange={(e) => setActivateForm((s) => s ? { ...s, wifiPassword: e.target.value } : s)}
+                  />
+                </div>
+              )}
+
+              {/* WPA2 Enterprise: felhasználónév + jelszó */}
+              {activateForm.wifiSecurity === "WPA2_ENTERPRISE" && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <div className="text-xs text-white/60">Bejelentkezési név *</div>
+                    <input
+                      className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      placeholder="pl. felhasznalo@iskola.hu"
+                      value={activateForm.wifiUser}
+                      onChange={(e) => setActivateForm((s) => s ? { ...s, wifiUser: e.target.value } : s)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-white/60">Jelszó *</div>
+                    <input
+                      type="password"
+                      className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
+                      placeholder="Jelszó"
+                      value={activateForm.wifiPassword}
+                      onChange={(e) => setActivateForm((s) => s ? { ...s, wifiPassword: e.target.value } : s)}
+                    />
+                  </div>
+                  <div className="sm:col-span-2 text-xs text-white/40">
+                    WPA2 Enterprise (802.1X/PEAP) – tanúsítvány nélküli hitelesítés
+                  </div>
+                </div>
+              )}
+
+              {/* Nyílt hálózat tájékoztató */}
+              {activateForm.wifiSecurity === "OPEN" && (
+                <div className="text-xs text-amber-400/80 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1.5">
+                  ⚠ Nyílt hálózat – nem javasolt éles környezetben
+                </div>
+              )}
             </div>
 
             {activateError && (
