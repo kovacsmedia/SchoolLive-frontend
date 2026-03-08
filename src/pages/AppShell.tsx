@@ -12,10 +12,11 @@ function safeSet(s:Storage,k:string,v:string){try{s.setItem(k,v)}catch{}}
 function safeRemove(s:Storage,k:string){try{s.removeItem(k)}catch{}}
 
 const NAV_ITEMS = [
-  {to:"/app/devices",  label:"Eszközök",       icon:"🔊", roles:["all"]},
   {to:"/app/messages", label:"Üzenetek",        icon:"📢", roles:["all"]},
+  {to:"/app/radio",    label:"Iskolai Rádió",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/bells",    label:"Csengetési rend", icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/users",    label:"Felhasználók",    icon:"👥", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
+  {to:"/app/devices",  label:"Eszközök",       icon:"🔊", roles:["all"]},
   {to:"/app/tenants",  label:"Intézmények",     icon:"🏫", roles:["SUPER_ADMIN"]},
 ];
 
