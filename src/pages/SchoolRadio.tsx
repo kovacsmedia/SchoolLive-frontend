@@ -273,9 +273,9 @@ export default function SchoolRadio() {
         xhr.onerror = () => reject(new Error("Hálózati hiba"));
 
         // JWT token
-        const token = (state as any).token ?? localStorage.getItem("token") ?? "";
-        const tenantId = sessionStorage.getItem("activeTenantId") ?? "";
-
+        const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+        const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
+        
         xhr.open("POST", `${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/radio/files`);
         if (token)    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         if (tenantId) xhr.setRequestHeader("x-tenant-id", tenantId);
