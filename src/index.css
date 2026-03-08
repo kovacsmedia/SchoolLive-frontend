@@ -2,43 +2,69 @@
    SchoolLive – Global Styles
    =============================== */
 
-/* Ubuntu font */
-@import url("https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Nunito+Sans:wght@400;500;600;700&display=swap");
 
+/* ── Design tokens ── */
 :root {
   color-scheme: light dark;
 
-  --sl-font: "Ubuntu", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  --sl-font:      "Nunito", "Segoe UI", system-ui, sans-serif;
+  --sl-font-body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
 
-  --sl-bg: #f7f7fb;
-  --sl-text: #111320;
-  --sl-muted: rgba(17, 19, 32, 0.75);
-  --sl-border: rgba(127, 127, 127, 0.25);
-  --sl-card: rgba(255, 255, 255, 0.8);
+  /* Palette */
+  --sl-blue:        #3b82f6;
+  --sl-blue-dark:   #1d4ed8;
+  --sl-blue-light:  #eff6ff;
+  --sl-indigo:      #6366f1;
+  --sl-purple:      #8b5cf6;
+  --sl-green:       #22c55e;
+  --sl-red:         #ef4444;
+  --sl-amber:       #f59e0b;
+  --sl-orange:      #f97316;
 
-  --sl-accent: #5e4ea1;
-  --sl-accent-2: #69b0d6;
+  /* Surface */
+  --sl-bg:      #f1f5fd;
+  --sl-surface: #ffffff;
+  --sl-border:  #e2eaf8;
+  --sl-text:    #1e293b;
+  --sl-text-2:  #475569;
+  --sl-muted:   #94a3b8;
 
-  --sl-radius-lg: 20px;
-  --sl-shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
+  /* Elevation */
+  --sl-shadow:    0 4px 20px rgba(59, 130, 246, 0.10);
+  --sl-shadow-sm: 0 2px 8px  rgba(59, 130, 246, 0.07);
+  --sl-shadow-lg: 0 12px 40px rgba(59, 130, 246, 0.14);
+
+  /* Radius */
+  --sl-r-sm:  8px;
+  --sl-r-md:  12px;
+  --sl-r-lg:  16px;
+  --sl-r-xl:  20px;
+  --sl-r-2xl: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --sl-bg: #0b0d13;
-    --sl-text: #f3f4fb;
-    --sl-muted: rgba(243, 244, 251, 0.75);
-    --sl-border: rgba(255, 255, 255, 0.15);
-    --sl-card: rgba(18, 18, 22, 0.75);
-    --sl-shadow: 0 16px 46px rgba(0, 0, 0, 0.35);
+    --sl-bg:         #07101f;
+    --sl-surface:    #0d1b2e;
+    --sl-border:     #1a2d47;
+    --sl-text:       #f0f6ff;
+    --sl-text-2:     #8da4c0;
+    --sl-muted:      #4a6280;
+    --sl-blue-light: #0c2040;
+    --sl-shadow:     0 4px 20px rgba(0, 0, 0, 0.45);
+    --sl-shadow-sm:  0 2px 8px  rgba(0, 0, 0, 0.30);
+    --sl-shadow-lg:  0 12px 40px rgba(0, 0, 0, 0.55);
   }
 }
 
+/* ── Reset ── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
@@ -47,11 +73,12 @@ body {
 }
 
 body {
-  margin: 0;
-  font-family: var(--sl-font);
+  font-family: var(--sl-font-body);
   background: var(--sl-bg);
   color: var(--sl-text);
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -59,297 +86,45 @@ body {
   width: 100%;
 }
 
-/* Basic media defaults */
-img,
-svg,
-video,
-canvas {
+/* ── Media defaults ── */
+img, svg, video, canvas {
   max-width: 100%;
   height: auto;
+  display: block;
 }
 
-/* A11y focus */
+/* ── Links ── */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Buttons base ── */
+button {
+  font-family: var(--sl-font);
+  cursor: pointer;
+}
+
+/* ── Focus ── */
 :focus-visible {
-  outline: 2px solid rgba(105, 176, 214, 0.7);
+  outline: 2px solid var(--sl-blue);
   outline-offset: 2px;
+  border-radius: var(--sl-r-sm);
 }
 
-/* Utility: visually-hidden */
+/* ── Scrollbar (webkit) ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sl-border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sl-muted); }
+
+/* ── Accessibility ── */
 .sl-visually-hidden {
   position: absolute !important;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-/* ===============================
-   Landing layout
-   =============================== */
-
-.sl-landing {
-  min-height: 100vh;
-  padding: clamp(16px, 4vw, 48px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sl-shell {
-  width: 100%;
-  max-width: 1100px;
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: clamp(20px, 4vw, 48px);
-  align-items: center;
-}
-
-.sl-card {
-  border-radius: var(--sl-radius-lg);
-  border: 1px solid var(--sl-border);
-  background: var(--sl-card);
-  backdrop-filter: blur(12px);
-  padding: clamp(24px, 4vw, 42px);
-  box-shadow: var(--sl-shadow);
-}
-
-.sl-title {
-  font-size: clamp(32px, 4vw, 48px);
-  margin: 0 0 16px;
-}
-
-.sl-subtitle {
-  font-size: clamp(16px, 1.8vw, 20px);
-  margin-bottom: 24px;
-  color: var(--sl-muted);
-}
-
-.sl-bullets {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 14px;
-}
-
-.sl-bullet {
-  display: flex;
-  gap: 10px;
-}
-
-.sl-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 8px;
-  border-radius: 999px;
-  background: var(--sl-accent-2);
-}
-
-.sl-actions {
-  margin-top: 28px;
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.sl-btn {
-  padding: 12px 18px;
-  border-radius: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  border: 1px solid var(--sl-border);
-  transition: all 120ms ease;
-  color: inherit;
-}
-
-.sl-btn-primary {
-  background: rgba(94, 78, 161, 0.15);
-}
-
-.sl-btn-primary:hover {
-  background: rgba(94, 78, 161, 0.25);
-}
-
-.sl-btn-ghost {
-  background: rgba(127, 127, 127, 0.08);
-}
-
-.sl-btn-ghost:hover {
-  background: rgba(127, 127, 127, 0.15);
-}
-
-.sl-logoWrap {
-  display: flex;
-  justify-content: center;
-}
-
-.sl-logo {
-  width: min(340px, 70vw);
-}
-
-/* Responsive */
-@media (max-width: 860px) {
-  .sl-shell {
-    grid-template-columns: 1fr;
-  }
-  .sl-logoWrap {
-    order: -1;
-    margin-bottom: 20px;
-  }
-}
-
-/* ===============================
-   Login layout
-   =============================== */
-
-.sl-login {
-  min-height: 100vh;
-  padding: clamp(16px, 4vw, 48px);
-  display: grid;
-  place-items: center;
-}
-
-.sl-loginBg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.35;
-  background: radial-gradient(620px 300px at 15% 15%, rgba(105, 176, 214, 0.25), transparent 70%),
-    radial-gradient(520px 280px at 85% 20%, rgba(94, 78, 161, 0.22), transparent 70%);
-}
-
-.sl-loginShell {
-  width: 100%;
-  max-width: 980px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(18px, 4vw, 46px);
-  align-items: center;
-}
-
-.sl-loginCard {
-  border-radius: var(--sl-radius-lg);
-  border: 1px solid var(--sl-border);
-  background: var(--sl-card);
-  box-shadow: var(--sl-shadow);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: clamp(22px, 4vw, 42px);
-}
-
-.sl-loginTitle {
-  margin: 0 0 10px;
-  font-size: clamp(26px, 3.2vw, 36px);
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-}
-
-.sl-loginSubtitle {
-  margin: 0 0 22px;
-  color: var(--sl-muted);
-  font-size: 14.5px;
-  line-height: 1.55;
-}
-
-.sl-form {
-  display: grid;
-  gap: 14px;
-}
-
-.sl-field {
-  display: grid;
-  gap: 8px;
-}
-
-.sl-label {
-  font-size: 13px;
-  color: var(--sl-muted);
-}
-
-.sl-input {
-  height: 44px;
-  border-radius: 14px;
-  border: 1px solid var(--sl-border);
-  background: rgba(127, 127, 127, 0.06);
-  padding: 0 12px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .sl-input {
-    background: rgba(255, 255, 255, 0.06);
-  }
-}
-
-.sl-error {
-  border: 1px solid rgba(220, 60, 60, 0.35);
-  background: rgba(220, 60, 60, 0.1);
-  border-radius: 14px;
-  padding: 10px 12px;
-  font-size: 13.5px;
-  white-space: pre-wrap;
-  margin-bottom: 14px;
-}
-
-.sl-loginActions {
-  margin-top: 6px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sl-loginBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  padding: 0 16px;
-  border-radius: 14px;
-  border: 1px solid var(--sl-border);
-  background: rgba(94, 78, 161, 0.16);
-  font-weight: 700;
-  user-select: none;
-  color: inherit;
-}
-
-.sl-loginBtn:hover {
-  background: rgba(94, 78, 161, 0.22);
-}
-
-.sl-loginBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.sl-link {
-  color: inherit;
-  opacity: 0.85;
-  text-decoration: none;
-  border-bottom: 1px dashed rgba(127, 127, 127, 0.45);
-  padding-bottom: 2px;
-}
-
-.sl-link:hover {
-  opacity: 1;
-}
-
-.sl-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Responsive login */
-@media (max-width: 860px) {
-  .sl-loginShell {
-    grid-template-columns: 1fr;
-  }
-  .sl-brand {
-    order: -1;
-  }
 }
