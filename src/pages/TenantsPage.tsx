@@ -145,6 +145,16 @@ export default function TenantsPage() {
     } catch (e) { setError(safeErr(e)); }
     finally { setBusyAction(null); }
   }
+  async function doHardDelete(t:TenantDto) {
+    if (!window.confirm(`Véglegesen törlöd az intézményt? (${t.name})`)) return;
+    setBusyAction("delete");
+    try {
+      const r = await apiFetch<{ok:boolean}>(`/admin/tenants/${t.id}`,{method:"DELETE"});
+      if (!r?.ok) throw new Error("Backend hiba");
+      await load();
+    } catch (e) { setError(safeErr(e)); }
+    finally { setBusyAction(null); }
+  }
 
   function TenantForm() {
     return (
@@ -252,6 +262,7 @@ export default function TenantsPage() {
                       <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openDetail(t)} type="button">🔍 Részletek</button>
                       <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openEdit(t)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
                       <button className="tp-btn tp-btn-danger tp-btn-sm" onClick={() => void doDelete(t)} disabled={busyAction==="delete"} type="button">🗑</button>
+                      <button className="tp-btn tp-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(t)} disabled={busyAction==="delete"} type="button">🗑 Törlés</button>
                     </div>
                   </td>
                 </tr>

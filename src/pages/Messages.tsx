@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiFetch, apiPost } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 type MessageItem = {
   id:string; title:string|null; text:string|null; type:string; voice:string|null; fileUrl:string|null;
@@ -35,7 +36,7 @@ const CSS = `
   .ms-btn-sm{padding:5px 11px;font-size:12px;border-radius:8px}
   .ms-card{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(59,130,246,0.07);margin-bottom:8px}
   .ms-msg-row{
-    display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;
+    display:grid;grid-template-columns:auto 1fr auto auto auto auto;align-items:center;gap:14px;
     padding:14px 18px;border-bottom:1px solid var(--sl-border);transition:background 0.12s;
   }
   .ms-msg-row:last-child{border-bottom:none}
@@ -101,15 +102,22 @@ const CSS = `
   .ms-detail-key{font-weight:800;color:var(--sl-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;padding-top:3px;font-family:'Nunito',sans-serif}
   .ms-detail-body{background:var(--sl-bg);border:1px solid var(--sl-border);border-radius:11px;padding:12px 14px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;grid-column:1/-1;margin-top:6px}
 
+  .ms-btn-danger{background:#fff5f5;border:1.5px solid #fecaca;color:#dc2626}
+  .ms-btn-danger:hover:not(:disabled){background:#fee2e2}
   @keyframes msFade{from{opacity:0}to{opacity:1}}
   @keyframes msSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
   @media(max-width:600px){
-    .ms-msg-row{grid-template-columns:1fr auto}
+    .ms-msg-row{grid-template-columns:auto 1fr auto auto}
     .ms-msg-meta,.ms-msg-time{display:none}
   }
 `;
 
 export default function Messages() {
+  const { state } = useAuth();
+  const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
+  const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage]   = useState(1);
@@ -150,6 +158,28 @@ export default function Messages() {
   }
   async function loadGroups() {
     try { const r = await apiFetch<{groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); } catch {}
+  }
+
+  async function deleteMessage(id:string) {
+    try { await apiFetch(`/messages/${id}`,{method:"DELETE"}); } catch {}
+  }
+  async function doDeleteOne(id:string) {
+    if (!window.confirm("Törlöd ezt az üzenetet?")) return;
+    await deleteMessage(id);
+    await loadMessages(page);
+  }
+  async function doBulkDelete() {
+    if (!window.confirm(`Törlöd a(z) ${selectedIds.size} kijelölt üzenetet?`)) return;
+    await Promise.all(Array.from(selectedIds).map(id => deleteMessage(id)));
+    setSelectedIds(new Set());
+    await loadMessages(page);
+  }
+  function toggleSelect(id:string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   useEffect(() => { loadMessages(1); }, []);
@@ -199,7 +229,14 @@ export default function Messages() {
           <div className="ms-title">📢 Üzenetek</div>
           <div className="ms-subtitle">Iskolai hangüzenetek küldése és előzményei.</div>
         </div>
-        <button className="ms-btn ms-btn-primary" onClick={openComposer}>＋ Új üzenet</button>
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+          {canDelete && selectedIds.size > 0 && (
+            <button className="ms-btn ms-btn-danger" onClick={doBulkDelete}>
+              🗑 Kijelöltek törlése ({selectedIds.size})
+            </button>
+          )}
+          <button className="ms-btn ms-btn-primary" onClick={openComposer}>＋ Új üzenet</button>
+        </div>
       </div>
 
       {listError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{listError}</div>}
@@ -216,12 +253,19 @@ export default function Messages() {
         <div className="ms-card">
           {messages.map(m => (
             <div className="ms-msg-row" key={m.id}>
+              {canDelete ? (
+                <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelect(m.id)}
+                  style={{ width:15, height:15, cursor:"pointer", flexShrink:0 }} />
+              ) : <span />}
               <div className="ms-msg-excerpt">{excerpt(m.text)}</div>
               <div className="ms-msg-meta">{m.createdBy.displayName||m.createdBy.email}</div>
               <div className="ms-msg-time">
                 {m.playedAt ? formatDate(m.playedAt) : m.scheduledAt ? `⏰ ${formatDate(m.scheduledAt)}` : formatDate(m.createdAt)}
               </div>
               <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => setDetailMsg(m)}>Részletek</button>
+              {canDelete && (
+                <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={() => void doDeleteOne(m.id)} title="Törlés">🗑</button>
+              )}
             </div>
           ))}
         </div>

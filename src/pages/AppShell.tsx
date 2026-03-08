@@ -58,13 +58,13 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
 .asl-logo-area{
   padding:22px 18px 16px; border-bottom:1px solid var(--sl-border); text-align:center;
 }
-.asl-logo-area img{width:148px; height:auto}
+.asl-logo-area img{width:100%; max-width:210px; height:auto}
 .asl-inst-badge{
-  margin-top:10px; display:inline-flex; align-items:center; gap:5px;
+  margin-top:10px; display:block;
   padding:5px 12px; background:linear-gradient(135deg,#dbeafe,#ede9fe);
   border:1px solid #bfdbfe; border-radius:20px;
-  font-size:11.5px; font-weight:800; color:var(--sl-blue-dark);
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:14px; font-weight:800; color:var(--sl-blue-dark);
+  max-width:100%; white-space:normal; word-break:break-word;
 }
 .asl-inst-badge.warn{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a;color:#d97706}
 .asl-nav-area{flex:1;padding:14px 10px;overflow-y:auto}
@@ -75,7 +75,7 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
   color:var(--sl-text-2); border:1.5px solid transparent; transition:all 0.15s;
   margin-bottom:3px;
 }
-.asl-nav-link:hover{background:#eef5ff;color:var(--sl-text)}
+.asl-nav-link:hover{background:#cbd5e1;color:var(--sl-text)}
 .asl-nav-link.active{
   font-weight:800; color:var(--sl-blue-dark);
   background:linear-gradient(135deg,#dbeafe,#ede9fe);
@@ -304,7 +304,7 @@ export default function AppShell() {
             </picture>
           </Link>
           {institutionLabel
-            ? <div className="asl-inst-badge" title={institutionLabel}>🏫 {institutionLabel}</div>
+            ? <div className="asl-inst-badge" title={institutionLabel}>{institutionLabel}</div>
             : isSuperAdmin ? <div className="asl-inst-badge warn">⚠️ Válassz intézményt</div> : null
           }
         </div>
@@ -328,7 +328,7 @@ export default function AppShell() {
           </div>
           {institutionLabel && (
             <div style={{ padding:"8px 14px" }}>
-              <div className="asl-inst-badge">🏫 {institutionLabel}</div>
+              <div className="asl-inst-badge">{institutionLabel}</div>
             </div>
           )}
           <div style={{ padding:"12px 10px", flex:1 }}>

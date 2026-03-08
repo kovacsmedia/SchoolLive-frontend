@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
 type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
@@ -97,6 +98,9 @@ function Modal({ title, icon, onClose, children }: { title:string; icon:string; 
 type UserFormState = { email:string; displayName:string; uiRole:UiRole; password:string; isActive:boolean };
 
 export default function Users() {
+  const { state } = useAuth();
+  const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
+  const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
@@ -161,6 +165,16 @@ export default function Users() {
       if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
+    finally { setBusyAction(null); }
+  }
+  async function doHardDelete(u:UserDto) {
+    if (!window.confirm(`Véglegesen törlöd? Ez nem visszafordítható! (${u.email})`)) return;
+    setError(null); setBusyAction("delete");
+    try {
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{method:"DELETE"});
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      await loadUsers();
+    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
@@ -265,6 +279,9 @@ export default function Users() {
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => { setSelectedUser(u); setIsMessagesOpen(true); }} type="button">📧</button>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
                         <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
+                        {canDelete && (
+                          <button className="us-btn us-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(u)} disabled={busyAction==="delete"} type="button">🗑 Törlés</button>
+                        )}
                       </div>
                     </td>
                   </tr>
