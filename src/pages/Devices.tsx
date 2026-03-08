@@ -162,6 +162,7 @@ export default function Devices() {
   const [wpActivateForm, setWpActivateForm] = useState<{ pendingId: string; name: string } | null>(null);
   const [wpActivateBusy, setWpActivateBusy] = useState(false);
   const [wpActivateError, setWpActivateError] = useState<string | null>(null);
+  const healthTimer = useRef<number | null>(null);
   const pendingTimer = useRef<number | null>(null);
 
   async function loadDevices() {
