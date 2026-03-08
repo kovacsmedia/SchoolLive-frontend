@@ -141,6 +141,9 @@ function UserForm({ form, setForm, isEdit }: {
 }
 
 export default function Users() {
+  const { state } = useAuth();
+  const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
+  const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
