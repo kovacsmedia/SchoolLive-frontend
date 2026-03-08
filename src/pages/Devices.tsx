@@ -8,11 +8,13 @@ type WifiSecurity = "OPEN" | "WPA2_PERSONAL" | "WPA3_PERSONAL" | "WPA2_ENTERPRIS
 type DeviceItem = {
   deviceId: string; name: string; deviceClass: DeviceClass;
   isOnline: boolean; ipAddress: string | null; firmwareVersion: string | null;
-  secondsSinceLastSeen: number | null;
+  secondsSinceLastSeen: number | null; isVirtualPlayer?: boolean;
 };
 type HealthResponse = { ok: boolean; devices: DeviceItem[] };
 type PendingDevice  = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
 type PendingResponse = { ok: boolean; pending: PendingDevice[] };
+type PendingWebPlayer = { id: string; mac: string; clientId: string | null; userId: string | null; ipAddress: string | null; userAgent: string | null; firstSeenAt: string; lastSeenAt: string };
+type PendingWebResponse = { ok: boolean; pendingWeb: PendingWebPlayer[] };
 type TenantItem     = { id: string; name: string };
 type TenantsResponse = { ok: boolean; tenants: TenantItem[] };
 
@@ -115,6 +117,9 @@ const CSS = `
   .dv-empty-icon{font-size:44px;margin-bottom:12px}
   .dv-empty-txt{font-size:14px;font-family:'Nunito',sans-serif;font-weight:700;color:var(--sl-text-2)}
   .dv-key-box{background:var(--sl-bg);border:1px solid var(--sl-border);border-radius:9px;padding:6px 10px;font-family:monospace;font-size:12px;color:var(--sl-text);word-break:break-all}
+  .dv-wp-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-family:'Nunito',sans-serif}
+  .dv-wp-section{background:linear-gradient(135deg,#f0fdf4,#eff6ff);border:1.5px solid #bbf7d0;border-radius:13px;padding:13px 16px;margin-bottom:8px}
+  .dv-wp-section-title{font-size:12px;font-weight:800;color:#15803d;font-family:'Nunito',sans-serif;margin-bottom:8px;display:flex;align-items:center;gap:6px}
   @keyframes dvFade{from{opacity:0}to{opacity:1}}
   @keyframes dvSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
   @media(max-width:600px){.dv-grid2{grid-template-columns:1fr}.dv-search{width:100%}}
@@ -153,7 +158,10 @@ export default function Devices() {
   const [activateError, setActivateError] = useState<string | null>(null);
   const [activateSuccess, setActivateSuccess] = useState<{ deviceKey: string; name: string } | null>(null);
 
-  const healthTimer = useRef<number | null>(null);
+  const [pendingWeb, setPendingWeb] = useState<PendingWebPlayer[]>([]);
+  const [wpActivateForm, setWpActivateForm] = useState<{ pendingId: string; name: string } | null>(null);
+  const [wpActivateBusy, setWpActivateBusy] = useState(false);
+  const [wpActivateError, setWpActivateError] = useState<string | null>(null);
   const pendingTimer = useRef<number | null>(null);
 
   async function loadDevices() {
@@ -180,8 +188,28 @@ export default function Devices() {
     } catch { setTenants([]); }
   }
 
+  async function loadPendingWeb() {
+    try {
+      const data = await apiFetch<PendingWebResponse>("/admin/devices/pending-web");
+      setPendingWeb(Array.isArray(data.pendingWeb) ? data.pendingWeb : []);
+    } catch { setPendingWeb([]); }
+  }
+  async function submitWpActivate() {
+    if (!wpActivateForm) return;
+    if (!wpActivateForm.name.trim()) { setWpActivateError("Az eszköznév megadása kötelező."); return; }
+    setWpActivateError(null); setWpActivateBusy(true);
+    try {
+      await apiFetch(`/admin/devices/activate-web/${wpActivateForm.pendingId}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: wpActivateForm.name.trim() }),
+      });
+      setWpActivateForm(null); void loadDevices(); void loadPendingWeb();
+    } catch (e) { setWpActivateError(safeErrorMessage(e)); }
+    finally { setWpActivateBusy(false); }
+  }
   useEffect(() => {
     void loadDevices();
+    void loadPendingWeb();
     healthTimer.current = window.setInterval(loadDevices, 10_000);
     if (canWrite) void loadTenants();
     return () => {
@@ -322,7 +350,12 @@ export default function Devices() {
                       </span>
                     </td>
                     <td style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
-                    <td style={{ fontSize:12 }}>{d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
+                    <td style={{ fontSize:12 }}>
+                      {d.isVirtualPlayer
+                        ? <span className="dv-wp-badge">📱 WP</span>
+                        : (d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>)
+                      }
+                    </td>
                     <td style={{ fontSize:12 }}>
                       {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined ? `${d.secondsSinceLastSeen}mp` : "—"}
                     </td>
@@ -350,6 +383,28 @@ export default function Devices() {
       {pendingOpen && (
         <Modal title="Aktiválásra váró eszközök" icon="📡" onClose={closePending}>
           <div className="dv-modal-body">
+            {/* WebPlayer szekció */}
+            {pendingWeb.length > 0 && (
+              <div className="dv-wp-section">
+                <div className="dv-wp-section-title">📱 Virtuális lejátszók (WebPlayer)</div>
+                {pendingWeb.map(wp => (
+                  <button key={wp.id} className="dv-pending-item" type="button"
+                    style={{ border:"1.5px solid #bbf7d0", background:"#f0fdf4" }}
+                    onClick={() => { setWpActivateForm({ pendingId: wp.id, name: "" }); setWpActivateError(null); closePending(); }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span className="dv-pending-mac" style={{ color:"#15803d" }}>
+                        📱 WP-{wp.clientId?.slice(0,8).toUpperCase() ?? "?"}
+                      </span>
+                      <span style={{ fontSize:11, color:"var(--sl-muted)" }}>Utoljára: {formatDateTime(wp.lastSeenAt)}</span>
+                    </div>
+                    <div className="dv-pending-meta">
+                      {wp.ipAddress && <span>📍 {wp.ipAddress}</span>}
+                      {wp.userAgent && <span style={{ maxWidth:300, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>🌐 {wp.userAgent.slice(0,60)}…</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="dv-alert dv-alert-warn" style={{ fontSize:13 }}>
               <span>💡</span>
               Az alábbi eszközök provisioning módban várják az aktiválást. Kattints egyre az aktiváláshoz.
@@ -474,6 +529,31 @@ export default function Devices() {
             <button className="dv-btn dv-btn-ghost" onClick={() => setActivateForm(null)} disabled={busyActivate} type="button">Mégse</button>
             <button className="dv-btn dv-btn-primary" onClick={() => void submitActivate()} disabled={busyActivate} type="button">
               {busyActivate ? "⏳ Aktiválás…" : "⚡ Aktivál"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* WP Activate modal */}
+      {wpActivateForm && (
+        <Modal title="Virtuális lejátszó aktiválása" icon="📱" onClose={() => setWpActivateForm(null)}>
+          <div className="dv-modal-body">
+            <div className="dv-alert" style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#15803d", fontSize:13 }}>
+              <span>📱</span>
+              Egy WebPlayer eszközt aktiválsz. A PLAYER felhasználó böngészője virtuális hangszóró/kijelzőként fog működni.
+            </div>
+            <div>
+              <label className="dv-label">Eszköznév *</label>
+              <input className="dv-input" placeholder="pl. Portás tablet, Ebédlő kijelző"
+                value={wpActivateForm.name}
+                onChange={e => setWpActivateForm(s => s ? { ...s, name: e.target.value } : s)} />
+            </div>
+            {wpActivateError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{wpActivateError}</div>}
+          </div>
+          <div className="dv-modal-footer">
+            <button className="dv-btn dv-btn-ghost" onClick={() => setWpActivateForm(null)} disabled={wpActivateBusy} type="button">Mégse</button>
+            <button className="dv-btn dv-btn-primary" onClick={() => void submitWpActivate()} disabled={wpActivateBusy} type="button">
+              {wpActivateBusy ? "⏳ Aktiválás…" : "📱 Aktivál"}
             </button>
           </div>
         </Modal>
