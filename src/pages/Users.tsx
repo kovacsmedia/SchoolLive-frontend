@@ -1,752 +1,325 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
 
-type BackendRole =
-  | "SUPER_ADMIN"
-  | "TENANT_ADMIN"
-  | "ORG_ADMIN"
-  | "TEACHER"
-  | "OPERATOR"
-  | "PLAYER"
-  | string;
+type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
+type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
+type UserDto = { id:string; email:string; displayName?:string|null; role:BackendRole; tenantId?:string|null; orgUnitId?:string|null; isActive?:boolean; lastLoginAt?:string|null; createdAt?:string|null; };
 
-type UiRole = "ADMIN" | "EDITOR" | "CONTRIBUTOR" | "PLAYER";
-
-type UserDto = {
-  id: string;
-  email: string;
-
-  // ✅ a backend oldalon most "displayName" a legvalószínűbb (Prisma log)
-  displayName?: string | null;
-
-  role: BackendRole;
-  tenantId?: string | null;
-  orgUnitId?: string | null;
-
-  isActive?: boolean;
-  lastLoginAt?: string | null;
-  createdAt?: string | null;
-};
-
-type UsersListResponse = {
-  ok: boolean;
-  users: UserDto[];
-};
-
-type UserSingleResponse = {
-  ok: boolean;
-  user: UserDto;
-};
-
-type ApiErrorShape = {
-  message?: string;
-  error?: string;
-};
-
-const API = {
-  USERS_LIST: "/admin/users",
-  USERS_CREATE: "/admin/users",
-  USERS_UPDATE: (userId: string) => `/admin/users/${encodeURIComponent(userId)}`,
-  USERS_DELETE: (userId: string) => `/admin/users/${encodeURIComponent(userId)}`,
-
-  // még nincs bekötve backend oldalon
-  USER_MESSAGES: (userId: string) => `/admin/users/${encodeURIComponent(userId)}/messages`,
-} as const;
-
-const UI_ROLE_OPTIONS: Array<{
-  uiRole: UiRole;
-  label: string;
-  description: string;
-  backendRole: BackendRole;
-}> = [
-  {
-    uiRole: "ADMIN",
-    label: "Admin",
-    description: "Tenant admin: csak a saját intézményét látja, teljes körű tenant jogosultság.",
-    backendRole: "TENANT_ADMIN",
-  },
-  {
-    uiRole: "EDITOR",
-    label: "Szerkesztő",
-    description:
-      "Időzített jelzések kezelése, üzenetküldés eszközökre/csoportokra, időzített lejátszási listák.",
-    backendRole: "ORG_ADMIN",
-  },
-  {
-    uiRole: "CONTRIBUTOR",
-    label: "Közreműködő",
-    description: "Azonnali/időzített üzenetek küldése kiválasztott eszközökre/csoportokba.",
-    backendRole: "OPERATOR",
-  },
-  {
-    uiRole: "PLAYER",
-    label: "Player",
-    description:
-      "Belépés után a Player oldal fut. A userhez tartozó JWT-es device az eszközök közt is monitorozandó.",
-    backendRole: "PLAYER",
-  },
+const UI_ROLE_OPTIONS: Array<{uiRole:UiRole;label:string;description:string;backendRole:BackendRole}> = [
+  { uiRole:"ADMIN",       label:"Admin",        description:"Tenant admin: teljes körű tenant jogosultság.", backendRole:"TENANT_ADMIN" },
+  { uiRole:"EDITOR",      label:"Szerkesztő",   description:"Üzenetküldés, ütemezett jelzések kezelése.",   backendRole:"ORG_ADMIN" },
+  { uiRole:"CONTRIBUTOR", label:"Közreműködő",  description:"Azonnali üzenetek küldése.",                    backendRole:"OPERATOR" },
+  { uiRole:"PLAYER",      label:"Player",       description:"Player nézet jogosultsága.",                    backendRole:"PLAYER" },
 ];
 
-function formatDateTime(iso?: string | null): string {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("hu-HU");
-}
-
-function safeErrorMessage(e: unknown): string {
-  if (typeof e === "string") return e;
-  if (e && typeof e === "object") {
-    const anyE = e as { message?: string; status?: number; data?: unknown };
-    if (anyE?.message) return anyE.message;
-    if (anyE?.data && typeof anyE.data === "object") {
-      const d = anyE.data as ApiErrorShape;
-      if (d.message) return d.message;
-      if (d.error) return d.error;
-    }
-    if (typeof anyE?.status === "number") return `HTTP ${anyE.status}`;
-  }
+function formatDT(iso?:string|null) { if (!iso) return "–"; const d=new Date(iso); return isNaN(d.getTime())?"–":d.toLocaleString("hu-HU"); }
+function safeErr(e:unknown):string {
+  if (typeof e==="string") return e;
+  if (e&&typeof e==="object") { const a=e as any; return a?.data?.message||a?.data?.error||a?.message||"Ismeretlen hiba"; }
   return "Ismeretlen hiba";
 }
-
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  return apiFetch<T>(path, init);
+function uiToBackend(uiRole:UiRole):BackendRole { return UI_ROLE_OPTIONS.find(x=>x.uiRole===uiRole)?.backendRole??"OPERATOR"; }
+function backendToUi(role:BackendRole):UiRole {
+  if (role==="TENANT_ADMIN") return "ADMIN"; if (role==="ORG_ADMIN") return "EDITOR"; if (role==="PLAYER") return "PLAYER"; return "CONTRIBUTOR";
 }
 
-function RoleBadge({ role }: { role: BackendRole }) {
-  const cls =
-    role === "TENANT_ADMIN"
-      ? "bg-blue-600/20 text-blue-200 border-blue-500/30"
-      : role === "ORG_ADMIN"
-        ? "bg-emerald-600/20 text-emerald-200 border-emerald-500/30"
-        : role === "OPERATOR" || role === "TEACHER"
-          ? "bg-amber-600/20 text-amber-200 border-amber-500/30"
-          : role === "PLAYER"
-            ? "bg-slate-600/20 text-slate-200 border-slate-500/30"
-            : role === "SUPER_ADMIN"
-              ? "bg-purple-600/20 text-purple-200 border-purple-500/30"
-              : "bg-gray-600/20 text-gray-200 border-gray-500/30";
+const ROLE_COLORS:Record<string,{bg:string;color:string;border:string}> = {
+  SUPER_ADMIN: {bg:"#f5f3ff",color:"#7c3aed",border:"#ddd6fe"},
+  TENANT_ADMIN:{bg:"#eff6ff",color:"#1d4ed8",border:"#bfdbfe"},
+  ORG_ADMIN:   {bg:"#f0fdf4",color:"#15803d",border:"#bbf7d0"},
+  OPERATOR:    {bg:"#fffbeb",color:"#d97706",border:"#fde68a"},
+  TEACHER:     {bg:"#fffbeb",color:"#d97706",border:"#fde68a"},
+  PLAYER:      {bg:"#f8fafc",color:"#64748b",border:"#e2e8f0"},
+};
 
-  return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {role}
-    </span>
-  );
-}
+const CSS = `
+  .us-hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+  .us-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:var(--sl-text);letter-spacing:-0.5px}
+  .us-subtitle{font-size:13px;color:var(--sl-muted);margin-top:3px}
+  .us-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .us-search{padding:9px 13px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-surface);color:var(--sl-text);font-size:13.5px;outline:none;transition:all 0.15s;width:280px;font-family:inherit}
+  .us-search:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.11)}
+  .us-search::placeholder{color:var(--sl-muted)}
+  .us-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:11px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:'Nunito',inherit;white-space:nowrap}
+  .us-btn:disabled{opacity:0.55;cursor:not-allowed}
+  .us-btn-primary{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 3px 10px rgba(99,102,241,0.28)}
+  .us-btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 14px rgba(99,102,241,0.36)}
+  .us-btn-ghost{background:var(--sl-bg);border:1.5px solid var(--sl-border);color:var(--sl-text-2)}
+  .us-btn-ghost:hover:not(:disabled){background:var(--sl-border)}
+  .us-btn-danger{background:#fff5f5;border:1.5px solid #fecaca;color:#dc2626}
+  .us-btn-danger:hover:not(:disabled){background:#fee2e2}
+  .us-btn-sm{padding:5px 11px;font-size:12px;border-radius:8px}
+  .us-card{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(59,130,246,0.07)}
+  .us-table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .us-table th{text-align:left;padding:10px 16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:var(--sl-muted);border-bottom:1px solid var(--sl-border);background:var(--sl-bg);white-space:nowrap;font-family:'Nunito',sans-serif}
+  .us-table td{padding:12px 16px;border-bottom:1px solid var(--sl-border);color:var(--sl-text);vertical-align:middle}
+  .us-table tr:last-child td{border-bottom:none}
+  .us-table tr:hover td{background:rgba(59,130,246,0.03)}
+  .us-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;border:1px solid;white-space:nowrap;font-family:'Nunito',sans-serif}
+  .us-alert{padding:10px 14px;border-radius:11px;font-size:13px;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px}
+  .us-alert-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+  .us-empty{text-align:center;padding:48px;color:var(--sl-muted)}
+  .us-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.44);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:usFade 0.15s ease}
+  .us-modal{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,0.18);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;animation:usSlide 0.2s ease}
+  .us-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--sl-border);position:sticky;top:0;background:var(--sl-surface);z-index:1}
+  .us-modal-title{font-family:'Nunito',sans-serif;font-size:16px;font-weight:900;color:var(--sl-text);display:flex;align-items:center;gap:8px}
+  .us-modal-body{padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+  .us-modal-footer{padding:14px 22px;border-top:1px solid var(--sl-border);display:flex;justify-content:flex-end;gap:10px}
+  .us-close{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--sl-border);background:var(--sl-bg);color:var(--sl-muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+  .us-close:hover{background:var(--sl-border);color:var(--sl-text)}
+  .us-label{display:block;font-size:12px;font-weight:800;color:var(--sl-text-2);margin-bottom:5px;letter-spacing:0.2px;font-family:'Nunito',sans-serif}
+  .us-input,.us-select{width:100%;padding:9px 12px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg);color:var(--sl-text);font-size:13.5px;outline:none;transition:all 0.15s;font-family:inherit}
+  .us-input:focus,.us-select:focus{border-color:#3b82f6;background:var(--sl-surface);box-shadow:0 0 0 3px rgba(59,130,246,0.11)}
+  .us-input::placeholder{color:var(--sl-muted)}
+  .us-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .us-hint{font-size:11px;color:var(--sl-muted);margin-top:4px}
+  .us-check-row{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--sl-text-2)}
+  .us-meta-row{font-size:11px;color:var(--sl-muted);display:flex;gap:12px;flex-wrap:wrap}
+  @keyframes usFade{from{opacity:0}to{opacity:1}}
+  @keyframes usSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @media(max-width:600px){.us-grid2{grid-template-columns:1fr}.us-search{width:100%}}
+`;
 
-function ActiveBadge({ isActive }: { isActive: boolean }) {
-  const cls = isActive
-    ? "bg-emerald-600/20 text-emerald-200 border-emerald-500/30"
-    : "bg-red-600/20 text-red-200 border-red-500/30";
+function Modal({ title, icon, onClose, children }: { title:string; icon:string; onClose:()=>void; children:React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {isActive ? "Aktív" : "Inaktív"}
-    </span>
-  );
-}
-
-function Modal({
-  title,
-  children,
-  onClose,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-2xl rounded-lg border border-white/10 bg-zinc-950 shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <div className="text-sm font-semibold">{title}</div>
-          <button
-            className="rounded-md px-2 py-1 text-sm hover:bg-white/10"
-            type="button"
-            onClick={onClose}
-            aria-label="Bezárás"
-            title="Bezárás"
-          >
-            ✕
-          </button>
+    <div className="us-overlay" onClick={onClose}>
+      <div className="us-modal" onClick={e => e.stopPropagation()}>
+        <div className="us-modal-hdr">
+          <div className="us-modal-title"><span>{icon}</span>{title}</div>
+          <button className="us-close" onClick={onClose}>✕</button>
         </div>
-        <div className="p-4">{children}</div>
+        {children}
       </div>
     </div>
   );
 }
 
-type UserFormState = {
-  email: string;
-  displayName: string;
-  uiRole: UiRole;
-  password: string;
-  isActive: boolean;
-};
-
-function uiRoleToBackendRole(uiRole: UiRole): BackendRole {
-  const found = UI_ROLE_OPTIONS.find((x) => x.uiRole === uiRole);
-  return found?.backendRole ?? "OPERATOR";
-}
-
-function guessUiRoleFromBackendRole(role: BackendRole): UiRole {
-  if (role === "TENANT_ADMIN") return "ADMIN";
-  if (role === "ORG_ADMIN") return "EDITOR";
-  if (role === "PLAYER") return "PLAYER";
-  return "CONTRIBUTOR";
-}
+type UserFormState = { email:string; displayName:string; uiRole:UiRole; password:string; isActive:boolean };
 
 export default function Users() {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const [q, setQ] = useState<string>("");
-
-  const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
-  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
-  const [isMessagesOpen, setIsMessagesOpen] = useState<boolean>(false);
-
-  const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
-
-  const [form, setForm] = useState<UserFormState>({
-    email: "",
-    displayName: "",
-    uiRole: "CONTRIBUTOR",
-    password: "",
-    isActive: true,
-  });
-
-  const [busyAction, setBusyAction] = useState<null | "create" | "update" | "delete">(null);
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers]     = useState<UserDto[]>([]);
+  const [error, setError]     = useState<string|null>(null);
+  const [q, setQ]             = useState("");
+  const [isCreateOpen, setIsCreateOpen]   = useState(false);
+  const [isEditOpen, setIsEditOpen]       = useState(false);
+  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [selectedUser, setSelectedUser]   = useState<UserDto|null>(null);
+  const [form, setForm] = useState<UserFormState>({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
+  const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete">(null);
 
   async function loadUsers() {
-    setLoading(true);
-    setError(null);
-    try {
-      const resp = await apiRequest<UsersListResponse>(API.USERS_LIST);
-      const list = Array.isArray(resp?.users) ? resp.users : [];
-      setUsers(list);
-    } catch (e) {
-      setError(safeErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { const r = await apiFetch<{ok:boolean;users:UserDto[]}>("/admin/users"); setUsers(Array.isArray(r?.users)?r.users:[]); }
+    catch (e) { setError(safeErr(e)); }
+    finally { setLoading(false); }
   }
-
-  useEffect(() => {
-    void loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { void loadUsers(); }, []);
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return users;
-
-    return users.filter((u) => {
-      const parts = [
-        u.email ?? "",
-        u.displayName ?? "",
-        u.role ?? "",
-        u.lastLoginAt ?? "",
-        u.createdAt ?? "",
-        u.id ?? "", // kereshető marad, de nem jelenítjük meg
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return parts.includes(needle);
-    });
+    const n = q.trim().toLowerCase(); if (!n) return users;
+    return users.filter(u => [u.email,u.displayName,u.role,u.lastLoginAt,u.createdAt].join(" ").toLowerCase().includes(n));
   }, [q, users]);
 
   function openCreate() {
-    setSelectedUser(null);
-    setForm({ email: "", displayName: "", uiRole: "CONTRIBUTOR", password: "", isActive: true });
-    setIsCreateOpen(true);
+    setSelectedUser(null); setForm({ email:"",displayName:"",uiRole:"CONTRIBUTOR",password:"",isActive:true }); setIsCreateOpen(true);
   }
-
-  function openEdit(u: UserDto) {
-    setSelectedUser(u);
-    setForm({
-      email: u.email ?? "",
-      displayName: u.displayName ?? "",
-      uiRole: guessUiRoleFromBackendRole(u.role),
-      password: "",
-      isActive: typeof u.isActive === "boolean" ? u.isActive : true,
-    });
-    setIsEditOpen(true);
+  function openEdit(u:UserDto) {
+    setSelectedUser(u); setForm({ email:u.email??"",displayName:u.displayName??"",uiRole:backendToUi(u.role),password:"",isActive:typeof u.isActive==="boolean"?u.isActive:true }); setIsEditOpen(true);
   }
-
   async function submitCreate() {
     setError(null);
-
-    if (!form.email.trim()) {
-      setError("E-mail megadása kötelező.");
-      return;
-    }
-    if (!form.password.trim()) {
-      setError("Jelszó megadása kötelező új felhasználó létrehozásához.");
-      return;
-    }
-
+    if (!form.email.trim()) { setError("E-mail megadása kötelező."); return; }
+    if (!form.password.trim()) { setError("Jelszó megadása kötelező."); return; }
     setBusyAction("create");
     try {
-      const payload = {
-        email: form.email.trim(),
-        displayName: form.displayName.trim() ? form.displayName.trim() : null,
-        role: uiRoleToBackendRole(form.uiRole),
-        password: form.password,
-        isActive: form.isActive,
-      };
-
-      const resp = await apiRequest<UserSingleResponse>(API.USERS_CREATE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
-
-      setIsCreateOpen(false);
-      await loadUsers();
-    } catch (e) {
-      setError(["Nem sikerült létrehozni a felhasználót.", safeErrorMessage(e)].join(" "));
-    } finally {
-      setBusyAction(null);
-    }
+      const r = await apiFetch<{ok:boolean}>("/admin/users",{ method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:form.email.trim(), displayName:form.displayName.trim()||null, role:uiToBackend(form.uiRole), password:form.password, isActive:form.isActive }) });
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      setIsCreateOpen(false); await loadUsers();
+    } catch (e) { setError("Nem sikerült létrehozni. "+safeErr(e)); }
+    finally { setBusyAction(null); }
   }
-
   async function submitUpdate() {
-    if (!selectedUser) return;
-
-    setError(null);
-    if (!form.email.trim()) {
-      setError("E-mail megadása kötelező.");
-      return;
-    }
-
+    if (!selectedUser) return; setError(null);
+    if (!form.email.trim()) { setError("E-mail kötelező."); return; }
     setBusyAction("update");
     try {
-      const payload: Record<string, unknown> = {
-        email: form.email.trim(),
-        displayName: form.displayName.trim() ? form.displayName.trim() : null,
-        role: uiRoleToBackendRole(form.uiRole),
-        isActive: form.isActive,
-      };
-
-      if (form.password.trim()) {
-        payload.password = form.password;
-      }
-
-      const resp = await apiRequest<UserSingleResponse>(API.USERS_UPDATE(selectedUser.id), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
-
-      setIsEditOpen(false);
-      setSelectedUser(null);
-      await loadUsers();
-    } catch (e) {
-      setError(["Nem sikerült módosítani a felhasználót.", safeErrorMessage(e)].join(" "));
-    } finally {
-      setBusyAction(null);
-    }
+      const payload:Record<string,unknown> = { email:form.email.trim(), displayName:form.displayName.trim()||null, role:uiToBackend(form.uiRole), isActive:form.isActive };
+      if (form.password.trim()) payload.password=form.password;
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${selectedUser.id}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      setIsEditOpen(false); setSelectedUser(null); await loadUsers();
+    } catch (e) { setError("Nem sikerült módosítani. "+safeErr(e)); }
+    finally { setBusyAction(null); }
   }
-
-  async function doDeactivate(u: UserDto) {
-    const ok = window.confirm(`Biztos deaktiválod? (${u.email})`);
-    if (!ok) return;
-
-    setError(null);
-    setBusyAction("delete");
+  async function doDeactivate(u:UserDto) {
+    if (!window.confirm(`Biztos deaktiválod? (${u.email})`)) return;
+    setError(null); setBusyAction("delete");
     try {
-      const resp = await apiRequest<{ ok: boolean }>(API.USERS_DELETE(u.id), { method: "DELETE" });
-      if (!resp?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{method:"DELETE"});
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
-    } catch (e) {
-      setError(["Nem sikerült deaktiválni a felhasználót.", safeErrorMessage(e)].join(" "));
-    } finally {
-      setBusyAction(null);
-    }
+    } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
+    finally { setBusyAction(null); }
   }
 
-  function openMessages(u: UserDto) {
-    setSelectedUser(u);
-    setIsMessagesOpen(true);
+  function UserForm() {
+    return (
+      <>
+        <div className="us-grid2">
+          <div>
+            <label className="us-label">E-mail cím *</label>
+            <input className="us-input" type="email" value={form.email} onChange={e => setForm(s=>({...s,email:e.target.value}))} placeholder="pl. tanar@iskola.hu" />
+          </div>
+          <div>
+            <label className="us-label">Megjelenített név</label>
+            <input className="us-input" value={form.displayName} onChange={e => setForm(s=>({...s,displayName:e.target.value}))} placeholder="pl. Kiss Péter" />
+            <div className="us-hint">Opcionális</div>
+          </div>
+        </div>
+        <div className="us-grid2">
+          <div>
+            <label className="us-label">Szerepkör</label>
+            <select className="us-select" value={form.uiRole} onChange={e => setForm(s=>({...s,uiRole:e.target.value as UiRole}))}>
+              {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
+            </select>
+            <div className="us-hint">{UI_ROLE_OPTIONS.find(r=>r.uiRole===form.uiRole)?.description}</div>
+          </div>
+          <div>
+            <label className="us-label">Státusz</label>
+            <label className="us-check-row" style={{ marginTop:10 }}>
+              <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
+              Aktív felhasználó
+            </label>
+          </div>
+        </div>
+        <div>
+          <label className="us-label">Jelszó</label>
+          <input type="password" className="us-input" value={form.password} onChange={e => setForm(s=>({...s,password:e.target.value}))} placeholder="Minimum 6 karakter" />
+          <div className="us-hint">{isEditOpen ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
+        </div>
+      </>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <style>{CSS}</style>
+
+      <div className="us-hdr">
         <div>
-          <h1 className="text-xl font-semibold">Felhasználók</h1>
-          <p className="mt-1 text-sm text-white/70">
-            Tenant-szintű felhasználók kezelése (create / edit / deactivate). Last login:{" "}
-            <span className="font-mono">User.lastLoginAt</span>.
-          </p>
+          <div className="us-title">👥 Felhasználók</div>
+          <div className="us-subtitle">Intézményi felhasználók és jogosultságok kezelése.</div>
         </div>
-
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <input
-            className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none placeholder:text-white/40 focus:border-white/20 sm:w-96"
-            placeholder="Keresés (email, név, role, last login, created)"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-60"
-            onClick={openCreate}
-            disabled={loading}
-            title="Új felhasználó"
-          >
-            + Új
-          </button>
-
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 disabled:opacity-60"
-            onClick={() => void loadUsers()}
-            disabled={loading}
-            title="Frissítés"
-          >
-            Frissítés
-          </button>
+        <div className="us-actions">
+          <input className="us-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
+          <button className="us-btn us-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új felhasználó</button>
+          <button className="us-btn us-btn-ghost" onClick={() => void loadUsers()} disabled={loading} type="button">🔄</button>
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>
-      ) : null}
+      {error && <div className="us-alert us-alert-error"><span>⚠️</span>{error}</div>}
 
-      <div className="rounded-lg border border-white/10 bg-zinc-950">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <div className="text-sm font-semibold">Lista</div>
-          <div className="text-xs text-white/60">
-            {loading ? "Betöltés..." : `${filtered.length} / ${users.length} felhasználó`}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase text-white/60">
-              <tr className="border-b border-white/10">
-                <th className="px-4 py-3">E-mail</th>
-                <th className="px-4 py-3">Név</th>
-                <th className="px-4 py-3">Státusz</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Létrehozva</th>
-                <th className="px-4 py-3">Utolsó belépés</th>
-                <th className="px-4 py-3 text-right">Műveletek</th>
+      <div className="us-card">
+        <div style={{ overflowX:"auto" }}>
+          <table className="us-table">
+            <thead>
+              <tr>
+                <th>E-mail</th><th>Név</th><th>Státusz</th><th>Szerepkör</th><th>Létrehozva</th><th>Utolsó belépés</th><th style={{ textAlign:"right" }}>Műveletek</th>
               </tr>
             </thead>
-
-            <tbody className="divide-y divide-white/10">
-              {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-white/5">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{u.email}</div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    {u.displayName ? <span className="font-medium">{u.displayName}</span> : <span className="text-white/40">—</span>}
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <ActiveBadge isActive={typeof u.isActive === "boolean" ? u.isActive : true} />
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <RoleBadge role={u.role} />
-                  </td>
-
-                  <td className="px-4 py-3">{formatDateTime(u.createdAt ?? null)}</td>
-                  <td className="px-4 py-3">{formatDateTime(u.lastLoginAt ?? null)}</td>
-
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        className="rounded-md bg-white/5 px-2 py-1 text-xs font-medium hover:bg-white/10"
-                        onClick={() => openMessages(u)}
-                        title="Üzenetek (még nincs backend endpoint)"
-                      >
-                        Üzenetek
-                      </button>
-
-                      <button
-                        type="button"
-                        className="rounded-md bg-white/5 px-2 py-1 text-xs font-medium hover:bg-white/10 disabled:opacity-60"
-                        onClick={() => openEdit(u)}
-                        disabled={busyAction === "update" || busyAction === "delete"}
-                        title="Szerkesztés"
-                      >
-                        Szerkeszt
-                      </button>
-
-                      <button
-                        type="button"
-                        className="rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/15 disabled:opacity-60"
-                        onClick={() => void doDeactivate(u)}
-                        disabled={busyAction === "delete"}
-                        title="Deaktiválás (soft delete)"
-                      >
-                        Deaktivál
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {!loading && filtered.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={7}>
-                    Nincs találat.
-                  </td>
-                </tr>
-              ) : null}
-
-              {loading ? (
-                <tr>
-                  <td className="px-4 py-6 text-center text-sm text-white/60" colSpan={7}>
-                    Betöltés…
-                  </td>
-                </tr>
-              ) : null}
+            <tbody>
+              {loading && (
+                <tr><td colSpan={7} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
+                  <span style={{ fontSize:22 }}>⏳</span><div style={{ fontSize:13, marginTop:8 }}>Betöltés…</div>
+                </td></tr>
+              )}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={7}>
+                  <div className="us-empty">
+                    <div style={{ fontSize:40, marginBottom:10 }}>👤</div>
+                    <div style={{ fontWeight:700, fontFamily:"'Nunito',sans-serif" }}>Nincs találat</div>
+                  </div>
+                </td></tr>
+              )}
+              {filtered.map(u => {
+                const rc = ROLE_COLORS[u.role] || { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
+                const active = typeof u.isActive==="boolean" ? u.isActive : true;
+                return (
+                  <tr key={u.id}>
+                    <td><strong style={{ fontWeight:700, fontSize:13.5 }}>{u.email}</strong></td>
+                    <td>{u.displayName || <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
+                    <td>
+                      <span className="us-badge" style={active
+                        ? {background:"#f0fdf4",color:"#15803d",borderColor:"#bbf7d0"}
+                        : {background:"#fef2f2",color:"#dc2626",borderColor:"#fecaca"}}>
+                        {active ? "✓ Aktív" : "✗ Inaktív"}
+                      </span>
+                    </td>
+                    <td><span className="us-badge" style={{ background:rc.bg, color:rc.color, borderColor:rc.border }}>{u.role}</span></td>
+                    <td style={{ fontSize:12 }}>{formatDT(u.createdAt)}</td>
+                    <td style={{ fontSize:12 }}>{formatDT(u.lastLoginAt)}</td>
+                    <td style={{ textAlign:"right" }}>
+                      <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
+                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => { setSelectedUser(u); setIsMessagesOpen(true); }} type="button">📧</button>
+                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
+                        <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Create modal */}
-      {isCreateOpen ? (
-        <Modal title="Új felhasználó" onClose={() => setIsCreateOpen(false)}>
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">E-mail</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.email}
-                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                />
-              </label>
-
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Név</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.displayName}
-                  onChange={(e) => setForm((s) => ({ ...s, displayName: e.target.value }))}
-                  placeholder="pl. Porta melletti PC"
-                />
-                <div className="text-xs text-white/50">Opcionális, de ajánlott (azonosítás / “hol teljesít szolgálatot”).</div>
-              </label>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Státusz</div>
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    id="create-active"
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={form.isActive}
-                    onChange={(e) => setForm((s) => ({ ...s, isActive: e.target.checked }))}
-                  />
-                  <label htmlFor="create-active" className="text-sm">
-                    Aktív
-                  </label>
-                </div>
-              </label>
-
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Szerepkör</div>
-                <select
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.uiRole}
-                  onChange={(e) => setForm((s) => ({ ...s, uiRole: e.target.value as UiRole }))}
-                >
-                  {UI_ROLE_OPTIONS.map((r) => (
-                    <option key={r.uiRole} value={r.uiRole}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-white/50">
-                  {UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}
-                </div>
-                <div className="text-xs text-white/40">
-                  Backend role: <span className="font-mono">{uiRoleToBackendRole(form.uiRole)}</span>
-                </div>
-              </label>
-            </div>
-
-            <label className="space-y-1">
-              <div className="text-xs text-white/60">Jelszó</div>
-              <input
-                type="password"
-                className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                value={form.password}
-                onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
-              />
-              <div className="text-xs text-white/50">Minimum 6 karakter.</div>
-            </label>
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
-                onClick={() => setIsCreateOpen(false)}
-                disabled={busyAction === "create"}
-              >
-                Mégse
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-60"
-                onClick={() => void submitCreate()}
-                disabled={busyAction === "create"}
-              >
-                {busyAction === "create" ? "Létrehozás…" : "Létrehoz"}
-              </button>
-            </div>
+      {isCreateOpen && (
+        <Modal title="Új felhasználó" icon="👤" onClose={() => setIsCreateOpen(false)}>
+          <div className="us-modal-body"><UserForm /></div>
+          <div className="us-modal-footer">
+            <button className="us-btn us-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
+            <button className="us-btn us-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
+              {busyAction==="create" ? "⏳ Létrehozás…" : "✅ Létrehoz"}
+            </button>
           </div>
         </Modal>
-      ) : null}
+      )}
 
       {/* Edit modal */}
-      {isEditOpen && selectedUser ? (
-        <Modal title={`Felhasználó szerkesztése: ${selectedUser.email}`} onClose={() => setIsEditOpen(false)}>
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">E-mail</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.email}
-                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                />
-              </label>
-
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Név</div>
-                <input
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.displayName}
-                  onChange={(e) => setForm((s) => ({ ...s, displayName: e.target.value }))}
-                />
-              </label>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Státusz</div>
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    id="edit-active"
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={form.isActive}
-                    onChange={(e) => setForm((s) => ({ ...s, isActive: e.target.checked }))}
-                  />
-                  <label htmlFor="edit-active" className="text-sm">
-                    Aktív
-                  </label>
-                </div>
-              </label>
-
-              <label className="space-y-1">
-                <div className="text-xs text-white/60">Szerepkör</div>
-                <select
-                  className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                  value={form.uiRole}
-                  onChange={(e) => setForm((s) => ({ ...s, uiRole: e.target.value as UiRole }))}
-                >
-                  {UI_ROLE_OPTIONS.map((r) => (
-                    <option key={r.uiRole} value={r.uiRole}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-white/50">
-                  {UI_ROLE_OPTIONS.find((r) => r.uiRole === form.uiRole)?.description ?? ""}
-                </div>
-                <div className="text-xs text-white/40">
-                  Backend role: <span className="font-mono">{uiRoleToBackendRole(form.uiRole)}</span>
-                </div>
-              </label>
-            </div>
-
-            <label className="space-y-1">
-              <div className="text-xs text-white/60">Jelszó csere (opcionális)</div>
-              <input
-                type="password"
-                className="w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-white/20"
-                value={form.password}
-                onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
-              />
-              <div className="text-xs text-white/50">Ha üres, nem küldjük a payloadban.</div>
-            </label>
-
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-white/60">
-                Létrehozva: <span className="font-medium">{formatDateTime(selectedUser.createdAt ?? null)}</span>
-                <span className="mx-2">•</span>
-                Utolsó belépés: <span className="font-medium">{formatDateTime(selectedUser.lastLoginAt ?? null)}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-md bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10"
-                  onClick={() => setIsEditOpen(false)}
-                  disabled={busyAction === "update"}
-                >
-                  Mégse
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-60"
-                  onClick={() => void submitUpdate()}
-                  disabled={busyAction === "update"}
-                >
-                  {busyAction === "update" ? "Mentés…" : "Mentés"}
-                </button>
-              </div>
+      {isEditOpen && selectedUser && (
+        <Modal title={`Szerkesztés: ${selectedUser.email}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
+          <div className="us-modal-body">
+            <UserForm />
+            <div className="us-meta-row">
+              <span>Létrehozva: {formatDT(selectedUser.createdAt)}</span>
+              <span>Utolsó belépés: {formatDT(selectedUser.lastLoginAt)}</span>
             </div>
           </div>
-        </Modal>
-      ) : null}
-
-      {/* Messages modal   */}
-      {isMessagesOpen && selectedUser ? (
-        <Modal title={`Üzenetek: ${selectedUser.email}`} onClose={() => setIsMessagesOpen(false)}>
-          <div className="space-y-3">
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              Ez a nézet még nincs bekötve: a backendben nincs <span className="font-mono">GET /admin/users/:id/messages</span>.
-            </div>
-
-            <div className="text-sm text-white/70">
-              Következő lépésben megcsináljuk az endpointot tenant-scope-pal (Message.createdById alapján),
-              és ide visszakötjük egy listanézettel + szűrővel.
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="rounded-md bg-white/10 px-3 py-2 text-sm font-medium hover:bg-white/15"
-                onClick={() => setIsMessagesOpen(false)}
-              >
-                Bezár
-              </button>
-            </div>
+          <div className="us-modal-footer">
+            <button className="us-btn us-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">Mégse</button>
+            <button className="us-btn us-btn-primary" onClick={() => void submitUpdate()} disabled={busyAction==="update"} type="button">
+              {busyAction==="update" ? "⏳ Mentés…" : "💾 Mentés"}
+            </button>
           </div>
         </Modal>
-      ) : null}
+      )}
+
+      {/* Messages modal */}
+      {isMessagesOpen && selectedUser && (
+        <Modal title={`Üzenetek: ${selectedUser.email}`} icon="📧" onClose={() => setIsMessagesOpen(false)}>
+          <div className="us-modal-body">
+            <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:11, padding:"10px 14px", fontSize:13, color:"#d97706" }}>
+              ⚠ Ez a nézet még nincs bekötve – a backend endpointot a következő lépésben implementáljuk.
+            </div>
+          </div>
+          <div className="us-modal-footer">
+            <button className="us-btn us-btn-ghost" onClick={() => setIsMessagesOpen(false)} type="button">Bezár</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

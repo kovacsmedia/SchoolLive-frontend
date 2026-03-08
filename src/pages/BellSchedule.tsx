@@ -387,17 +387,17 @@ export default function BellSchedule() {
             if (isToday) bg = "#1a1a3e";
             if (isSelected) bg = "#2a2a4e";
             return (
-              <div key={idx} onClick={() => onDayClick(dateStr)} style={{ background: bg, border: isSelected ? "2px solid #6c8ebf" : "2px solid transparent", borderRadius: 6, padding: "6px 4px", minHeight: 52, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s" }} title={data?.template?.name ?? (isHoliday ? "Szünnap" : "Normál rend")}>
-                <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? "#6c8ebf" : isWeekend ? "#e55" : "#ccc" }}>{day}</div>
-                {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#e55", marginTop: 2 }}>SZÜNNAP</div>}
-                {isWeekend && <div style={{ fontSize: 9, color: "#e55", marginTop: 2 }}>HÉTVÉGE</div>}
-                {hasCustomTemplate && !isHoliday && <div style={{ fontSize: 9, color: "#6c6", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data?.template?.name?.slice(0, 10)}</div>}
+              <div key={idx} onClick={() => onDayClick(dateStr)} style={{ background: bg, border: isSelected ? "2px solid #3b82f6" : "2px solid transparent", borderRadius: 6, padding: "6px 4px", minHeight: 52, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s" }} title={data?.template?.name ?? (isHoliday ? "Szünnap" : "Normál rend")}>
+                <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? "#3b82f6" : isWeekend ? "#ef4444" : "var(--sl-text)" }}>{day}</div>
+                {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>SZÜNNAP</div>}
+                {isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>HÉTVÉGE</div>}
+                {hasCustomTemplate && !isHoliday && <div style={{ fontSize: 9, color: "#16a34a", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data?.template?.name?.slice(0, 10)}</div>}
               </div>
             );
           })}
         </div>
         {selectedDate && editDay && (
-          <div style={{ marginTop: 20, background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, padding: 16 }}>
+          <div style={{ marginTop: 20, background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 16 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>📅 {selectedDate} szerkesztése</h3>
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
               <input type="checkbox" checked={editDay.isHoliday} onChange={e => { setEditDay({ ...editDay, isHoliday: e.target.checked, templateId: e.target.checked ? null : editDay.templateId }); setDirty(true); }} />
@@ -405,7 +405,7 @@ export default function BellSchedule() {
             </label>
             {!editDay.isHoliday && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 4 }}>Csengetési rend</label>
+                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>Csengetési rend</label>
                 <select className="sl-select" value={editDay.templateId ?? ""} onChange={e => { setEditDay({ ...editDay, templateId: e.target.value || null }); setDirty(true); }}>
                   <option value="">Normál csengetési rend (alapértelmezett)</option>
                   {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -435,27 +435,27 @@ export default function BellSchedule() {
         </div>
 
         {!editTemplate && (
-          <div style={{ fontSize: 12, color: "#888", background: "#111", border: "1px solid #2a2a3a", borderRadius: 6, padding: "8px 12px", marginBottom: 12 }}>
-            ⭐ Az <strong style={{ color: "#ccc" }}>alapértelmezett</strong> sablon töltődik le az eszközre offline fallbackként.
+          <div style={{ fontSize: 12, color: "var(--sl-muted)", background: "var(--sl-bg)", border: "1px solid var(--sl-border)", borderRadius: 6, padding: "8px 12px", marginBottom: 12 }}>
+            ⭐ Az <strong style={{ color: "var(--sl-text)" }}>alapértelmezett</strong> sablon töltődik le az eszközre offline fallbackként.
             {!templates.some(t => t.isDefault) && <span style={{ color: "#e8a", marginLeft: 6 }}>⚠ Nincs alapértelmezett sablon beállítva!</span>}
           </div>
         )}
 
-        {templatesLoading ? <div style={{ color: "#888" }}>Betöltés...</div> : (
+        {templatesLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
           <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
             {templates.map(t => (
-              <div key={t.id} style={{ background: t.isDefault ? "#111a11" : "#1a1a2e", border: t.isDefault ? "1px solid #3a5a3a" : "1px solid #333", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={t.id} style={{ background: t.isDefault ? "#f0fdf4" : "var(--sl-surface)", border: t.isDefault ? "1px solid #bbf7d0" : "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
                     {t.name}
-                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a4a2a", color: "#8c8", borderRadius: 4, padding: "2px 6px" }}>⭐ Alapértelmezett</span>}
-                    {t.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#3a2a1a", color: "#c86", borderRadius: 4, padding: "2px 6px" }}>🔒 Zárolt</span>}
+                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#dcfce7", color: "#15803d", borderRadius: 4, padding: "2px 6px" }}>⭐ Alapértelmezett</span>}
+                    {t.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#fffbeb", color: "#d97706", borderRadius: 4, padding: "2px 6px" }}>🔒 Zárolt</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{t.bells.length} jelzés</div>
+                  <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t.bells.length} jelzés</div>
                 </div>
                 <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(t)}>👁 Megtekint{!t.isLocked ? " / Szerkeszt" : ""}</button>
                 {hasLock && !t.isDefault && (
-                  <button className="sl-btn" style={{ background: "#1a2a1a", color: "#8c8", border: "1px solid #3a5a3a", whiteSpace: "nowrap" }} onClick={() => setDefaultTemplate(t)} title="Beállítás offline alapértelmezettként">⭐ Alapért.</button>
+                  <button className="sl-btn" style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", whiteSpace: "nowrap" }} onClick={() => setDefaultTemplate(t)} title="Beállítás offline alapértelmezettként">⭐ Alapért.</button>
                 )}
                 {!t.isLocked && <button className="sl-btn sl-btn-danger" onClick={() => deleteTemplate(t)}>Töröl</button>}
               </div>
@@ -464,30 +464,30 @@ export default function BellSchedule() {
         )}
 
         {editTemplate && (
-          <div style={{ background: "#111122", border: "1px solid #444", borderRadius: 8, padding: 16 }}>
+          <div style={{ background: "var(--sl-surface)", border: "1px solid #444", borderRadius: 8, padding: 16 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>
               {selectedTemplate ? `${selectedTemplate.isLocked ? "👁 " : "✏️ "}${selectedTemplate.name}` : "Új sablon"}
             </h3>
 
             {!selectedTemplate?.isLocked && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: "#888", display: "block", marginBottom: 4 }}>Sablon neve</label>
+                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>Sablon neve</label>
                 <input className="sl-input" value={editTemplate.name} onChange={e => setEditTemplate({ ...editTemplate, name: e.target.value })} placeholder="pl. Rövidített nap" />
               </div>
             )}
 
             {/* Fejléc */}
-            <div style={{ marginBottom: 6, fontSize: 12, color: "#666", display: "grid", gridTemplateColumns: "120px 80px 1fr 80px", gap: 8, padding: "0 4px" }}>
+            <div style={{ marginBottom: 6, fontSize: 12, color: "var(--sl-muted)", display: "grid", gridTemplateColumns: "120px 80px 1fr 80px", gap: 8, padding: "0 4px" }}>
               <span>Időpont</span><span>Típus</span><span>Hang</span><span></span>
             </div>
 
             {/* Pending sor – a lista TETEJÉN, kiemelve */}
             {pendingBell && (
-              <div style={{ display: "grid", gridTemplateColumns: "120px 80px 1fr auto", gap: 8, marginBottom: 8, alignItems: "center", background: "#1a2a1a", border: "1px solid #4a7a4a", borderRadius: 6, padding: "6px 8px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "120px 80px 1fr auto", gap: 8, marginBottom: 8, alignItems: "center", background: "#1a2a1a", border: "1px solid #bbf7d0", borderRadius: 6, padding: "6px 8px" }}>
                 <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={pendingBell.hour}
                     onChange={e => setPendingBell({ ...pendingBell, hour: Math.min(23, Math.max(0, parseInt(e.target.value) || 0)) })} />
-                  <span style={{ alignSelf: "center", color: "#888" }}>:</span>
+                  <span style={{ alignSelf: "center", color: "var(--sl-muted)" }}>:</span>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={59} value={pendingBell.minute}
                     onChange={e => setPendingBell({ ...pendingBell, minute: Math.min(59, Math.max(0, parseInt(e.target.value) || 0)) })} />
                 </div>
@@ -513,7 +513,7 @@ export default function BellSchedule() {
                 <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={bell.hour}
                     onChange={e => updateBellEntry(idx, "hour", Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))} disabled={selectedTemplate?.isLocked} />
-                  <span style={{ alignSelf: "center", color: "#888" }}>:</span>
+                  <span style={{ alignSelf: "center", color: "var(--sl-muted)" }}>:</span>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={59} value={bell.minute}
                     onChange={e => updateBellEntry(idx, "minute", Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))} disabled={selectedTemplate?.isLocked} />
                 </div>
@@ -562,13 +562,13 @@ export default function BellSchedule() {
     return (
       <div>
         <div style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#888", marginBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--sl-muted)", marginBottom: 4 }}>
             <span>Tárhelyhasználat</span><span>{fmtBytes(totalUsed)} / {fmtBytes(MAX_TOTAL_BYTES)}</span>
           </div>
           <div style={{ background: "#333", borderRadius: 4, height: 8, overflow: "hidden" }}>
             <div style={{ width: `${pct}%`, height: "100%", background: pct > 80 ? "#e55" : "#6c8ebf", transition: "width 0.3s" }} />
           </div>
-          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Elérhető: {fmtBytes(available)}</div>
+          <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>Elérhető: {fmtBytes(available)}</div>
         </div>
         <div style={{ marginBottom: 16 }}>
           <input ref={fileInputRef} type="file" accept=".mp3,audio/mpeg" style={{ display: "none" }}
@@ -576,18 +576,18 @@ export default function BellSchedule() {
           <button className="sl-btn sl-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading || available <= 0}>
             {uploading ? "Feltöltés..." : "📤 MP3 feltöltése"}
           </button>
-          {available <= 0 && <span style={{ marginLeft: 8, color: "#e55", fontSize: 13 }}>Nincs szabad hely!</span>}
+          {available <= 0 && <span style={{ marginLeft: 8, color: "#ef4444", fontSize: 13 }}>Nincs szabad hely!</span>}
         </div>
-        {soundsLoading ? <div style={{ color: "#888" }}>Betöltés...</div> : (
+        {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
           <div style={{ display: "grid", gap: 8 }}>
             {sounds.map(s => (
-              <div key={s.id} style={{ background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={s.id} style={{ background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ fontSize: 20 }}>🔔</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{s.filename}
-                    {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#6c8ebf", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
+                    {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: "#888" }}>{fmtBytes(s.sizeBytes)}</div>
+                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>{fmtBytes(s.sizeBytes)}</div>
                 </div>
                 {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>Töröl</button>}
               </div>
@@ -599,41 +599,113 @@ export default function BellSchedule() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>🔔 Csengetési rend</h1>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+    <div style={{ maxWidth: 900, fontFamily: "'Nunito','Segoe UI',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        :root{
+          --sl-font:'Nunito','Segoe UI',sans-serif;
+          --sl-blue:#3b82f6; --sl-blue-dark:#1d4ed8; --sl-blue-light:#eff6ff;
+          --sl-indigo:#6366f1; --sl-green:#22c55e; --sl-red:#ef4444; --sl-amber:#f59e0b;
+          --sl-bg:#f1f5fd; --sl-surface:#fff; --sl-border:#e2eaf8;
+          --sl-text:#1e293b; --sl-text-2:#475569; --sl-muted:#94a3b8;
+        }
+        @media(prefers-color-scheme:dark){
+          :root{
+            --sl-bg:#07101f; --sl-surface:#0d1b2e; --sl-border:#1a2d47;
+            --sl-text:#f0f6ff; --sl-text-2:#8da4c0; --sl-muted:#4a6280; --sl-blue-light:#0c2040;
+          }
+        }
+        /* ── Button overrides ── */
+        .sl-btn {
+          display:inline-flex; align-items:center; gap:6px;
+          padding:8px 16px; border-radius:11px; border:1.5px solid var(--sl-border);
+          background:var(--sl-bg); color:var(--sl-text-2);
+          font-size:13px; font-weight:700; cursor:pointer;
+          transition:all 0.15s; font-family:var(--sl-font); white-space:nowrap;
+        }
+        .sl-btn:hover:not(:disabled){ background:var(--sl-border); color:var(--sl-text); }
+        .sl-btn:disabled{ opacity:0.55; cursor:not-allowed; }
+        .sl-btn-primary {
+          background:linear-gradient(135deg,#3b82f6,#6366f1) !important;
+          color:#fff !important; border-color:transparent !important;
+          box-shadow:0 3px 10px rgba(99,102,241,0.28);
+        }
+        .sl-btn-primary:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 5px 14px rgba(99,102,241,0.36); }
+        .sl-btn-secondary {
+          background:var(--sl-blue-light) !important;
+          color:var(--sl-blue-dark) !important; border-color:#bfdbfe !important;
+        }
+        .sl-btn-secondary:hover:not(:disabled){ background:#dbeafe !important; }
+        .sl-btn-danger {
+          background:#fff5f5 !important; color:#dc2626 !important; border-color:#fecaca !important;
+        }
+        .sl-btn-danger:hover:not(:disabled){ background:#fee2e2 !important; }
+        /* ── Input / Select overrides ── */
+        .sl-input, .sl-select {
+          border:1.5px solid var(--sl-border); border-radius:11px;
+          background:var(--sl-bg); color:var(--sl-text);
+          font-size:13.5px; font-family:var(--sl-font); outline:none;
+          padding:8px 12px; transition:all 0.15s;
+        }
+        .sl-input:focus, .sl-select:focus {
+          border-color:#3b82f6; background:var(--sl-surface);
+          box-shadow:0 0 0 3px rgba(59,130,246,0.11);
+        }
+        .sl-input::placeholder{ color:var(--sl-muted); }
+        /* ── Calendar dark mode fix ── */
+        .bs-cal-cell { border-radius:8px; padding:6px 4px; min-height:52px; position:relative; transition:background 0.12s; }
+        .bs-cal-cell:hover { filter:brightness(1.08); }
+      `}</style>
+
+      <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:24, flexWrap:"wrap" }}>
+        <div>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:900, fontFamily:"var(--sl-font)", color:"var(--sl-text)", letterSpacing:"-0.5px" }}>🔔 Csengetési rend</h1>
+          <div style={{ fontSize:13, color:"var(--sl-muted)", marginTop:3 }}>Naptár, sablonok és hangfájlok kezelése</div>
+        </div>
+        <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
           {!hasLock ? (
-            <button className="sl-btn sl-btn-primary" onClick={acquireLock} disabled={lockLoading}>{lockLoading ? "..." : "✏️ Szerkesztés"}</button>
+            <button className="sl-btn sl-btn-primary" onClick={acquireLock} disabled={lockLoading}>{lockLoading ? "⏳ …" : "✏️ Szerkesztés"}</button>
           ) : (
             <button className="sl-btn sl-btn-secondary" onClick={releaseLock}>🔓 Szerkesztés vége</button>
           )}
-          {hasLock && <span style={{ fontSize: 12, color: "#6c8", background: "#1a2a1a", padding: "4px 8px", borderRadius: 4 }}>✓ Szerkesztési zár aktív</span>}
+          {hasLock && (
+            <span style={{ fontSize:12, color:"#15803d", background:"#f0fdf4", border:"1px solid #bbf7d0", padding:"4px 10px", borderRadius:20, fontWeight:700, fontFamily:"var(--sl-font)" }}>
+              ✓ Szerkesztési zár aktív
+            </span>
+          )}
         </div>
       </div>
 
       {error && (
-        <div style={{ background: "#2a1a1a", border: "1px solid #e55", borderRadius: 8, padding: 12, marginBottom: 16, color: "#e88", display: "flex", justifyContent: "space-between" }}>
-          <span>{error}</span>
-          <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: "#e88", cursor: "pointer", fontSize: 16 }}>✕</button>
+        <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:11, padding:"10px 14px", marginBottom:16, color:"#dc2626", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13 }}>
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError(null)} style={{ background:"none", border:"none", color:"#dc2626", cursor:"pointer", fontSize:18, lineHeight:1 }}>✕</button>
         </div>
       )}
       {success && (
-        <div style={{ background: "#1a2a1a", border: "1px solid #6c8", borderRadius: 8, padding: 12, marginBottom: 16, color: "#6c8" }}>✓ {success}</div>
+        <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:11, padding:"10px 14px", marginBottom:16, color:"#15803d", fontSize:13, fontWeight:700 }}>✅ {success}</div>
       )}
 
-      <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "2px solid #333" }}>
+      <div style={{ display:"flex", gap:4, marginBottom:20, background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, padding:4 }}>
         {(["calendar", "templates", "sounds"] as const).map((t, i) => {
           const labels = ["📅 Naptár", "📋 Sablonok", "🔊 Hangfájlok"];
           return (
-            <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? "2px solid #6c8ebf" : "2px solid transparent", marginBottom: -2, padding: "10px 20px", color: tab === t ? "#6c8ebf" : "#888", cursor: "pointer", fontWeight: tab === t ? 700 : 400, fontSize: 14, transition: "all 0.15s" }}>
+            <button key={t} onClick={() => setTab(t)} style={{
+              flex:1, background:tab===t?"linear-gradient(135deg,#eff6ff,#f5f3ff)":"transparent",
+              border:tab===t?"1px solid #bfdbfe":"1px solid transparent",
+              borderRadius:11, padding:"9px 16px",
+              color:tab===t?"#1d4ed8":"var(--sl-muted)",
+              cursor:"pointer", fontWeight:tab===t?800:600, fontSize:13.5,
+              transition:"all 0.15s", fontFamily:"var(--sl-font)",
+              boxShadow:tab===t?"0 1px 6px rgba(59,130,246,0.12)":"none",
+            }}>
               {labels[i]}
             </button>
           );
         })}
       </div>
 
-      {calLoading && tab === "calendar" && <div style={{ color: "#888" }}>Naptár betöltése...</div>}
+      {calLoading && tab === "calendar" && <div style={{ color: "var(--sl-muted)" }}>Naptár betöltése...</div>}
       {tab === "calendar" && renderCalendar()}
       {tab === "templates" && renderTemplates()}
       {tab === "sounds" && renderSounds()}
