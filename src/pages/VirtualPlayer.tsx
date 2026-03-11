@@ -383,6 +383,22 @@ export default function VirtualPlayer() {
     } catch { setStatus("pending"); }
   }, [clientId]);
 
+  // ── Logout on page unload (session felszabadítás) ──────────────────────
+  useEffect(() => {
+    const onUnload = () => {
+      const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      if (!token) return;
+      try {
+        navigator.sendBeacon(
+          "https://api.schoollive.hu/auth/logout",
+          new Blob([JSON.stringify({})], { type: "application/json" })
+        );
+      } catch {}
+    };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, []);
+
   // ── Fullscreen + Wake Lock ───────────────────────────────────────────────
   useEffect(() => {
     const el = document.documentElement;
@@ -409,6 +425,12 @@ export default function VirtualPlayer() {
   }, []);
 
   // ── Intézmény neve + csengetési rend + cache ─────────────────────────────
+  const fetchBells = useCallback(() => {
+    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+      .then(r => { if (r.bells) { setBells(r.bells); cacheBells(r.bells); } })
+      .catch(() => {});
+  }, [cacheBells]);
+
   useEffect(() => {
     if (status !== "active") return;
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
@@ -418,14 +440,11 @@ export default function VirtualPlayer() {
         setInstName(p.tenantName ?? p.tenant?.name ?? "");
       } catch {}
     }
-    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(r => {
-        if (r.bells) {
-          setBells(r.bells);
-          cacheBells(r.bells); // háttérben letölti és localStorage-ba menti
-        }
-      }).catch(() => {});
-  }, [status, cacheBells]);
+    fetchBells();
+    // 5 percenként újraszinkronizálja a csengetési rendet
+    const bellSyncTimer = setInterval(fetchBells, 5 * 60 * 1000);
+    return () => clearInterval(bellSyncTimer);
+  }, [status, fetchBells]);
 
   // ── Offline bell ticker indítása ─────────────────────────────────────────
   useEffect(() => {
