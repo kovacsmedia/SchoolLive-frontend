@@ -557,6 +557,14 @@ export default function VirtualPlayer() {
       const readingMs = text ? calcReadingMs(text) : 0;
       showMsg({ action, url, text, title: title ?? "Üzenet" }, readingMs);
       playAudio(url);
+
+    } else if (action === "STOP_PLAYBACK") {
+      // Vészleállító – azonnali leállítás, visszatérés normál módba
+      console.log("[VP] 🛑 STOP_PLAYBACK – lejátszás leállítása");
+      const a = audioRef.current;
+      if (a) { a.pause(); a.src = ""; }
+      radioStateRef.current = null;
+      dismissMsg();
     }
 
     await apiFetch("/player/device/ack", {

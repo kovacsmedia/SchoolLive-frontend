@@ -34,6 +34,8 @@ type YtPlaylistStatus = "IDLE" | "BUILDING" | "DONE" | "ERROR";
 type YtPlaylistItem   = { id: string; youtubeUrl: string; title?: string | null; sortOrder: number };
 type YtPlaylist       = { id: string; name: string; status: YtPlaylistStatus; errorMsg?: string | null; radioFileId?: string | null; items: YtPlaylistItem[]; createdAt: string };
 
+type NowPlaying = { name: string; durationSec: number | null; queuedAt: string } | null;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec) return "–";
@@ -185,6 +187,18 @@ const CSS = `
   .sr-empty{text-align:center;padding:40px 20px;color:var(--sl-muted)}
   .sr-empty-icon{font-size:36px;margin-bottom:10px}
 
+  /* ── Vészleállító + Now Playing ── */
+  .sr-stop-btn{background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;letter-spacing:0.3px;box-shadow:0 3px 10px rgba(220,38,38,0.35);transition:all 0.15s;white-space:nowrap}
+  .sr-stop-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 16px rgba(220,38,38,0.45)}
+  .sr-stop-btn:disabled{opacity:0.6;cursor:not-allowed}
+  .sr-now-playing{display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:10px;border:1px solid;font-size:12px;font-weight:700;transition:all 0.4s;white-space:nowrap;max-width:220px}
+  .sr-now-playing-idle{background:#1e293b;border-color:#334155;color:#64748b}
+  .sr-now-playing-active{background:linear-gradient(135deg,#14532d,#166534);border-color:#22c55e;color:#bbf7d0;box-shadow:0 2px 12px rgba(34,197,94,0.2)}
+  .sr-now-playing-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .sr-now-playing-dot-idle{background:#475569}
+  .sr-now-playing-dot-active{background:#22c55e;box-shadow:0 0 6px #22c55e;animation:sr-pulse 1.5s infinite}
+  @keyframes sr-pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .sr-hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
   @media(max-width:900px){
     .sr-layout{grid-template-columns:1fr}
   }
@@ -231,6 +245,11 @@ export default function SchoolRadio() {
   const [formError,    setFormError]    = useState<string|null>(null);
   const [, setFormConflict] = useState<any>(null);
 
+  // ── Vészleállító + Now Playing ────────────────────────────────────────────
+  const [nowPlaying,   setNowPlaying]   = useState<NowPlaying>(null);
+  const [stopBusy,     setStopBusy]     = useState(false);
+  const nowPollRef = useRef<ReturnType<typeof setInterval>|null>(null);
+
   // ── YouTube playlist állapot ──────────────────────────────────────────────
   const [ytPlaylists,  setYtPlaylists]  = useState<YtPlaylist[]>([]);
   const [ytOpen,       setYtOpen]       = useState<string|null>(null);
@@ -263,6 +282,19 @@ export default function SchoolRadio() {
   }, []);
 
   useEffect(() => { void loadAll(); }, [loadAll]);
+
+  // Now-playing polling – 10mp-enként
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const r = await apiFetch<{ok:boolean;nowPlaying:NowPlaying}>("/radio/now-playing");
+        setNowPlaying(r.nowPlaying ?? null);
+      } catch {}
+    };
+    void poll();
+    nowPollRef.current = setInterval(poll, 10_000);
+    return () => { if (nowPollRef.current) clearInterval(nowPollRef.current); };
+  }, []);
 
   // ── Upload ────────────────────────────────────────────────────────────────
   async function handleUpload(file: File) {
@@ -424,9 +456,40 @@ export default function SchoolRadio() {
           <div className="sr-title">📻 Iskolai Rádió</div>
           <div className="sr-subtitle">Hanganyag feltöltése és ütemezett lejátszása az épület hangszóróin.</div>
         </div>
-        <button className="sr-btn sr-btn-primary" onClick={() => void loadAll()} disabled={loading} type="button">
-          🔄 Frissítés
-        </button>
+        <div className="sr-hdr-right">
+          {/* Now Playing ablak */}
+          <div className={`sr-now-playing ${nowPlaying ? "sr-now-playing-active" : "sr-now-playing-idle"}`}>
+            <span className={`sr-now-playing-dot ${nowPlaying ? "sr-now-playing-dot-active" : "sr-now-playing-dot-idle"}`} />
+            {nowPlaying ? (
+              <span title={nowPlaying.name}>
+                Most szól: {nowPlaying.name.length > 16 ? nowPlaying.name.slice(0,16)+"…" : nowPlaying.name}
+              </span>
+            ) : (
+              <span>Most szól: –</span>
+            )}
+          </div>
+          {/* Vészleállító */}
+          <button
+            className="sr-stop-btn"
+            disabled={stopBusy}
+            type="button"
+            onClick={async () => {
+              if (!window.confirm("Leállítod az összes lejátszót?")) return;
+              setStopBusy(true);
+              try {
+                await apiFetch("/radio/stop-all", { method: "POST" });
+                setNowPlaying(null);
+              } catch(e:any) { alert("Hiba: " + (e?.message ?? "ismeretlen")); }
+              finally { setStopBusy(false); }
+            }}
+          >
+            🛑 {stopBusy ? "Leállítás…" : "RÁDIÓ STOP"}
+          </button>
+          {/* Frissítés */}
+          <button className="sr-btn sr-btn-primary" onClick={() => void loadAll()} disabled={loading} type="button">
+            🔄 Frissítés
+          </button>
+        </div>
       </div>
 
       {error && (
