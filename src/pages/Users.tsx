@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
 type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
