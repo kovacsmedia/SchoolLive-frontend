@@ -34,7 +34,8 @@ type YtPlaylistStatus = "IDLE" | "BUILDING" | "DONE" | "ERROR";
 type YtPlaylistItem   = { id: string; youtubeUrl: string; title?: string | null; sortOrder: number };
 type YtPlaylist       = { id: string; name: string; status: YtPlaylistStatus; errorMsg?: string | null; radioFileId?: string | null; items: YtPlaylistItem[]; createdAt: string };
 
-type NowPlaying = { name: string; durationSec: number | null; queuedAt: string } | null;
+type NowPlaying = { name: string; durationSec: number | null; startsAt: Date } | null;
+type BellEntry = { hour: number; minute: number; type: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 function fmtDuration(sec: number | null | undefined): string {
@@ -199,10 +200,32 @@ const CSS = `
   .sr-now-playing-dot-active{background:#22c55e;box-shadow:0 0 6px #22c55e;animation:sr-pulse 1.5s infinite}
   @keyframes sr-pulse{0%,100%{opacity:1}50%{opacity:0.4}}
   .sr-hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+  .sr-lesson-warn{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:#b45309;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:2px 7px}
   @media(max-width:900px){
     .sr-layout{grid-template-columns:1fr}
   }
 `;
+
+// ─── Tanítási óra ütközés ─────────────────────────────────────────────────
+function getTeachingHours(bells: BellEntry[], onDay: Date): Array<{start: Date; end: Date}> {
+  const sorted = [...bells].sort((a,b) => a.hour*60+a.minute - (b.hour*60+b.minute));
+  const result: Array<{start:Date;end:Date}> = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i], b = sorted[i+1];
+    const gap = (b.hour*60+b.minute) - (a.hour*60+a.minute);
+    if (gap >= 40 && gap <= 55) {
+      const start = new Date(onDay); start.setHours(a.hour, a.minute, 0, 0);
+      const end   = new Date(onDay); end.setHours(b.hour, b.minute, 0, 0);
+      result.push({ start, end });
+    }
+  }
+  return result;
+}
+function checkTeachingHourOverlap(scheduledAt: Date, durationSec: number | null, bells: BellEntry[]): boolean {
+  if (!durationSec || bells.length === 0) return false;
+  const endAt = new Date(scheduledAt.getTime() + durationSec * 1000);
+  return getTeachingHours(bells, scheduledAt).some(h => scheduledAt < h.end && endAt > h.start);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Fő komponens
@@ -245,10 +268,15 @@ export default function SchoolRadio() {
   const [formError,    setFormError]    = useState<string|null>(null);
   const [, setFormConflict] = useState<any>(null);
 
-  // ── Vészleállító + Now Playing ────────────────────────────────────────────
-  const [nowPlaying,   setNowPlaying]   = useState<NowPlaying>(null);
-  const [stopBusy,     setStopBusy]     = useState(false);
-  const nowPollRef = useRef<ReturnType<typeof setInterval>|null>(null);
+  // ── Csengetési rend (tanítási óra detektáláshoz) ──────────────────────────
+  const [mainBells, setMainBells] = useState<BellEntry[]>([]);
+
+  // ── Vészleállító ───────────────────────────────────────────────────────────
+  const [stopBusy, setStopBusy] = useState(false);
+
+  // ── Now Playing – lokálisan számítva, 5mp-enként frissül ──────────────────
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying>(null);
+  const [nowTick,    setNowTick]    = useState(0);
 
   // ── YouTube playlist állapot ──────────────────────────────────────────────
   const [ytPlaylists,  setYtPlaylists]  = useState<YtPlaylist[]>([]);
@@ -283,17 +311,42 @@ export default function SchoolRadio() {
 
   useEffect(() => { void loadAll(); }, [loadAll]);
 
-  // Now-playing polling – 10mp-enként
+  // Now-playing timer – 5mp-enként frissíti a tick-et, ami triggereli a számítást
   useEffect(() => {
-    const poll = async () => {
-      try {
-        const r = await apiFetch<{ok:boolean;nowPlaying:NowPlaying}>("/radio/now-playing");
-        setNowPlaying(r.nowPlaying ?? null);
-      } catch {}
-    };
-    void poll();
-    nowPollRef.current = setInterval(poll, 10_000);
-    return () => { if (nowPollRef.current) clearInterval(nowPollRef.current); };
+    const t = setInterval(() => setNowTick(n => n + 1), 5_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Now-playing számítása – a schedules listából lokálisan
+  useEffect(() => {
+    const now = new Date();
+    const playing = schedules.find(s => {
+      if (s.status === "CANCELLED") return false;
+      const start = new Date(s.dispatchedAt ?? s.scheduledAt);
+      const dur = s.radioFile.durationSec;
+      if (!dur) return false; // ismeretlen hossz → nem tudjuk
+      const end = new Date(start.getTime() + dur * 1000);
+      return now >= start && now <= end;
+    });
+    if (playing) {
+      setNowPlaying({
+        name:        playing.radioFile.originalName,
+        durationSec: playing.radioFile.durationSec,
+        startsAt:    new Date(playing.dispatchedAt ?? playing.scheduledAt),
+      });
+    } else {
+      setNowPlaying(null);
+    }
+  }, [schedules, nowTick]);
+
+  // Bells lekérése a tanítási óra detektáláshoz (loadAll-kor is)
+  useEffect(() => {
+    apiFetch<{ok:boolean;templates:Array<{bells:BellEntry[];isDefault:boolean}>}>("/bells/templates")
+      .then(r => {
+        const def = r.templates?.find(t => t.isDefault) ?? r.templates?.[0];
+        if (def) setMainBells(def.bells.filter(b => b.type === "MAIN"));
+      })
+      .catch(() => {});
   }, []);
 
   // ── Upload ────────────────────────────────────────────────────────────────
@@ -383,6 +436,19 @@ export default function SchoolRadio() {
     if (isNaN(scheduledAt.getTime())) { setFormError("Érvénytelen dátum/idő"); return; }
     if (scheduledAt < new Date()) { setFormError("Az időpont a múltban van!"); return; }
 
+    // ── Tanítási óra ütközés ellenőrzés ──────────────────────────────────
+    const previewFileDur = files.find(f => f.id === formFileId)?.durationSec ?? null;
+    if (checkTeachingHourOverlap(scheduledAt, previewFileDur, mainBells)) {
+      const ok = window.confirm(
+        "⚠️ A rádióműsor tanítási órát érint!
+
+" +
+        "A műsor kezdési ideje és hossza alapján az adás átfed egy tanítási órával. " +
+        "Biztosan így szeretnéd ütemezni?"
+      );
+      if (!ok) return;
+    }
+
     setFormBusy(true);
     try {
       await apiFetch("/radio/schedules", {
@@ -458,16 +524,32 @@ export default function SchoolRadio() {
         </div>
         <div className="sr-hdr-right">
           {/* Now Playing ablak */}
-          <div className={`sr-now-playing ${nowPlaying ? "sr-now-playing-active" : "sr-now-playing-idle"}`}>
-            <span className={`sr-now-playing-dot ${nowPlaying ? "sr-now-playing-dot-active" : "sr-now-playing-dot-idle"}`} />
-            {nowPlaying ? (
-              <span title={nowPlaying.name}>
-                Most szól: {nowPlaying.name.length > 16 ? nowPlaying.name.slice(0,16)+"…" : nowPlaying.name}
-              </span>
-            ) : (
-              <span>Most szól: –</span>
-            )}
-          </div>
+          {(() => {
+            let timeLeftStr = "";
+            if (nowPlaying?.durationSec && nowPlaying.startsAt) {
+              const elapsedSec = Math.floor((Date.now() - nowPlaying.startsAt.getTime()) / 1000);
+              const remSec = Math.max(0, nowPlaying.durationSec - elapsedSec);
+              const rm = Math.floor(remSec / 60);
+              const rs = remSec % 60;
+              timeLeftStr = `${rm}:${String(rs).padStart(2,"0")}`;
+            }
+            const shortName = nowPlaying
+              ? (nowPlaying.name.length > 14 ? nowPlaying.name.slice(0,14)+"…" : nowPlaying.name)
+              : null;
+            return (
+              <div className={`sr-now-playing ${nowPlaying ? "sr-now-playing-active" : "sr-now-playing-idle"}`}>
+                <span className={`sr-now-playing-dot ${nowPlaying ? "sr-now-playing-dot-active" : "sr-now-playing-dot-idle"}`} />
+                {nowPlaying ? (
+                  <span title={nowPlaying.name} style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span>Most szól: <strong>{shortName}</strong></span>
+                    {timeLeftStr && <span style={{opacity:0.75,fontSize:11}}>({timeLeftStr})</span>}
+                  </span>
+                ) : (
+                  <span>Most szól: –</span>
+                )}
+              </div>
+            );
+          })()}
           {/* Vészleállító */}
           <button
             className="sr-stop-btn"
@@ -890,6 +972,9 @@ export default function SchoolRadio() {
                   const isSel    = selDay ? isSameDay(date, selDay) : false;
                   const hasPending    = daySched.some(s => s.status === "PENDING");
                   const hasDispatched = daySched.some(s => s.status === "DISPATCHED");
+                  const hasLessonWarn = daySched.some(s =>
+                    checkTeachingHourOverlap(new Date(s.scheduledAt), s.radioFile.durationSec, mainBells)
+                  );
 
                   return (
                     <div
@@ -902,6 +987,7 @@ export default function SchoolRadio() {
                         <div className="sr-cal-dots">
                           {hasPending    && <div className="sr-cal-dot" />}
                           {hasDispatched && <div className="sr-cal-dot dispatched" />}
+                          {hasLessonWarn && <div className="sr-cal-dot" style={{background:"#f59e0b"}} title="Tanítási óra alatti adás" />}
                         </div>
                       )}
                     </div>
@@ -916,6 +1002,9 @@ export default function SchoolRadio() {
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:5}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e"}} />Elküldve
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:"#f59e0b"}} />Tanítási óra
                 </div>
               </div>
             </div>
@@ -948,15 +1037,21 @@ export default function SchoolRadio() {
                   const targetLabel = s.targetType === "ALL" ? "📡 Összes eszköz"
                                     : s.targetType === "DEVICE" ? `🔊 ${s.targetId?.slice(0,8)}…`
                                     : `👥 Csoport`;
+                  const isLessonOverlap = checkTeachingHourOverlap(
+                    new Date(s.scheduledAt), s.radioFile.durationSec, mainBells
+                  );
                   return (
                     <div key={s.id} className="sr-sched-item">
                       <div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                           <span className="sr-sched-time">{startTime}</span>
                           {endTime && <span className="sr-sched-end">→ {endTime}</span>}
                           <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"33"}}>
                             {badge.label}
                           </span>
+                          {isLessonOverlap && (
+                            <span className="sr-lesson-warn" title="Az adás tanítási órát érint">⚠️ Tanítási óra</span>
+                          )}
                         </div>
                         <div className="sr-sched-file" title={s.radioFile.originalName}>
                           🎵 {s.radioFile.originalName}
