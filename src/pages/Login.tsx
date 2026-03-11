@@ -6,6 +6,10 @@ type LocationState = { from?: string; };
 function formatAuthError(err: any): string {
   const s = err?.status;
   const d = err?.data;
+  // 409 – felhasználó már be van jelentkezve másik eszközön
+  if (s === 409 || d?.error === "already_logged_in") {
+    return "Ez a felhasználó már be van jelentkezve egy másik eszközön.";
+  }
   const m = (d && typeof d === "object" && (d.error || d.message)) || err?.message;
   return s ? `${m || "Sikertelen bejelentkezés."} (HTTP ${s})` : (m || "Sikertelen bejelentkezés.");
 }
