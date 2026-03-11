@@ -17,6 +17,8 @@ function isDeviceOnline(d: DeviceItem): boolean {
   if (d.secondsSinceLastSeen === null || d.secondsSinceLastSeen === undefined) return d.isOnline;
   return d.secondsSinceLastSeen < 60;
 }
+type DeviceGroup = { id: string; name: string; deviceIds: string[]; createdAt: string };
+
 type PendingDevice  = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
 type PendingResponse = { ok: boolean; pending: PendingDevice[] };
 type PendingWebPlayer = { id: string; mac: string; clientId: string | null; userId: string | null; ipAddress: string | null; userAgent: string | null; firstSeenAt: string; lastSeenAt: string };
@@ -129,6 +131,14 @@ const CSS = `
   @keyframes dvFade{from{opacity:0}to{opacity:1}}
   @keyframes dvSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
   @media(max-width:600px){.dv-grid2{grid-template-columns:1fr}.dv-search{width:100%}}
+  /* Csoportok panel */
+  .dv-group-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .dv-group-item{background:var(--sl-bg);border:1.5px solid var(--sl-border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .dv-group-name{font-size:14px;font-weight:800;color:var(--sl-text);flex:1;min-width:0}
+  .dv-device-check-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;padding:8px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg);margin-top:8px}
+  .dv-device-check-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;cursor:pointer;transition:background 0.12s}
+  .dv-device-check-item:hover{background:var(--sl-border)}
+  .dv-device-check-item input[type=checkbox]{accent-color:#3b82f6;width:15px;height:15px;cursor:pointer;flex-shrink:0}
 `;
 
 function Modal({ title, icon, children, onClose }: { title:string; icon:string; children:React.ReactNode; onClose:()=>void }) {
@@ -170,6 +180,54 @@ export default function Devices() {
   const [wpActivateError, setWpActivateError] = useState<string | null>(null);
   const healthTimer = useRef<number | null>(null);
   const pendingTimer = useRef<number | null>(null);
+
+  // ── Csoportok ─────────────────────────────────────────────────────────────
+  const [groupsOpen,   setGroupsOpen]   = useState(false);
+  const [groups,       setGroups]       = useState<DeviceGroup[]>([]);
+  const [groupsLoading,setGroupsLoading]= useState(false);
+  const [groupsBusy,   setGroupsBusy]   = useState(false);
+  const [groupsError,  setGroupsError]  = useState<string|null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [editGroup,    setEditGroup]    = useState<DeviceGroup|null>(null);
+  const [editGroupName,setEditGroupName]= useState("");
+
+  async function loadGroups() {
+    setGroupsLoading(true);
+    try { const r = await apiFetch<{ok:boolean;groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); }
+    catch { setGroupsError("Csoportok betöltése sikertelen"); }
+    finally { setGroupsLoading(false); }
+  }
+  async function createGroup() {
+    if (!newGroupName.trim()) return;
+    setGroupsBusy(true); setGroupsError(null);
+    try {
+      await apiFetch("/admin/devices/groups", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: newGroupName.trim() }) });
+      setNewGroupName(""); await loadGroups();
+    } catch (e:any) { setGroupsError(e?.message??"Létrehozás sikertelen"); }
+    finally { setGroupsBusy(false); }
+  }
+  async function saveGroupMembers(g: DeviceGroup, deviceIds: string[]) {
+    setGroupsBusy(true); setGroupsError(null);
+    try {
+      await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ deviceIds }) });
+      await loadGroups(); setEditGroup(null);
+    } catch (e:any) { setGroupsError(e?.message??"Mentés sikertelen"); }
+    finally { setGroupsBusy(false); }
+  }
+  async function renameGroup(g: DeviceGroup, name: string) {
+    if (!name.trim() || name === g.name) { setEditGroup(null); return; }
+    setGroupsBusy(true);
+    try {
+      await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: name.trim() }) });
+      await loadGroups(); setEditGroup(null);
+    } catch (e:any) { setGroupsError(e?.message??"Átnevezés sikertelen"); }
+    finally { setGroupsBusy(false); }
+  }
+  async function deleteGroup(id: string) {
+    if (!window.confirm("Törlöd ezt a csoportot?")) return;
+    try { await apiFetch(`/admin/devices/groups/${id}`, { method:"DELETE" }); await loadGroups(); }
+    catch { setGroupsError("Törlés sikertelen"); }
+  }
 
   async function loadDevices() {
     try {
@@ -289,6 +347,9 @@ export default function Devices() {
               ＋ Új eszköz
             </button>
           )}
+          <button className="dv-btn dv-btn-ghost" type="button" onClick={() => { setGroupsOpen(true); void loadGroups(); }}>
+            👥 Csoportok
+          </button>
           <button className="dv-btn dv-btn-ghost" onClick={() => void loadDevices()} disabled={loading} type="button">
             🔄 Frissítés
           </button>
@@ -570,6 +631,118 @@ export default function Devices() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* ── Csoportok modal ─────────────────────────────────────────── */}
+      {groupsOpen && (
+        <div className="dv-overlay" onClick={() => setGroupsOpen(false)}>
+          <div className="dv-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
+            <div className="dv-modal-hdr">
+              <div className="dv-modal-title">👥 Eszköz csoportok</div>
+              <button className="dv-close" onClick={() => setGroupsOpen(false)}>✕</button>
+            </div>
+            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"70vh" }}>
+              {groupsError && <div className="dv-alert dv-alert-error" style={{marginBottom:12}}><span>⚠️</span>{groupsError}</div>}
+
+              {/* Új csoport */}
+              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                <input
+                  className="dv-input" style={{ flex:1 }}
+                  placeholder="Új csoport neve…"
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  onKeyDown={e => e.key==="Enter" && void createGroup()}
+                />
+                <button className="dv-btn dv-btn-primary" onClick={() => void createGroup()} disabled={groupsBusy||!newGroupName.trim()} type="button">
+                  ＋ Létrehoz
+                </button>
+              </div>
+
+              {/* Csoport lista */}
+              {groupsLoading ? (
+                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)" }}>⏳ Betöltés…</div>
+              ) : groups.length === 0 ? (
+                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)", fontSize:13 }}>Még nincs csoport. Hozz létre egyet!</div>
+              ) : (
+                <div className="dv-group-list">
+                  {groups.map(g => (
+                    <div key={g.id} className="dv-group-item">
+                      {editGroup?.id === g.id ? (
+                        <>
+                          <input
+                            className="dv-input" style={{ flex:1 }}
+                            value={editGroupName}
+                            onChange={e => setEditGroupName(e.target.value)}
+                            onKeyDown={e => e.key==="Enter" && void renameGroup(g, editGroupName)}
+                            autoFocus
+                          />
+                          <button className="dv-btn dv-btn-primary dv-btn-sm" onClick={() => void renameGroup(g, editGroupName)} disabled={groupsBusy} type="button">Ment</button>
+                          <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => setEditGroup(null)} type="button">Mégse</button>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ flex:1 }}>
+                            <div className="dv-group-name">👥 {g.name}</div>
+                            <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
+                              {g.deviceIds.length === 0 ? "Nincs tag" : `${g.deviceIds.length} eszköz`}
+                              {g.deviceIds.length > 0 && ": " + devices.filter(d => g.deviceIds.includes(d.deviceId)).map(d => d.name).join(", ")}
+                            </div>
+                          </div>
+                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
+                            onClick={() => {
+                              setEditGroup({...g, _editMembers: true} as any);
+                              setEditGroupName(g.name);
+                            }}>
+                            ✏️ Tagok
+                          </button>
+                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
+                            onClick={() => { setEditGroup(g); setEditGroupName(g.name); }}>
+                            📝 Átnevez
+                          </button>
+                          <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
+                            onClick={() => void deleteGroup(g.id)}>
+                            🗑
+                          </button>
+                        </>
+                      )}
+                      {/* Tag szerkesztő – eszközök jelölőnégyzetekkel */}
+                      {(editGroup as any)?._editMembers && editGroup?.id === g.id && (
+                        <div style={{ width:"100%", marginTop:8 }}>
+                          <div style={{ fontSize:11, fontWeight:800, color:"var(--sl-muted)", marginBottom:4 }}>TAGOK KIVÁLASZTÁSA</div>
+                          <div className="dv-device-check-list">
+                            {devices.length === 0 && <div style={{ fontSize:12, color:"var(--sl-muted)", padding:6 }}>Nincs eszköz</div>}
+                            {devices.map(d => {
+                              const isMember = editGroup.deviceIds.includes(d.deviceId);
+                              return (
+                                <label key={d.deviceId} className="dv-device-check-item">
+                                  <input type="checkbox" checked={isMember} onChange={() => {
+                                    const ids = isMember
+                                      ? editGroup.deviceIds.filter(id => id !== d.deviceId)
+                                      : [...editGroup.deviceIds, d.deviceId];
+                                    setEditGroup({ ...editGroup, deviceIds: ids });
+                                  }} />
+                                  <span className={isDeviceOnline(d) ? "dv-dot-on" : "dv-dot-off"} style={{ width:7, height:7, borderRadius:"50%", background: isDeviceOnline(d) ? "#22c55e" : "#94a3b8", flexShrink:0 }} />
+                                  <span style={{ fontSize:13, fontWeight:600 }}>{d.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                            <button className="dv-btn dv-btn-primary dv-btn-sm" disabled={groupsBusy} type="button"
+                              onClick={() => void saveGroupMembers(g, editGroup.deviceIds)}>
+                              {groupsBusy ? "Mentés…" : "💾 Mentés"}
+                            </button>
+                            <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button" onClick={() => setEditGroup(null)}>Mégse</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

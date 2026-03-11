@@ -192,7 +192,7 @@ const CSS = `
   .sr-stop-btn{background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;letter-spacing:0.3px;box-shadow:0 3px 10px rgba(220,38,38,0.35);transition:all 0.15s;white-space:nowrap}
   .sr-stop-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 16px rgba(220,38,38,0.45)}
   .sr-stop-btn:disabled{opacity:0.6;cursor:not-allowed}
-  .sr-now-playing{display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:10px;border:1px solid;font-size:12px;font-weight:700;transition:all 0.4s;white-space:nowrap;max-width:220px}
+  .sr-now-playing{display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:10px;border:1px solid;font-size:12px;font-weight:700;transition:all 0.4s;white-space:nowrap;min-width:260px;max-width:320px}
   .sr-now-playing-idle{background:#1e293b;border-color:#334155;color:#64748b}
   .sr-now-playing-active{background:linear-gradient(135deg,#14532d,#166534);border-color:#22c55e;color:#bbf7d0;box-shadow:0 2px 12px rgba(34,197,94,0.2)}
   .sr-now-playing-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}

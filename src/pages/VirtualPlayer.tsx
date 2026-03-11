@@ -947,7 +947,13 @@ export default function VirtualPlayer() {
       {unlocked && status === "active" && (
         <div className="vp-screen">
           <div className="vp-header">
-            <div className="vp-inst-name">{instName || "SchoolLive"}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <picture>
+                <source srcSet="/brand/schoollive-logow.svg" type="image/svg+xml" />
+                <img src="/brand/schoollive-logo.svg" alt="SchoolLive" style={{height:22,width:"auto",objectFit:"contain"}} />
+              </picture>
+              <div className="vp-inst-name">{instName || "SchoolLive"}</div>
+            </div>
             <div className="vp-status-txt">
               <span className="vp-online-dot" style={{ background: isOnline ? "#22c55e" : "#ef4444", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }} />
               {isOnline ? "Online" : "Offline"}

@@ -11,6 +11,40 @@ type Template     = { id:string; name:string; text:string; voice:string; created
 type Device       = { id:string; name:string; online:boolean; deviceClass:string };
 type DeviceGroup  = { id:string; name:string };
 type ScheduleType = "immediate"|"next_bell"|"custom";
+type BellEntry    = { hour: number; minute: number; type: string };
+
+// Következő szünet kezdetének kiszámítása MAIN bell párok alapján
+function getNextBreakTime(bells: BellEntry[]): Date | null {
+  const sorted = [...bells].sort((a,b) => a.hour*60+a.minute - (b.hour*60+b.minute));
+  const now = new Date();
+  const todayMin = now.getHours()*60 + now.getMinutes();
+  // Teaching hour pairs: two consecutive MAIN bells 40-55 min apart
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i], b = sorted[i+1];
+    const gap = (b.hour*60+b.minute) - (a.hour*60+a.minute);
+    if (gap >= 40 && gap <= 55) {
+      // b = start of break (kicsengetés)
+      const breakMin = b.hour*60+b.minute;
+      if (breakMin > todayMin) {
+        const d = new Date(); d.setHours(b.hour, b.minute, 5, 0); // +5mp buffer
+        return d;
+      }
+    }
+  }
+  return null; // nincs ma több szünet
+}
+function checkLessonOverlap(scheduledAt: Date, bells: BellEntry[]): boolean {
+  const sorted = [...bells].sort((a,b) => a.hour*60+a.minute - (b.hour*60+b.minute));
+  const sm = scheduledAt.getHours()*60 + scheduledAt.getMinutes();
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i], b = sorted[i+1];
+    const gap = (b.hour*60+b.minute) - (a.hour*60+a.minute);
+    if (gap >= 40 && gap <= 55) {
+      if (sm > a.hour*60+a.minute && sm < b.hour*60+b.minute) return true;
+    }
+  }
+  return false;
+}
 
 function formatDate(iso:string|null) {
   if (!iso) return "–";
@@ -140,6 +174,7 @@ export default function Messages() {
   const [templateMsg, setTemplateMsg] = useState<string|null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups]   = useState<DeviceGroup[]>([]);
+  const [bells,  setBells]    = useState<BellEntry[]>([]);
   const LIMIT = 20;
 
   async function loadMessages(p=1) {
@@ -183,7 +218,16 @@ export default function Messages() {
   }
 
   useEffect(() => { loadMessages(1); }, []);
-  useEffect(() => { if (composerOpen) { loadTemplates(); loadDevices(); loadGroups(); } }, [composerOpen]);
+  useEffect(() => {
+    if (composerOpen) {
+      loadTemplates(); loadDevices(); loadGroups();
+      apiFetch<{ok:boolean;templates:Array<{bells:BellEntry[];isDefault:boolean}>}>("/bells/templates")
+        .then(r => {
+          const def = r.templates?.find(t => t.isDefault) ?? r.templates?.[0];
+          if (def) setBells(def.bells.filter(b => b.type === "MAIN"));
+        }).catch(() => {});
+    }
+  }, [composerOpen]);
 
   function openComposer() {
     setText(""); setVoice("anna"); setScheduleType("immediate"); setCustomTime("");
@@ -205,15 +249,36 @@ export default function Messages() {
   async function sendMessage() {
     if (!text.trim()) { setSendError("A szöveg nem lehet üres!"); return; }
     if (targetType!=="ALL"&&!targetId) { setSendError("Válassz célt!"); return; }
-    if (scheduleType==="custom"&&!customTime) { setSendError("Add meg az időpontot!"); return; }
-    setSending(true); setSendError(null);
-    let scheduledAt:string|null=null;
-    if (scheduleType==="custom"&&customTime) {
-      const today=new Date().toISOString().slice(0,10);
-      scheduledAt=new Date(`${today}T${customTime}:00`).toISOString();
+    setSendError(null);
+
+    let scheduledAt: string|null = null;
+
+    if (scheduleType === "next_bell") {
+      const nextBreak = getNextBreakTime(bells);
+      if (!nextBreak) { setSendError("Ma már nincs több szünet a csengetési rend szerint."); return; }
+      scheduledAt = nextBreak.toISOString();
+    } else if (scheduleType === "custom") {
+      if (!customTime) { setSendError("Add meg az időpontot!"); return; }
+      const today = new Date().toISOString().slice(0,10);
+      const dt = new Date(`${today}T${customTime}:00`);
+      if (dt <= new Date()) { setSendError("A megadott időpont már elmúlt!"); return; }
+      // Tanítási óra ellenőrzés
+      if (checkLessonOverlap(dt, bells)) {
+        const ok = window.confirm("⚠️ Tanítási óra alatti időpont!
+
+A választott időpont egy tanítási óra közé esik. Biztosan így szeretnéd küldeni?");
+        if (!ok) return;
+      }
+      scheduledAt = dt.toISOString();
     }
+
+    setSending(true);
     try {
-      await apiPost("/messages",{text:text.trim(),voice,targetType,targetId:targetType==="ALL"?undefined:targetId,scheduledAt});
+      await apiPost("/messages",{
+        text: text.trim(), voice, targetType,
+        targetId: targetType==="ALL" ? undefined : targetId,
+        scheduledAt,
+      });
       setSendSuccess(true); await loadMessages(1);
     } catch (e:any) { setSendError(e?.message??"Küldés sikertelen"); }
     finally { setSending(false); }
@@ -418,7 +483,16 @@ export default function Messages() {
                       </div>
                     ))}
                   </div>
-                  {scheduleType==="next_bell" && <div style={{ fontSize:12,color:"var(--sl-muted)",marginTop:8 }}>Az üzenet a csengetési rend szerinti következő szünetben játszódik le.</div>}
+                  {scheduleType==="next_bell" && (() => {
+                    const nb = getNextBreakTime(bells);
+                    return (
+                      <div style={{ fontSize:12,marginTop:8,padding:"7px 11px",borderRadius:9,background:nb?"#f0fdf4":"#fef2f2",color:nb?"#15803d":"#dc2626",border:"1px solid",borderColor:nb?"#bbf7d0":"#fecaca" }}>
+                        {nb
+                          ? `⏱ Következő szünet: ${nb.toLocaleTimeString("hu-HU",{hour:"2-digit",minute:"2-digit"})} – az üzenet ekkor fog megszólalni.`
+                          : "⚠️ Ma már nincs több szünet a csengetési rend szerint."}
+                      </div>
+                    );
+                  })()}
                   {scheduleType==="custom" && (
                     <div style={{ marginTop:10 }}>
                       <input type="time" className="ms-input" style={{ width:"auto" }} value={customTime} onChange={e => setCustomTime(e.target.value)} />
