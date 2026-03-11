@@ -86,9 +86,21 @@ function unlockAudioCtx(): void {
   }
 }
 
+// Párhuzamos hívások guard: ha ugyanaz a fájl már töltés alatt van, várunk
+const _caching = new Map<string, Promise<boolean>>();
+
 async function cacheBellSound(filename: string, url: string): Promise<boolean> {
   // Ha már be van töltve a memóriába, kész
   if (bellBuffers.has(filename)) return true;
+  // Ha már fut egy töltés ugyanerre a fájlra, csatlakozunk hozzá (ne töltsük 2x)
+  if (_caching.has(filename)) return _caching.get(filename)!;
+  const promise = _doCache(filename, url);
+  _caching.set(filename, promise);
+  promise.finally(() => _caching.delete(filename));
+  return promise;
+}
+
+async function _doCache(filename: string, url: string): Promise<boolean> {
 
   let arrayBuf: ArrayBuffer | null = null;
 
@@ -112,12 +124,18 @@ async function cacheBellSound(filename: string, url: string): Promise<boolean> {
 
       // Elmentjük localStorage-ba a következő betöltéshez
       try {
-        const bytes  = new Uint8Array(arrayBuf);
-        let binary   = "";
-        bytes.forEach(b => { binary += String.fromCharCode(b); });
+        const bytes = new Uint8Array(arrayBuf);
+        // Chunked btoa – elkerüli az O(n²) string concat és stack overflow-t
+        let binary = "";
+        const CHUNK = 8192;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+        }
         localStorage.setItem(BELL_CACHE_PREFIX + filename, "data:audio/mpeg;base64," + btoa(binary));
       } catch (e) {
-        console.warn("[VP] Bell localStorage save failed:", e);
+        console.warn("[VP] Bell localStorage save failed (quota?):", filename, e);
+        // Töröljük a félkész bejegyzést ha volt
+        try { localStorage.removeItem(BELL_CACHE_PREFIX + filename); } catch {}
       }
     } catch (e) {
       console.warn("[VP] ❌ Bell download failed:", filename, e);
@@ -539,14 +557,33 @@ export default function VirtualPlayer() {
     }
 
     let decoded = 0;
+    const failed: string[] = [];
     for (const filename of unique) {
       const url = `https://api.schoollive.hu/audio/bells/${filename}`;
       const ok = await cacheBellSound(filename, url);
       if (ok) decoded++;
-      else console.error(`[VP-BELL] ❌ Nem sikerült cache-elni: ${filename}`);
+      else { failed.push(filename); console.error(`[VP-BELL] ❌ Nem sikerült cache-elni: ${filename}`); }
     }
-    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva (bellBuffers.size=${bellBuffers.size})`);
     setCachedBellCount(countCachedBells());
+    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva (bellBuffers.size=${bellBuffers.size})`);
+
+    // Újrapróbálás: ha volt sikertelen letöltés, 3mp múlva még egyszer
+    if (failed.length > 0) {
+      console.warn(`[VP-BELL] 🔁 ${failed.length} hangfájl újrapróbálás 3mp múlva: [${failed.join(", ")}]`);
+      setTimeout(async () => {
+        let retried = 0;
+        for (const filename of failed) {
+          // localStorage stale bejegyzés törlése – hátha rossz adat volt benne
+          try { localStorage.removeItem(BELL_CACHE_PREFIX + filename); } catch {}
+          bellBuffers.delete(filename);
+          const url = `https://api.schoollive.hu/audio/bells/${filename}`;
+          const ok = await cacheBellSound(filename, url);
+          if (ok) { retried++; console.log(`[VP-BELL] ✅ Újrapróbálás sikeres: ${filename}`); }
+          else console.error(`[VP-BELL] ❌ Újrapróbálás sikertelen: ${filename}`);
+        }
+        if (retried > 0) setCachedBellCount(countCachedBells());
+      }, 3000);
+    }
   }, []);
 
   // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
@@ -573,7 +610,11 @@ export default function VirtualPlayer() {
     if (action === "BELL" && url) {
       // Csengetés – LEGMAGASABB PRIORITÁS
       const soundFile = url.split("/").pop() ?? url;
-      playBell(soundFile, url);
+      // Fallback URL mindig abszolút legyen (a frontend domain ≠ API domain)
+      const absoluteUrl = url.startsWith("http")
+        ? url
+        : `https://api.schoollive.hu${url.startsWith("/") ? url : "/audio/bells/" + soundFile}`;
+      playBell(soundFile, absoluteUrl);
 
     } else if (action === "SYNC_BELLS") {
       // Csengetési rend frissítése
