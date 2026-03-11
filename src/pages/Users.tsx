@@ -145,6 +145,7 @@ export default function Users() {
   const { state } = useAuth();
   const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
   const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
@@ -165,9 +166,11 @@ export default function Users() {
   useEffect(() => { void loadUsers(); }, []);
 
   const filtered = useMemo(() => {
-    const n = q.trim().toLowerCase(); if (!n) return users;
-    return users.filter(u => [u.email,u.displayName,u.role,u.lastLoginAt,u.createdAt].join(" ").toLowerCase().includes(n));
-  }, [q, users]);
+    let list = showInactive ? users : users.filter(u => u.isActive !== false);
+    const n = q.trim().toLowerCase();
+    if (!n) return list;
+    return list.filter(u => [u.email,u.displayName,u.role,u.lastLoginAt,u.createdAt].join(" ").toLowerCase().includes(n));
+  }, [q, users, showInactive]);
 
   function openCreate() {
     setSelectedUser(null); setForm({ email:"",displayName:"",uiRole:"CONTRIBUTOR",password:"",isActive:true }); setIsCreateOpen(true);
@@ -211,10 +214,10 @@ export default function Users() {
     finally { setBusyAction(null); }
   }
   async function doHardDelete(u:UserDto) {
-    if (!window.confirm(`Véglegesen törlöd? Ez nem visszafordítható! (${u.email})`)) return;
+    if (!window.confirm(`Véglegesen törlöd? Ez nem visszafordítható!\n\n${u.email}`)) return;
     setError(null); setBusyAction("delete");
     try {
-      await apiFetch<unknown>(`/admin/users/${u.id}`,{method:"DELETE"});
+      await apiFetch<unknown>(`/admin/users/${u.id}?permanent=true`,{method:"DELETE"});
       await loadUsers();
     } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
     finally { setBusyAction(null); }
@@ -232,6 +235,9 @@ export default function Users() {
         <div className="us-actions">
           <input className="us-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
           <button className="us-btn us-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új felhasználó</button>
+          <button className="us-btn us-btn-ghost" onClick={() => setShowInactive(v=>!v)} type="button" style={showInactive?{borderColor:"#3b82f6",color:"#3b82f6"}:{}}>
+            {showInactive ? "👁 Inaktívak elrejtve" : "👁 Inaktívak mutatása"}
+          </button>
           <button className="us-btn us-btn-ghost" onClick={() => void loadUsers()} disabled={loading} type="button">🔄</button>
         </div>
       </div>
