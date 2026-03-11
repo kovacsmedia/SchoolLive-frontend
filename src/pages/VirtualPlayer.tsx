@@ -348,7 +348,9 @@ export default function VirtualPlayer() {
   // Az aktuális aktív üzenet action típusa – ref hogy closure-okból mindig friss legyen
   const activeMsgActionRef = useRef<string>("");
   // Offline csengetés deduplikáció
-  const lastBellKeyRef = useRef<string>("");
+  const lastBellKeyRef  = useRef<string>("");
+  const wakeLockRef     = useRef<WakeLockSentinel | null>(null);
+  const keepAliveRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   // Ref-ek closure-okhoz
   const bellsRef   = useRef<BellEntry[]>([]);
   const volumeRef  = useRef(volume);
@@ -611,6 +613,38 @@ export default function VirtualPlayer() {
     setUnlocked(true);
   }, []);
 
+  // ── PLAYER automatikus újrabejelentkezés (token lejárat esetén) ────────────
+  // A PLAYER fiók jelszava a token-ben tárolt email-ből visszafejthető,
+  // de ezt nem tároljuk – helyette a localStorage-ban mentett hitelesítő adatokat használjuk.
+  const reloginPlayer = useCallback(async () => {
+    try {
+      const storedCreds = localStorage.getItem("vpCredentials");
+      if (!storedCreds) {
+        console.warn("[VP] Nincs tárolt hitelesítő adat – nem lehet újrabejelentkezni");
+        return;
+      }
+      const { email, password } = JSON.parse(storedCreds) as { email: string; password: string };
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) { console.warn("[VP] Újrabejelentkezés sikertelen:", res.status); return; }
+      const data = await res.json();
+      if (data.accessToken) {
+        // Token frissítése ugyanabba a storage-ba ahonnan olvastuk
+        if (sessionStorage.getItem("accessToken")) {
+          sessionStorage.setItem("accessToken", data.accessToken);
+        } else {
+          localStorage.setItem("accessToken", data.accessToken);
+        }
+        console.log("[VP] ✅ Token sikeresen frissítve");
+      }
+    } catch (e) {
+      console.warn("[VP] reloginPlayer hiba:", e);
+    }
+  }, []);
+
   // ── Regisztráció ──────────────────────────────────────────────────────────
   const register = useCallback(async () => {
     setStatus("registering");
@@ -641,20 +675,69 @@ export default function VirtualPlayer() {
     return () => window.removeEventListener("beforeunload", onUnload);
   }, []);
 
-  // ── Fullscreen + Wake Lock ─────────────────────────────────────────────────
+  // ── Fullscreen + Wake Lock + Keep-Alive ──────────────────────────────────
   useEffect(() => {
+    // 1. Fullscreen kérés
     const el = document.documentElement;
-    if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(() => {});
-    let wakeLock: WakeLockSentinel | null = null;
-    (async () => {
-      try { if ("wakeLock" in navigator) wakeLock = await (navigator as any).wakeLock.request("screen"); } catch {}
-    })();
-    const onOnline  = () => { setIsOnline(true);  fetchBells(); } // online visszatéréskor szinkron
+    if (el.requestFullscreen && !document.fullscreenElement) {
+      el.requestFullscreen().catch(() => {});
+    }
+
+    // 2. Screen Wake Lock – megakadályozza a képernyő elsötétülését
+    const requestWakeLock = async () => {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
+          console.log("[VP] 🔒 Wake Lock aktív");
+        }
+      } catch (e) {
+        console.warn("[VP] Wake Lock nem sikerült:", e);
+      }
+    };
+    void requestWakeLock();
+
+    // 3. visibility change: ha a lap háttérbe kerül és visszajön, Wake Lock újrakérés
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[VP] 👁 Lap előtérbe került – Wake Lock újrakérés + AudioContext resume");
+        void requestWakeLock();
+        // AudioContext resume ha suspended (Chrome háttérbe kerüléskor suspendálja)
+        if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
+          sharedAudioCtx.resume().catch(() => {});
+        }
+      }
+    };
+
+    // 4. Online/Offline esemény
+    const onOnline  = () => { setIsOnline(true);  fetchBells(); };
     const onOffline = () => setIsOnline(false);
+
+    // 5. Keep-alive AudioContext: 30mp-enként lejátszik egy csendes hangot
+    // hogy a böngésző ne suspendálja az AudioContext-et tétlenség miatt
+    const SILENT_BUFFER = (() => {
+      const ctx = getAudioCtx();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      return buf;
+    })();
+    keepAliveRef.current = setInterval(() => {
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") { ctx.resume().catch(() => {}); return; }
+      try {
+        const src = ctx.createBufferSource();
+        src.buffer = SILENT_BUFFER;
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch {}
+    }, 30_000);
+
+    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
+
     return () => {
-      wakeLock?.release().catch(() => {});
+      wakeLockRef.current?.release().catch(() => {});
+      if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online",  onOnline);
       window.removeEventListener("offline", onOffline);
     };
@@ -697,14 +780,25 @@ export default function VirtualPlayer() {
   // ── Polling ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (status === "registering") return;
+    let failCount = 0;
     const poll = async () => {
       try {
         const res = await apiFetch<{ ok: boolean; status: string; command: { id: string; payload: CommandPayload } | null }>(
           "/player/device/poll", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
         );
+        failCount = 0;
         if (res.status === "active" && status !== "active") setStatus("active");
         if (res.status === "active" && res.command) await handleCommand(res.command);
-      } catch {}
+      } catch (err: any) {
+        failCount++;
+        const is401 = err?.status === 401 || String(err?.message ?? "").includes("401");
+        if (is401) {
+          console.warn("[VP] 🔑 401 – újrabejelentkezés...");
+          void reloginPlayer();
+        } else if (failCount >= 5) {
+          console.warn(`[VP] ⚠️ ${failCount} sikertelen poll`);
+        }
+      }
     };
     poll();
     pollTimer.current = setInterval(poll, 5000);

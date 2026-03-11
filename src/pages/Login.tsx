@@ -30,7 +30,20 @@ export default function Login() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setError(null); setBusy(true);
-    try { await login(email.trim(), password); }
+    try {
+      await login(email.trim(), password);
+      // Ha PLAYER role → mentsük el a hitelesítő adatokat az automatikus token-megújításhoz
+      // A token a storage-ban van login után – kiolvasuk a role-t
+      try {
+        const tok = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+        if (tok) {
+          const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+          if (payload?.role === "PLAYER") {
+            localStorage.setItem("vpCredentials", JSON.stringify({ email: email.trim(), password }));
+          }
+        }
+      } catch {}
+    }
     catch (err: any) { setError(formatAuthError(err)); }
     finally { setBusy(false); }
   }
