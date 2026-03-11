@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../lib/api";
 
+// ─── Típusok ──────────────────────────────────────────────────────────────
 type PlayerStatus = "registering" | "pending" | "active";
 type CommandPayload = {
   action:       string;
@@ -12,7 +13,14 @@ type CommandPayload = {
   source?:      string;
 };
 type BellEntry = { hour: number; minute: number; type: string; soundFile: string };
+type RadioState = {
+  url:         string;
+  currentTime: number;
+  isStream:    boolean;
+  isPlaying:   boolean;
+};
 
+// ─── Helpers ──────────────────────────────────────────────────────────────
 function getOrCreateClientId(): string {
   const KEY = "vpClientId";
   let id = localStorage.getItem(KEY);
@@ -42,6 +50,41 @@ function nextBellLabel(bells: BellEntry[]): string | null {
   return `${String(next.hour).padStart(2,"0")}:${String(next.minute).padStart(2,"0")}`;
 }
 
+// ─── Bell hangfájl cache (localStorage base64 Data URL) ───────────────────
+const BELL_CACHE_PREFIX = "vpBellCache_";
+
+async function cacheBellSound(filename: string, url: string): Promise<void> {
+  const key = BELL_CACHE_PREFIX + filename;
+  try { if (localStorage.getItem(key)) return; } catch { return; }
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    await new Promise<void>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try { localStorage.setItem(key, reader.result as string); } catch (e) {
+          console.warn("[VP] Bell cache save failed (storage full?):", e);
+        }
+        resolve();
+      };
+      reader.onerror = () => resolve();
+      reader.readAsDataURL(blob);
+    });
+    console.log("[VP] Cached bell sound:", filename);
+  } catch (e) {
+    console.warn("[VP] Failed to cache bell sound:", filename, e);
+  }
+}
+
+function getCachedBellUrl(filename: string, fallbackUrl: string): string {
+  try {
+    const cached = localStorage.getItem(BELL_CACHE_PREFIX + filename);
+    if (cached) return cached;
+  } catch {}
+  return fallbackUrl;
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -90,10 +133,7 @@ const CSS = `
     padding: 20px 36px; background: rgba(13,27,46,0.8); border-bottom: 1px solid #1a2d47;
   }
   .vp-inst-name { font-size: 18px; font-weight: 900; color: #3b82f6; }
-  .vp-online-dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    display: inline-block; margin-right: 7px;
-  }
+  .vp-online-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; }
   .vp-status-txt { font-size: 12px; color: #4a6280; font-weight: 700; }
   .vp-center {
     display: flex; flex-direction: column;
@@ -143,8 +183,16 @@ const CSS = `
   }
   .vp-vol-btn:hover { background: #1a2d47; color: #f0f6ff; }
   .vp-vol-val { font-size: 13px; color: #8da4c0; min-width: 24px; text-align: center; }
+  .vp-bell-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+    color: #fff; font-size: 14px; font-weight: 800;
+    text-align: center; padding: 7px;
+    animation: vp-fadein 0.2s ease;
+  }
 `;
 
+// ═══════════════════════════════════════════════════════════════════════════
 export default function VirtualPlayer() {
   const clientId = getOrCreateClientId();
 
@@ -157,53 +205,169 @@ export default function VirtualPlayer() {
   const [volume,    setVolume]    = useState(7);
   const [isOnline,  setIsOnline]  = useState(navigator.onLine);
   const [unlocked,  setUnlocked]  = useState(false);
+  const [bellBanner, setBellBanner] = useState(false);
 
-  const audioRef    = useRef<HTMLAudioElement>(null);
-  const pollTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const beaconTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Két külön audio elem: főhang (rádió/TTS) és csengő (prioritás)
+  const audioRef     = useRef<HTMLAudioElement>(null);
+  const bellAudioRef = useRef<HTMLAudioElement>(null);
 
-  // ── Autoplay unlock ──────────────────────────────────────────────────────
-  // Néma WAV lejátszás, hogy a böngésző engedélyezze az autoplay-t
-  const unlockAudio = useCallback(() => {
+  const pollTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const beaconTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const offlineBellRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Rádió állapot – megszakítás utáni folytatáshoz
+  const radioStateRef = useRef<RadioState | null>(null);
+
+  // Offline csengetés deduplikáció
+  const lastBellKeyRef = useRef<string>("");
+
+  // Ref-ek closure-okhoz
+  const bellsRef  = useRef<BellEntry[]>([]);
+  const volumeRef = useRef(volume);
+  const activeMsgRef = useRef<CommandPayload | null>(null);
+
+  useEffect(() => { bellsRef.current  = bells;     }, [bells]);
+  useEffect(() => { volumeRef.current = volume;    }, [volume]);
+  useEffect(() => { activeMsgRef.current = activeMsg; }, [activeMsg]);
+
+  // ── Rádió folytatása megszakítás után ────────────────────────────────────
+  const resumeRadio = useCallback(() => {
+    const rs = radioStateRef.current;
+    if (!rs || !rs.isPlaying) return;
     const a = audioRef.current;
-    if (!a) { setUnlocked(true); return; }
-    a.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-    a.volume = 0;
-    a.play()
-      .then(() => { a.pause(); })
-      .catch(() => {})
-      .finally(() => { a.src = ""; a.volume = volume / 10; setUnlocked(true); });
-  }, [volume]);
+    if (!a) return;
 
-  // ── Audio lejátszás ──────────────────────────────────────────────────────
+    if (rs.isStream) {
+      // Élő stream: elejétől
+      a.src = rs.url;
+      a.volume = volumeRef.current / 10;
+      a.load();
+      a.play().catch(() => {});
+    } else {
+      // MP3 fájl: mentett pozícióból
+      a.src = rs.url;
+      a.volume = volumeRef.current / 10;
+      a.load();
+      const seekAndPlay = () => {
+        if (rs.currentTime > 0) a.currentTime = rs.currentTime;
+        a.play().catch(() => {});
+        a.removeEventListener("canplay", seekAndPlay);
+      };
+      a.addEventListener("canplay", seekAndPlay);
+    }
+    setActiveMsg({ action: "PLAY_URL", url: rs.url, title: "Iskolarádió", source: "RADIO" });
+    setAudioPct(0);
+  }, []);
+
+  // ── Csengetés lejátszása (legmagasabb prioritás) ──────────────────────────
+  const playBell = useCallback((url: string) => {
+    const mainAudio = audioRef.current;
+    const bellAudio = bellAudioRef.current;
+    if (!bellAudio) return;
+
+    // Főhang szüneteltetése, de állapot megőrzése
+    if (mainAudio && !mainAudio.paused && radioStateRef.current) {
+      radioStateRef.current.currentTime = mainAudio.currentTime;
+      mainAudio.pause();
+    }
+
+    setBellBanner(true);
+    bellAudio.src = url;
+    bellAudio.volume = volumeRef.current / 10;
+    bellAudio.load();
+    bellAudio.play().catch(err => console.warn("[VP] bell play() blocked:", err));
+  }, []);
+
+  // ── Audio lejátszás helper ───────────────────────────────────────────────
   const playAudio = useCallback((url: string) => {
     const a = audioRef.current;
     if (!a) return;
     a.src = url;
-    a.volume = volume / 10;
+    a.volume = volumeRef.current / 10;
     a.load();
     a.play().catch(err => console.warn("[VP] play() blocked:", err));
-  }, [volume]);
+  }, []);
 
   // ── Command kezelő ───────────────────────────────────────────────────────
   const handleCommand = useCallback(async (cmd: { id: string; payload: CommandPayload }) => {
     const { action, url, text, title } = cmd.payload;
-    if (action === "PLAY_URL" && url) {
+
+    if (action === "BELL" && url) {
+      // Csengetés – LEGMAGASABB PRIORITÁS, rádió fölé megy
+      playBell(url);
+
+    } else if (action === "PLAY_URL" && url) {
+      // Rádió indítása
+      const isStream = !url.match(/\.(mp3|wav|ogg|aac|m4a)(\?|$)/i);
+      radioStateRef.current = { url, currentTime: 0, isStream, isPlaying: true };
       setActiveMsg({ action, url, title: title ?? "Iskolarádió", source: cmd.payload.source });
       setAudioPct(0);
       playAudio(url);
+
     } else if (action === "TTS" && url) {
+      // TTS üzenet – rádió szüneteltetése, de NEM töröljük az állapotát
+      const mainAudio = audioRef.current;
+      if (mainAudio && radioStateRef.current?.isPlaying && !mainAudio.paused) {
+        radioStateRef.current.currentTime = mainAudio.currentTime;
+        mainAudio.pause();
+      }
       setActiveMsg({ action, url, text, title: title ?? "Üzenet" });
       setAudioPct(0);
       playAudio(url);
-    } else if (action === "BELL" && url) {
-      playAudio(url);
     }
+
     await apiFetch("/player/device/ack", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commandId: cmd.id }),
     }).catch(() => {});
-  }, [playAudio]);
+  }, [playAudio, playBell]);
+
+  // ── Bell hangfájlok cache-elése ──────────────────────────────────────────
+  const cacheBells = useCallback(async (bellList: BellEntry[]) => {
+    const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
+    for (const filename of unique) {
+      const url = `https://api.schoollive.hu/audio/bells/${filename}`;
+      await cacheBellSound(filename, url);
+    }
+  }, []);
+
+  // ── Offline csengetés ticker (30 mp-enként fut) ──────────────────────────
+  const offlineBellTick = useCallback(() => {
+    const now = new Date();
+    const h   = now.getHours();
+    const m   = now.getMinutes();
+    const s   = now.getSeconds();
+    const key = `${h}:${m}`;
+
+    // Csak az adott perc első 30 mp-ében játssza le
+    if (s > 30) return;
+    if (lastBellKeyRef.current === key) return;
+
+    const due = bellsRef.current.find(b => b.hour === h && b.minute === m);
+    if (!due) return;
+
+    lastBellKeyRef.current = key;
+    const url = getCachedBellUrl(due.soundFile, `https://api.schoollive.hu/audio/bells/${due.soundFile}`);
+    console.log(`[VP-BELL] ${key} → ${due.soundFile} (${url.startsWith("data:") ? "cached" : "network"})`);
+    playBell(url);
+  }, [playBell]);
+
+  // ── Autoplay unlock ──────────────────────────────────────────────────────
+  const unlockAudio = useCallback(() => {
+    const a    = audioRef.current;
+    const bell = bellAudioRef.current;
+    const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+    const tryUnlock = (el: HTMLAudioElement | null) => {
+      if (!el) return Promise.resolve();
+      el.src = SILENT; el.volume = 0;
+      return el.play().then(() => el.pause()).catch(() => {});
+    };
+    Promise.all([tryUnlock(a), tryUnlock(bell)]).finally(() => {
+      if (a)    { a.src    = ""; a.volume    = volumeRef.current / 10; }
+      if (bell) { bell.src = ""; bell.volume = volumeRef.current / 10; }
+      setUnlocked(true);
+    });
+  }, []);
 
   // ── Regisztráció ─────────────────────────────────────────────────────────
   const register = useCallback(async () => {
@@ -238,8 +402,13 @@ export default function VirtualPlayer() {
     };
   }, []);
 
-  useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+  // ── Óra ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const t = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
+  // ── Intézmény neve + csengetési rend + cache ─────────────────────────────
   useEffect(() => {
     if (status !== "active") return;
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
@@ -250,11 +419,26 @@ export default function VirtualPlayer() {
       } catch {}
     }
     apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(r => { if (r.bells) setBells(r.bells); }).catch(() => {});
-  }, [status]);
+      .then(r => {
+        if (r.bells) {
+          setBells(r.bells);
+          cacheBells(r.bells); // háttérben letölti és localStorage-ba menti
+        }
+      }).catch(() => {});
+  }, [status, cacheBells]);
 
+  // ── Offline bell ticker indítása ─────────────────────────────────────────
+  useEffect(() => {
+    if (status !== "active") return;
+    offlineBellTick();
+    offlineBellRef.current = setInterval(offlineBellTick, 30_000);
+    return () => { if (offlineBellRef.current) clearInterval(offlineBellRef.current); };
+  }, [status, offlineBellTick]);
+
+  // ── Regisztráció indítása ────────────────────────────────────────────────
   useEffect(() => { void register(); }, [register]);
 
+  // ── Polling ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (status === "registering") return;
     const poll = async () => {
@@ -272,6 +456,7 @@ export default function VirtualPlayer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
+  // ── Beacon ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (status !== "active") return;
     const beacon = async () => {
@@ -283,22 +468,77 @@ export default function VirtualPlayer() {
     return () => { if (beaconTimer.current) clearInterval(beaconTimer.current); };
   }, [status, clientId]);
 
-  useEffect(() => { if (audioRef.current) audioRef.current.volume = volume / 10; }, [volume]);
+  // ── Hangerő ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (audioRef.current)     audioRef.current.volume     = volume / 10;
+    if (bellAudioRef.current) bellAudioRef.current.volume = volume / 10;
+  }, [volume]);
+
+  // ── Audio event handlers ─────────────────────────────────────────────────
+  const onMainTimeUpdate = () => {
+    const a = audioRef.current;
+    if (a?.duration) {
+      setAudioPct((a.currentTime / a.duration) * 100);
+      // Rádió pozíció folyamatos mentése
+      if (radioStateRef.current?.isPlaying && !radioStateRef.current.isStream) {
+        radioStateRef.current.currentTime = a.currentTime;
+      }
+    }
+  };
+
+  const onMainEnded = () => {
+    const msg = activeMsgRef.current;
+    if (msg?.action === "TTS") {
+      // TTS véget ért → rádió folytatása ha volt
+      setActiveMsg(null);
+      setAudioPct(0);
+      if (radioStateRef.current?.isPlaying) resumeRadio();
+    } else {
+      // Rádió fájl véget ért
+      radioStateRef.current = null;
+      setActiveMsg(null);
+      setAudioPct(0);
+    }
+  };
+
+  const onMainError = () => {
+    setActiveMsg(null);
+    setAudioPct(0);
+    if (radioStateRef.current?.isPlaying) resumeRadio();
+  };
+
+  const onBellEnded = () => {
+    setBellBanner(false);
+    // Csengő után rádió folytatása ha volt
+    if (radioStateRef.current?.isPlaying) resumeRadio();
+  };
 
   const nextBell = nextBellLabel(bells);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="vp-root">
       <style>{CSS}</style>
 
-      {/* Audio elem MINDIG mounted */}
+      {/* Főhang – rádió és TTS, mindig mounted */}
       <audio
         ref={audioRef}
-        onTimeUpdate={() => { const a = audioRef.current; if (a?.duration) setAudioPct((a.currentTime / a.duration) * 100); }}
-        onEnded={() => { setActiveMsg(null); setAudioPct(0); }}
-        onError={() => { setActiveMsg(null); setAudioPct(0); }}
+        onTimeUpdate={onMainTimeUpdate}
+        onEnded={onMainEnded}
+        onError={onMainError}
         style={{ display: "none" }}
       />
+
+      {/* Csengő audio – külön elem, legmagasabb prioritás */}
+      <audio
+        ref={bellAudioRef}
+        onEnded={onBellEnded}
+        onError={() => { setBellBanner(false); if (radioStateRef.current?.isPlaying) resumeRadio(); }}
+        style={{ display: "none" }}
+      />
+
+      {/* Csengetés jelzősáv */}
+      {bellBanner && <div className="vp-bell-banner">🔔 Csengetés</div>}
 
       {/* Autoplay unlock overlay */}
       {!unlocked && (
