@@ -74,6 +74,57 @@ function Modal({ title, icon, onClose, children }: { title:string; icon:string; 
   );
 }
 
+// ── TenantForm kiemelve a TenantsPage()-ből, hogy ne veszítse el a fókuszt ──
+function TenantForm({ form, setForm }: {
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+}) {
+  return (
+    <>
+      <div className="tp-grid2">
+        <div>
+          <label className="tp-label">Intézmény neve *</label>
+          <input className="tp-input" value={form.name} onChange={e => setForm(s=>({...s,name:e.target.value}))} placeholder="pl. Kossuth Lajos Általános Iskola" />
+        </div>
+        <div>
+          <label className="tp-label">Domain / subdomain</label>
+          <input className="tp-input" value={form.domain} onChange={e => setForm(s=>({...s,domain:e.target.value}))} placeholder="pl. kossuth.schoollive.hu" />
+        </div>
+      </div>
+      <label className="tp-check-row">
+        <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
+        Aktív intézmény
+      </label>
+      <div className="tp-section-title">🏫 Kapcsolattartó / Igazgató</div>
+      <div className="tp-grid2">
+        <div>
+          <label className="tp-label">Igazgató neve</label>
+          <input className="tp-input" value={form.directorName} onChange={e => setForm(s=>({...s,directorName:e.target.value}))} placeholder="pl. Nagy István" />
+        </div>
+        <div>
+          <label className="tp-label">Telefon</label>
+          <input className="tp-input" value={form.directorPhone} onChange={e => setForm(s=>({...s,directorPhone:e.target.value}))} placeholder="+36 20 123 4567" />
+        </div>
+      </div>
+      <div>
+        <label className="tp-label">E-mail</label>
+        <input className="tp-input" type="email" value={form.directorEmail} onChange={e => setForm(s=>({...s,directorEmail:e.target.value}))} placeholder="igazgato@iskola.hu" />
+      </div>
+      <div className="tp-section-title">📋 Egyéb adatok</div>
+      <div className="tp-grid2">
+        <div>
+          <label className="tp-label">Cím</label>
+          <input className="tp-input" value={form.address} onChange={e => setForm(s=>({...s,address:e.target.value}))} placeholder="1234 Budapest, Fő u. 1." />
+        </div>
+        <div>
+          <label className="tp-label">OM azonosító</label>
+          <input className="tp-input" value={form.eduId} onChange={e => setForm(s=>({...s,eduId:e.target.value}))} placeholder="032456" />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function TenantsPage() {
   const { state } = useAuth();
   const navigate  = useNavigate();
@@ -86,6 +137,7 @@ export default function TenantsPage() {
   const [tenants, setTenants]   = useState<TenantDto[]>([]);
   const [error, setError]       = useState<string|null>(null);
   const [q, setQ]               = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen]     = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -102,9 +154,11 @@ export default function TenantsPage() {
   useEffect(() => { void load(); }, []);
 
   const filtered = useMemo(() => {
-    const n = q.trim().toLowerCase(); if (!n) return tenants;
-    return tenants.filter(t => [t.name,t.domain,t.eduId,t.directorName].join(" ").toLowerCase().includes(n));
-  }, [q, tenants]);
+    let list = showInactive ? tenants : tenants.filter(t => t.isActive !== false);
+    const n = q.trim().toLowerCase();
+    if (!n) return list;
+    return list.filter(t => [t.name,t.domain,t.eduId,t.directorName].join(" ").toLowerCase().includes(n));
+  }, [q, tenants, showInactive]);
 
   function openCreate() { setSelected(null); setForm(EMPTY_FORM); setIsCreateOpen(true); }
   function openEdit(t:TenantDto) {
@@ -124,6 +178,7 @@ export default function TenantsPage() {
     } catch (e) { setError(safeErr(e)); }
     finally { setBusyAction(null); }
   }
+
   async function submitUpdate() {
     if (!selected||!form.name.trim()) { setError("Az intézmény neve kötelező."); return; }
     setBusyAction("update");
@@ -135,72 +190,27 @@ export default function TenantsPage() {
     } catch (e) { setError(safeErr(e)); }
     finally { setBusyAction(null); }
   }
-  async function doDelete(t:TenantDto) {
-    if (!window.confirm(`Törlöd az intézményt? (${t.name})`)) return;
+
+  // Soft delete (deaktiválás)
+  async function doDeactivate(t:TenantDto) {
+    if (!window.confirm(`Deaktiválod az intézményt?\n\n${t.name}`)) return;
     setBusyAction("delete");
     try {
-      const r = await apiFetch<{ok:boolean}>(`/admin/tenants/${t.id}`,{method:"DELETE"});
-      if (!r?.ok) throw new Error("Backend hiba");
+      await apiFetch<unknown>(`/admin/tenants/${t.id}`,{method:"DELETE"});
       await load();
-    } catch (e) { setError(safeErr(e)); }
-    finally { setBusyAction(null); }
-  }
-  async function doHardDelete(t:TenantDto) {
-    if (!window.confirm(`Véglegesen törlöd az intézményt? (${t.name})`)) return;
-    setBusyAction("delete");
-    try {
-      const r = await apiFetch<{ok:boolean}>(`/admin/tenants/${t.id}`,{method:"DELETE"});
-      if (!r?.ok) throw new Error("Backend hiba");
-      await load();
-    } catch (e) { setError(safeErr(e)); }
+    } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
-  function TenantForm() {
-    return (
-      <>
-        <div className="tp-grid2">
-          <div>
-            <label className="tp-label">Intézmény neve *</label>
-            <input className="tp-input" value={form.name} onChange={e => setForm(s=>({...s,name:e.target.value}))} placeholder="pl. Kossuth Lajos Általános Iskola" />
-          </div>
-          <div>
-            <label className="tp-label">Domain / subdomain</label>
-            <input className="tp-input" value={form.domain} onChange={e => setForm(s=>({...s,domain:e.target.value}))} placeholder="pl. kossuth.schoollive.hu" />
-          </div>
-        </div>
-        <label className="tp-check-row">
-          <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
-          Aktív intézmény
-        </label>
-        <div className="tp-section-title">🏫 Kapcsolattartó / Igazgató</div>
-        <div className="tp-grid2">
-          <div>
-            <label className="tp-label">Igazgató neve</label>
-            <input className="tp-input" value={form.directorName} onChange={e => setForm(s=>({...s,directorName:e.target.value}))} placeholder="pl. Nagy István" />
-          </div>
-          <div>
-            <label className="tp-label">Telefon</label>
-            <input className="tp-input" value={form.directorPhone} onChange={e => setForm(s=>({...s,directorPhone:e.target.value}))} placeholder="+36 20 123 4567" />
-          </div>
-        </div>
-        <div>
-          <label className="tp-label">E-mail</label>
-          <input className="tp-input" type="email" value={form.directorEmail} onChange={e => setForm(s=>({...s,directorEmail:e.target.value}))} placeholder="igazgato@iskola.hu" />
-        </div>
-        <div className="tp-section-title">📋 Egyéb adatok</div>
-        <div className="tp-grid2">
-          <div>
-            <label className="tp-label">Cím</label>
-            <input className="tp-input" value={form.address} onChange={e => setForm(s=>({...s,address:e.target.value}))} placeholder="1234 Budapest, Fő u. 1." />
-          </div>
-          <div>
-            <label className="tp-label">OM azonosító</label>
-            <input className="tp-input" value={form.eduId} onChange={e => setForm(s=>({...s,eduId:e.target.value}))} placeholder="032456" />
-          </div>
-        </div>
-      </>
-    );
+  // Hard delete (végleges törlés)
+  async function doHardDelete(t:TenantDto) {
+    if (!window.confirm(`Véglegesen törlöd az intézményt? Ez nem visszafordítható!\nAz összes felhasználó, eszköz és adat törlődik!\n\n${t.name}`)) return;
+    setBusyAction("delete");
+    try {
+      await apiFetch<unknown>(`/admin/tenants/${t.id}?permanent=true`,{method:"DELETE"});
+      await load();
+    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
+    finally { setBusyAction(null); }
   }
 
   return (
@@ -215,6 +225,9 @@ export default function TenantsPage() {
         <div className="tp-actions">
           <input className="tp-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
           <button className="tp-btn tp-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új intézmény</button>
+          <button className="tp-btn tp-btn-ghost" onClick={() => setShowInactive(v=>!v)} type="button" style={showInactive?{borderColor:"#3b82f6",color:"#3b82f6"}:{}}>
+            {showInactive ? "👁 Inaktívak elrejtve" : "👁 Inaktívak mutatása"}
+          </button>
           <button className="tp-btn tp-btn-ghost" onClick={() => void load()} disabled={loading} type="button">🔄</button>
         </div>
       </div>
@@ -261,7 +274,7 @@ export default function TenantsPage() {
                     <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
                       <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openDetail(t)} type="button">🔍 Részletek</button>
                       <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openEdit(t)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
-                      <button className="tp-btn tp-btn-danger tp-btn-sm" onClick={() => void doDelete(t)} disabled={busyAction==="delete"} type="button">🗑</button>
+                      <button className="tp-btn tp-btn-danger tp-btn-sm" onClick={() => void doDeactivate(t)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
                       <button className="tp-btn tp-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(t)} disabled={busyAction==="delete"} type="button">🗑 Törlés</button>
                     </div>
                   </td>
@@ -275,7 +288,7 @@ export default function TenantsPage() {
       {/* Create modal */}
       {isCreateOpen && (
         <Modal title="Új intézmény" icon="🏫" onClose={() => setIsCreateOpen(false)}>
-          <div className="tp-modal-body"><TenantForm /></div>
+          <div className="tp-modal-body"><TenantForm form={form} setForm={setForm} /></div>
           <div className="tp-modal-footer">
             <button className="tp-btn tp-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
             <button className="tp-btn tp-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
@@ -288,7 +301,7 @@ export default function TenantsPage() {
       {/* Edit modal */}
       {isEditOpen && selected && (
         <Modal title={`Szerkesztés: ${selected.name}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
-          <div className="tp-modal-body"><TenantForm /></div>
+          <div className="tp-modal-body"><TenantForm form={form} setForm={setForm} /></div>
           <div className="tp-modal-footer">
             <button className="tp-btn tp-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">Mégse</button>
             <button className="tp-btn tp-btn-primary" onClick={() => void submitUpdate()} disabled={busyAction==="update"} type="button">
