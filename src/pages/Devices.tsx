@@ -11,6 +11,12 @@ type DeviceItem = {
   secondsSinceLastSeen: number | null; isVirtualPlayer?: boolean;
 };
 type HealthResponse = { ok: boolean; devices: DeviceItem[] };
+
+// Eszköz valóban online-e? secondsSinceLastSeen alapján (60mp küszöb)
+function isDeviceOnline(d: DeviceItem): boolean {
+  if (d.secondsSinceLastSeen === null || d.secondsSinceLastSeen === undefined) return d.isOnline;
+  return d.secondsSinceLastSeen < 60;
+}
 type PendingDevice  = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
 type PendingResponse = { ok: boolean; pending: PendingDevice[] };
 type PendingWebPlayer = { id: string; mac: string; clientId: string | null; userId: string | null; ipAddress: string | null; userAgent: string | null; firstSeenAt: string; lastSeenAt: string };
@@ -342,12 +348,12 @@ export default function Devices() {
                       </span>
                     </td>
                     <td>
-                      <span className="dv-badge" style={d.isOnline
+                      <span className="dv-badge" style={isDeviceOnline(d)
                         ? { background:"#f0fdf4", color:"#15803d", borderColor:"#bbf7d0" }
                         : { background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)" }
                       }>
-                        <span style={{ width:7,height:7,borderRadius:"50%",background:d.isOnline?"#22c55e":"#94a3b8",display:"inline-block" }} />
-                        {d.isOnline ? "Online" : "Offline"}
+                        <span style={{ width:7,height:7,borderRadius:"50%",background:isDeviceOnline(d)?"#22c55e":"#94a3b8",display:"inline-block" }} />
+                        {isDeviceOnline(d) ? "Online" : "Offline"}
                       </span>
                     </td>
                     <td style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
@@ -358,7 +364,13 @@ export default function Devices() {
                       }
                     </td>
                     <td style={{ fontSize:12 }}>
-                      {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined ? `${d.secondsSinceLastSeen}mp` : "—"}
+                      {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined
+                        ? d.secondsSinceLastSeen < 60
+                          ? `${d.secondsSinceLastSeen}mp`
+                          : d.secondsSinceLastSeen < 3600
+                            ? `${Math.floor(d.secondsSinceLastSeen/60)}p ${d.secondsSinceLastSeen%60}mp`
+                            : `${Math.floor(d.secondsSinceLastSeen/3600)}ó`
+                        : "—"}
                     </td>
                     {canWrite && (
                       <td style={{ textAlign:"right" }}>
