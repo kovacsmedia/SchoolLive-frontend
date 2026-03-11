@@ -1,7 +1,7 @@
 // src/pages/SchoolRadio.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../lib/api";
-//import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────
 type RadioFile = {
@@ -189,7 +189,7 @@ const CSS = `
 // Fő komponens
 // ═══════════════════════════════════════════════════════════════════════════
 export default function SchoolRadio() {
-  //const { state } = useAuth();
+  const { state } = useAuth();
 
 
   // ── Állapot ──────────────────────────────────────────────────────────────
@@ -230,15 +230,17 @@ export default function SchoolRadio() {
   const loadAll = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [filesRes, schedsRes, targetsRes] = await Promise.all([
+      const [filesRes, schedsRes, targetsRes, ytRes] = await Promise.all([
         apiFetch<{ok:boolean;files:RadioFile[]}>("/radio/files"),
         apiFetch<{ok:boolean;schedules:RadioSchedule[]}>("/radio/schedules"),
         apiFetch<{ok:boolean;devices:Device[];groups:DeviceGroup[]}>("/radio/targets"),
+        apiFetch<{ok:boolean;playlists:YtPlaylist[]}>("/radio/ytplaylists").catch(() => ({ ok:false, playlists:[] })),
       ]);
       setFiles(filesRes.files ?? []);
       setSchedules(schedsRes.schedules ?? []);
       setDevices(targetsRes.devices ?? []);
       setGroups(targetsRes.groups ?? []);
+      setYtPlaylists((ytRes as any)?.playlists ?? []);
     } catch (e:any) {
       setError(e?.message ?? "Betöltés sikertelen");
     } finally {
@@ -273,8 +275,8 @@ export default function SchoolRadio() {
         xhr.onerror = () => reject(new Error("Hálózati hiba"));
 
         // JWT token
-        const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
-        const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
+        const token = (state as any).token ?? localStorage.getItem("token") ?? "";
+        const tenantId = sessionStorage.getItem("activeTenantId") ?? "";
 
         xhr.open("POST", `${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/radio/files`);
         if (token)    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -507,6 +509,157 @@ export default function SchoolRadio() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* ═══ YouTube lejátszási listák ═══ */}
+          <div className="sr-panel">
+            <div className="sr-panel-hdr">
+              <div className="sr-panel-title">▶️ YouTube lejátszási listák</div>
+              <button className="sr-btn sr-btn-primary" style={{padding:"5px 12px",fontSize:12}} onClick={()=>{setYtOpen("new");setYtName("");setYtItems([{url:"",title:""}]);setYtError(null);}} type="button">＋ Új lista</button>
+            </div>
+            <div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+              {ytError && <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#dc2626"}}>⚠️ {ytError}</div>}
+
+              {ytPlaylists.length === 0 && ytOpen !== "new" && (
+                <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>
+                  <div style={{fontSize:32,marginBottom:8}}>▶️</div>
+                  Még nincs YouTube lista. Hozz létre egyet!
+                </div>
+              )}
+
+              {/* Meglévő listák */}
+              {ytPlaylists.map(pl => (
+                <div key={pl.id} style={{border:"1px solid var(--sl-border)",borderRadius:12,overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"var(--sl-bg)"}}>
+                    <span style={{fontWeight:800,fontSize:13,flex:1,color:"var(--sl-text)"}}>{pl.name}</span>
+                    <span className={`sr-yt-badge sr-yt-badge-${pl.status.toLowerCase()}`}>
+                      {pl.status === "IDLE" && "⏸ Kész"}
+                      {pl.status === "BUILDING" && "⏳ Épül…"}
+                      {pl.status === "DONE" && "✅ Elkészült"}
+                      {pl.status === "ERROR" && "❌ Hiba"}
+                    </span>
+                    <span style={{fontSize:11,color:"var(--sl-muted)"}}>{pl.items.length} dal</span>
+                    {pl.status !== "BUILDING" && (
+                      <button className="sr-btn sr-btn-ghost" style={{padding:"3px 9px",fontSize:11}} type="button"
+                        onClick={()=>{setYtOpen(pl.id);setYtName(pl.name);setYtItems(pl.items.map(i=>({url:i.youtubeUrl,title:i.title??""}))||[{url:"",title:""}]);setYtError(null);}}>
+                        ✏️
+                      </button>
+                    )}
+                    {pl.status === "DONE" && pl.radioFileId && (
+                      <button className="sr-btn sr-btn-primary" style={{padding:"3px 9px",fontSize:11}} type="button"
+                        onClick={()=>{setFormFileId(pl.radioFileId!);setFormOpen(true);}}>
+                        📅 Ütemez
+                      </button>
+                    )}
+                    {(pl.status === "IDLE" || pl.status === "ERROR" || pl.status === "DONE") && (
+                      <button className="sr-btn sr-btn-primary" style={{padding:"3px 9px",fontSize:11,background:"linear-gradient(135deg,#f59e0b,#f97316)"}} type="button"
+                        onClick={async () => {
+                          setYtBusy(pl.id); setYtError(null);
+                          try {
+                            await apiFetch(`/radio/ytplaylists/${pl.id}/build`, {method:"POST"});
+                            // Polling indítása
+                            const timer = setInterval(async () => {
+                              try {
+                                const s = await apiFetch<any>(`/radio/ytplaylists/${pl.id}/status`);
+                                setYtPlaylists(prev => prev.map(p => p.id === pl.id ? {...p, status: s.status, errorMsg: s.errorMsg, radioFileId: s.radioFileId} : p));
+                                if (s.status !== "BUILDING") {
+                                  clearInterval(timer);
+                                  setYtBusy(null);
+                                  if (s.status === "DONE") void loadAll();
+                                }
+                              } catch { clearInterval(timer); setYtBusy(null); }
+                            }, 3000);
+                            setYtPollTimer(timer);
+                          } catch(e:any) { setYtError(e?.message??"Build hiba"); setYtBusy(null); }
+                        }}
+                        disabled={ytBusy === pl.id}>
+                        {ytBusy === pl.id ? "⏳ Épül…" : "🔨 Build"}
+                      </button>
+                    )}
+                    <button className="sr-btn" style={{padding:"3px 9px",fontSize:11,background:"#fef2f2",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8}} type="button"
+                      onClick={async ()=>{
+                        if (!window.confirm(`Törlöd: ${pl.name}?`)) return;
+                        try { await apiFetch(`/radio/ytplaylists/${pl.id}`,{method:"DELETE"}); void loadAll(); }
+                        catch(e:any){setYtError(e?.message??"Törlés sikertelen");}
+                      }}>🗑</button>
+                  </div>
+                  {pl.status === "ERROR" && pl.errorMsg && (
+                    <div style={{padding:"6px 14px",fontSize:11,color:"#dc2626",background:"#fef2f2",borderTop:"1px solid #fecaca"}}>⚠️ {pl.errorMsg}</div>
+                  )}
+                  {/* Szerkesztő */}
+                  {ytOpen === pl.id && (
+                    <div style={{padding:"12px 14px",borderTop:"1px solid var(--sl-border)",display:"flex",flexDirection:"column",gap:10}}>
+                      <div>
+                        <label className="sr-label">Lista neve</label>
+                        <input className="sr-input" value={ytName} onChange={e=>setYtName(e.target.value)} placeholder="pl. Reggeli zene" />
+                      </div>
+                      <div>
+                        <label className="sr-label">YouTube linkek</label>
+                        {ytItems.map((item,i)=>(
+                          <div key={i} className="sr-yt-item">
+                            <span style={{fontSize:11,color:"var(--sl-muted)",minWidth:18,textAlign:"right"}}>{i+1}.</span>
+                            <input className="sr-yt-url" value={item.url} onChange={e=>setYtItems(prev=>prev.map((x,j)=>j===i?{...x,url:e.target.value}:x))} placeholder="https://youtube.com/watch?v=..." />
+                            <input className="sr-yt-url" style={{maxWidth:160}} value={item.title} onChange={e=>setYtItems(prev=>prev.map((x,j)=>j===i?{...x,title:e.target.value}:x))} placeholder="Cím (opcionális)" />
+                            <button type="button" style={{background:"none",border:"none",cursor:"pointer",color:"#dc2626",fontSize:16}} onClick={()=>setYtItems(prev=>prev.filter((_,j)=>j!==i))}>✕</button>
+                          </div>
+                        ))}
+                        <button className="sr-btn sr-btn-ghost" style={{padding:"5px 12px",fontSize:12,marginTop:4}} type="button" onClick={()=>setYtItems(prev=>[...prev,{url:"",title:""}])}>＋ Link hozzáadása</button>
+                      </div>
+                      <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                        <button className="sr-btn sr-btn-ghost" style={{padding:"5px 12px",fontSize:12}} type="button" onClick={()=>setYtOpen(null)}>Mégse</button>
+                        <button className="sr-btn sr-btn-primary" style={{padding:"5px 12px",fontSize:12}} type="button" onClick={async()=>{
+                          const validItems = ytItems.filter(i=>i.url.trim());
+                          if (!ytName.trim()||validItems.length===0){setYtError("Adj meg nevet és legalább egy linket!");return;}
+                          setYtBusy(pl.id);
+                          try {
+                            await apiFetch(`/radio/ytplaylists/${pl.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},
+                              body:JSON.stringify({name:ytName.trim(),items:validItems.map(i=>({youtubeUrl:i.url.trim(),title:i.title.trim()||null}))})});
+                            setYtOpen(null); void loadAll();
+                          } catch(e:any){setYtError(e?.message??"Mentés sikertelen");} finally{setYtBusy(null);}
+                        }}>💾 Mentés</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Új lista form */}
+              {ytOpen === "new" && (
+                <div style={{border:"1.5px solid #3b82f6",borderRadius:12,padding:"14px",display:"flex",flexDirection:"column",gap:10}}>
+                  <div>
+                    <label className="sr-label">Lista neve *</label>
+                    <input className="sr-input" value={ytName} onChange={e=>setYtName(e.target.value)} placeholder="pl. Reggeli zene" />
+                  </div>
+                  <div>
+                    <label className="sr-label">YouTube linkek *</label>
+                    {ytItems.map((item,i)=>(
+                      <div key={i} className="sr-yt-item">
+                        <span style={{fontSize:11,color:"var(--sl-muted)",minWidth:18,textAlign:"right"}}>{i+1}.</span>
+                        <input className="sr-yt-url" value={item.url} onChange={e=>setYtItems(prev=>prev.map((x,j)=>j===i?{...x,url:e.target.value}:x))} placeholder="https://youtube.com/watch?v=..." />
+                        <input className="sr-yt-url" style={{maxWidth:160}} value={item.title} onChange={e=>setYtItems(prev=>prev.map((x,j)=>j===i?{...x,title:e.target.value}:x))} placeholder="Cím (opcionális)" />
+                        {ytItems.length>1 && <button type="button" style={{background:"none",border:"none",cursor:"pointer",color:"#dc2626",fontSize:16}} onClick={()=>setYtItems(prev=>prev.filter((_,j)=>j!==i))}>✕</button>}
+                      </div>
+                    ))}
+                    <button className="sr-btn sr-btn-ghost" style={{padding:"5px 12px",fontSize:12,marginTop:4}} type="button" onClick={()=>setYtItems(prev=>[...prev,{url:"",title:""}])}>＋ Link hozzáadása</button>
+                  </div>
+                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button className="sr-btn sr-btn-ghost" style={{padding:"5px 12px",fontSize:12}} type="button" onClick={()=>setYtOpen(null)}>Mégse</button>
+                    <button className="sr-btn sr-btn-primary" style={{padding:"5px 12px",fontSize:12}} type="button" onClick={async()=>{
+                      const validItems = ytItems.filter(i=>i.url.trim());
+                      if (!ytName.trim()||validItems.length===0){setYtError("Adj meg nevet és legalább egy linket!");return;}
+                      setYtBusy("new");
+                      try {
+                        await apiFetch("/radio/ytplaylists",{method:"POST",headers:{"Content-Type":"application/json"},
+                          body:JSON.stringify({name:ytName.trim(),items:validItems.map(i=>({youtubeUrl:i.url.trim(),title:i.title.trim()||null}))})});
+                        setYtOpen(null); void loadAll();
+                      } catch(e:any){setYtError(e?.message??"Létrehozás sikertelen");} finally{setYtBusy(null);}
+                    }} disabled={ytBusy==="new"}>
+                      {ytBusy==="new"?"⏳ Létrehozás…":"✅ Létrehoz"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Ütemezés form */}
