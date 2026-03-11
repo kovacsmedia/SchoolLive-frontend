@@ -61,55 +61,92 @@ function calcFontSize(text: string): string {
   return "clamp(15px, 2.5vw, 28px)";
 }
 
-// ─── Bell hangfájl cache (localStorage base64 Data URL) ───────────────────────
+// ─── Bell hangfájl cache – AudioContext alapú (autoplay-safe) ─────────────────
+// Az AudioContext egyszer unlock után örökre engedélyezett,
+// src csere nem kell, a setInterval-ból is biztonságosan szól.
 const BELL_CACHE_PREFIX = "vpBellCache_";
 
+// In-memory AudioBuffer cache (oldal életciklusára)
+const bellBuffers = new Map<string, AudioBuffer>();
+// Singleton AudioContext
+let sharedAudioCtx: AudioContext | null = null;
+
+function getAudioCtx(): AudioContext {
+  if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+    sharedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  return sharedAudioCtx;
+}
+
+// Unlock: felhasználói gesztusnál hívjuk, hogy az AudioContext resumed állapotba kerüljön
+function unlockAudioCtx(): void {
+  const ctx = getAudioCtx();
+  if (ctx.state === "suspended") {
+    ctx.resume().then(() => console.log("[VP] 🔊 AudioContext unlocked")).catch(() => {});
+  }
+}
+
 async function cacheBellSound(filename: string, url: string): Promise<boolean> {
-  const key = BELL_CACHE_PREFIX + filename;
-  try { if (localStorage.getItem(key)) return true; } catch { return false; }
+  // Ha már be van töltve a memóriába, kész
+  if (bellBuffers.has(filename)) return true;
+
+  let arrayBuf: ArrayBuffer | null = null;
+
+  // 1. localStorage-ból próbálunk (base64 → ArrayBuffer)
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const blob = await resp.blob();
-    await new Promise<void>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        try {
-          localStorage.setItem(key, reader.result as string);
-          resolve();
-        } catch (e) {
-          console.warn("[VP] Bell cache save failed (storage full?):", e);
-          resolve(); // nem fatal
-        }
-      };
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-    console.log("[VP] ✅ Cached bell sound:", filename);
+    const b64 = localStorage.getItem(BELL_CACHE_PREFIX + filename);
+    if (b64) {
+      const binary = atob(b64.split(",")[1] ?? b64);
+      const bytes  = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      arrayBuf = bytes.buffer;
+    }
+  } catch {}
+
+  // 2. Ha nincs localStorage-ban, letöltjük
+  if (!arrayBuf) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      arrayBuf = await resp.arrayBuffer();
+
+      // Elmentjük localStorage-ba a következő betöltéshez
+      try {
+        const bytes  = new Uint8Array(arrayBuf);
+        let binary   = "";
+        bytes.forEach(b => { binary += String.fromCharCode(b); });
+        localStorage.setItem(BELL_CACHE_PREFIX + filename, "data:audio/mpeg;base64," + btoa(binary));
+      } catch (e) {
+        console.warn("[VP] Bell localStorage save failed:", e);
+      }
+    } catch (e) {
+      console.warn("[VP] ❌ Bell download failed:", filename, e);
+      return false;
+    }
+  }
+
+  // 3. Decode → AudioBuffer (az AudioContext decodeAudioData-hoz kell)
+  try {
+    const ctx    = getAudioCtx();
+    const buffer = await ctx.decodeAudioData(arrayBuf!.slice(0)); // slice: avoid detached buffer
+    bellBuffers.set(filename, buffer);
+    console.log("[VP] ✅ Bell decoded:", filename);
     return true;
   } catch (e) {
-    console.warn("[VP] ❌ Failed to cache bell sound:", filename, e);
+    console.warn("[VP] ❌ Bell decode failed:", filename, e);
     return false;
   }
 }
 
-function getCachedBellUrl(filename: string, fallbackUrl: string): string {
-  try {
-    const cached = localStorage.getItem(BELL_CACHE_PREFIX + filename);
-    if (cached) return cached;
-  } catch {}
-  return fallbackUrl;
-}
-
 function countCachedBells(): number {
-  let count = 0;
+  // In-memory buffer count + localStorage count (whichever is larger)
+  let lsCount = 0;
   try {
     for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k?.startsWith(BELL_CACHE_PREFIX)) count++;
+      if (localStorage.key(i)?.startsWith(BELL_CACHE_PREFIX)) lsCount++;
     }
   } catch {}
-  return count;
+  return Math.max(bellBuffers.size, lsCount);
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -378,9 +415,7 @@ export default function VirtualPlayer() {
 
   // ── Csengetés lejátszása (legmagasabb prioritás) ───────────────────────────
   const playBell = useCallback((soundFile: string, fallbackUrl: string) => {
-    const bellAudio = bellAudioRef.current;
     const mainAudio = audioRef.current;
-    if (!bellAudio) return;
 
     // Főhang szüneteltetése, állapot megőrzése
     if (mainAudio && !mainAudio.paused && radioStateRef.current?.isPlaying) {
@@ -388,22 +423,44 @@ export default function VirtualPlayer() {
       mainAudio.pause();
     }
 
-    const url = getCachedBellUrl(soundFile, fallbackUrl);
-    console.log(`[VP-BELL] 🔔 ${soundFile} (${url.startsWith("data:") ? "cache" : "hálózat"})`);
-
     setBellBanner(true);
-    bellAudio.src = url;
-    bellAudio.volume = volumeRef.current / 10;
-    bellAudio.load();
-    bellAudio.play().catch(err => {
-      console.warn("[VP-BELL] play() blocked:", err);
-      // Ha cache-ből nem ment, próbáljuk hálózatról
-      if (url !== fallbackUrl) {
-        bellAudio.src = fallbackUrl;
-        bellAudio.load();
-        bellAudio.play().catch(() => {});
+
+    const buffer = bellBuffers.get(soundFile);
+    if (buffer) {
+      // ── AudioContext alapú lejátszás (autoplay-safe) ──────────────────
+      console.log(`[VP-BELL] 🔔 ${soundFile} (AudioBuffer)`);
+      const ctx = getAudioCtx();
+      const resume = () => {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const gain = ctx.createGain();
+        gain.gain.value = volumeRef.current / 10;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.onended = () => {
+          setBellBanner(false);
+          if (radioStateRef.current?.isPlaying) setTimeout(resumeRadio, 200);
+        };
+        source.start(0);
+      };
+      if (ctx.state === "suspended") {
+        ctx.resume().then(resume).catch(() => setBellBanner(false));
+      } else {
+        resume();
       }
-    });
+    } else {
+      // ── Fallback: <audio> elem hálózatról ────────────────────────────
+      console.log(`[VP-BELL] 🔔 ${soundFile} (hálózat fallback)`);
+      const bellAudio = bellAudioRef.current;
+      if (!bellAudio) { setBellBanner(false); return; }
+      bellAudio.src = fallbackUrl;
+      bellAudio.volume = volumeRef.current / 10;
+      bellAudio.load();
+      bellAudio.play().catch(err => {
+        console.warn("[VP-BELL] fallback play() blocked:", err);
+        setBellBanner(false);
+      });
+    }
   }, []);
 
   // ── Audio lejátszás helper ─────────────────────────────────────────────────
@@ -504,19 +561,19 @@ export default function VirtualPlayer() {
 
   // ── Autoplay unlock ────────────────────────────────────────────────────────
   const unlockAudio = useCallback(() => {
-    const a    = audioRef.current;
-    const bell = bellAudioRef.current;
-    const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-    const tryUnlock = (el: HTMLAudioElement | null) => {
-      if (!el) return Promise.resolve();
-      el.src = SILENT; el.volume = 0;
-      return el.play().then(() => el.pause()).catch(() => {});
-    };
-    Promise.all([tryUnlock(a), tryUnlock(bell)]).finally(() => {
-      if (a)    { a.src    = ""; a.volume    = volumeRef.current / 10; }
-      if (bell) { bell.src = ""; bell.volume = volumeRef.current / 10; }
-      setUnlocked(true);
-    });
+    // AudioContext unlock (bell hangokhoz)
+    unlockAudioCtx();
+
+    // A fő rádió <audio> elem unlock (stream lejátszáshoz)
+    const a = audioRef.current;
+    if (a) {
+      const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      a.src = SILENT; a.volume = 0;
+      a.play().then(() => a.pause()).catch(() => {}).finally(() => {
+        a.src = ""; a.volume = volumeRef.current / 10;
+      });
+    }
+    setUnlocked(true);
   }, []);
 
   // ── Regisztráció ──────────────────────────────────────────────────────────
