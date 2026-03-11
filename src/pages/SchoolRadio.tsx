@@ -440,11 +440,7 @@ export default function SchoolRadio() {
     const previewFileDur = files.find(f => f.id === formFileId)?.durationSec ?? null;
     if (checkTeachingHourOverlap(scheduledAt, previewFileDur, mainBells)) {
       const ok = window.confirm(
-        "⚠️ A rádióműsor tanítási órát érint!
-
-" +
-        "A műsor kezdési ideje és hossza alapján az adás átfed egy tanítási órával. " +
-        "Biztosan így szeretnéd ütemezni?"
+        "⚠️ A rádióműsor tanítási órát érint!\n\nA műsor kezdési ideje és hossza alapján az adás átfed egy tanítási órával. Biztosan így szeretnéd ütemezni?"
       );
       if (!ok) return;
     }
