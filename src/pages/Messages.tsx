@@ -264,9 +264,7 @@ export default function Messages() {
       if (dt <= new Date()) { setSendError("A megadott időpont már elmúlt!"); return; }
       // Tanítási óra ellenőrzés
       if (checkLessonOverlap(dt, bells)) {
-        const ok = window.confirm("⚠️ Tanítási óra alatti időpont!
-
-A választott időpont egy tanítási óra közé esik. Biztosan így szeretnéd küldeni?");
+        const ok = window.confirm("⚠️ Tanítási óra alatti időpont!\n\nA választott időpont egy tanítási óra közé esik. Biztosan így szeretnéd küldeni?");
         if (!ok) return;
       }
       scheduledAt = dt.toISOString();
