@@ -261,8 +261,21 @@ const CSS = `
   .vp-msg-reading-progress {
     height: 100%; border-radius: 99px;
     background: linear-gradient(90deg,#22c55e,#3b82f6);
-    transition: none;
-    animation: vp-reading linear forwards;
+    transition: width 0.25s linear;
+  }
+  .vp-msg-linger-progress {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg,#f59e0b,#ef4444);
+    transition: width 0.25s linear;
+  }
+  .vp-radio-title {
+    font-size: clamp(22px,4vw,52px); font-weight: 900;
+    color: #3b82f6; text-align: center; letter-spacing: -0.5px;
+    text-shadow: 0 0 40px rgba(59,130,246,0.5);
+  }
+  .vp-radio-timeleft {
+    font-size: clamp(14px,2vw,24px); font-weight: 700;
+    color: #8da4c0; font-variant-numeric: tabular-nums; letter-spacing: 1px;
   }
 
   /* ── Hang haladás sáv ── */
@@ -313,8 +326,10 @@ export default function VirtualPlayer() {
   const [volume,     setVolume]     = useState(7);
   const [isOnline,   setIsOnline]   = useState(navigator.onLine);
   const [unlocked,   setUnlocked]   = useState(false);
-  const [bellBanner, setBellBanner] = useState(false);
+  const [bellBanner,      setBellBanner]      = useState(false);
   const [cachedBellCount, setCachedBellCount] = useState(0);
+  const [timeLeft,        setTimeLeft]        = useState<number|null>(null); // hátralévő mp
+  const [lingerPct,       setLingerPct]       = useState(0); // 10mp linger csík 100→0
 
   // Két külön audio elem
   const audioRef     = useRef<HTMLAudioElement>(null);
@@ -325,6 +340,8 @@ export default function VirtualPlayer() {
   const offlineBellRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const readingTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
   const dismissTimer   = useRef<ReturnType<typeof setTimeout>  | null>(null);
+  const lingerTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dismissGenRef  = useRef(0); // race condition védelem
 
   // Rádió állapot – megszakítás utáni folytatáshoz
   const radioStateRef  = useRef<RadioState | null>(null);
@@ -343,25 +360,35 @@ export default function VirtualPlayer() {
   const dismissMsg = useCallback(() => {
     if (readingTimer.current) { clearInterval(readingTimer.current); readingTimer.current = null; }
     if (dismissTimer.current) { clearTimeout(dismissTimer.current);  dismissTimer.current = null; }
+    if (lingerTimer.current)  { clearInterval(lingerTimer.current);  lingerTimer.current  = null; }
     setMsgFadeout(true);
+    // Generáció számláló: ha a fadeout 500ms alatt új showMsg jön, a cleanup ne törölje azt
+    const gen = ++dismissGenRef.current;
     setTimeout(() => {
+      if (dismissGenRef.current !== gen) return; // újabb showMsg volt közben
       setActiveMsg(null);
       setAudioPct(0);
       setReadingPct(0);
+      setLingerPct(0);
+      setTimeLeft(null);
       setMsgFadeout(false);
       activeMsgActionRef.current = "";
-    }, 500); // fadeout animáció ideje
+    }, 500);
   }, []);
 
   // ── Üzenet megjelenítése olvasási időzítővel ──────────────────────────────
   const showMsg = useCallback((payload: CommandPayload, readingMs?: number) => {
     if (dismissTimer.current) { clearTimeout(dismissTimer.current);  dismissTimer.current = null; }
     if (readingTimer.current) { clearInterval(readingTimer.current); readingTimer.current = null; }
+    if (lingerTimer.current)  { clearInterval(lingerTimer.current);  lingerTimer.current  = null; }
+    dismissGenRef.current++; // érvényteleníti a folyamatban lévő fadeout cleanup-ot
     activeMsgActionRef.current = payload.action;
     setActiveMsg(payload);
     setMsgFadeout(false);
     setAudioPct(0);
     setReadingPct(0);
+    setLingerPct(0);
+    setTimeLeft(null);
 
     if (readingMs && readingMs > 0) {
       // Olvasási sáv animáció
@@ -701,8 +728,9 @@ export default function VirtualPlayer() {
   // ── Audio event handlers ──────────────────────────────────────────────────
   const onMainTimeUpdate = () => {
     const a = audioRef.current;
-    if (a?.duration && !isNaN(a.duration)) {
+    if (a?.duration && !isNaN(a.duration) && a.duration > 0) {
       setAudioPct((a.currentTime / a.duration) * 100);
+      setTimeLeft(Math.max(0, Math.ceil(a.duration - a.currentTime)));
       // Rádió pozíció folyamatos mentése
       if (radioStateRef.current?.isPlaying && !radioStateRef.current.isStream) {
         radioStateRef.current.currentTime = a.currentTime;
@@ -715,10 +743,24 @@ export default function VirtualPlayer() {
     console.log(`[VP] onMainEnded: action="${currentAction}"`);
 
     if (currentAction === "TTS") {
-      // TTS véget ért → overlay elrejtése, rádió folytatása
-      dismissMsg();
+      // TTS véget ért → 10mp linger, majd fadeout; közben rádió folytatása
       if (radioStateRef.current?.isPlaying) {
-        setTimeout(resumeRadio, 300); // kis késleltetés a fadeout után
+        setTimeout(resumeRadio, 200); // rádió overlay visszahozása (showMsg-t hív)
+        // A linger nem kell ha rádió jön vissza – resumeRadio kezeli
+      } else {
+        // Nincs rádió → 10mp linger csík, majd fadeout
+        const LINGER_MS = 10_000;
+        const startTime = Date.now();
+        setLingerPct(100);
+        lingerTimer.current = setInterval(() => {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, LINGER_MS - elapsed);
+          setLingerPct((remaining / LINGER_MS) * 100);
+          if (elapsed >= LINGER_MS) {
+            if (lingerTimer.current) { clearInterval(lingerTimer.current); lingerTimer.current = null; }
+            dismissMsg();
+          }
+        }, 100);
       }
     } else if (currentAction === "PLAY_URL") {
       // Rádió/fájl véget ért természetesen
@@ -814,31 +856,56 @@ export default function VirtualPlayer() {
             {/* Üzenet overlay */}
             {activeMsg && (
               <div className={`vp-msg-overlay${msgFadeout ? " vp-msg-fadeout" : ""}`}>
-                <div className="vp-msg-icon">
-                  {activeMsg.source === "RADIO" ? "📻" : activeMsg.action === "TTS" ? "📢" : "🎵"}
-                </div>
-                {activeMsg.title && (
-                  <div className="vp-msg-title">{activeMsg.title}</div>
-                )}
-                {activeMsg.text && (
-                  <div
-                    className="vp-msg-text"
-                    style={{ fontSize: calcFontSize(activeMsg.text) }}
-                  >
-                    {activeMsg.text}
-                  </div>
-                )}
-                {/* Hang haladás */}
-                {activeMsg.action !== "TTS" && audioPct > 0 && (
-                  <div className="vp-msg-progress-wrap">
-                    <div className="vp-msg-progress" style={{ width: `${audioPct}%` }} />
-                  </div>
-                )}
-                {/* Olvasási idő haladás (TTS) */}
-                {activeMsg.action === "TTS" && activeMsg.text && (
-                  <div className="vp-msg-progress-wrap">
-                    <div className="vp-msg-reading-progress" style={{ width: `${readingPct}%` }} />
-                  </div>
+                {activeMsg.source === "RADIO" ? (
+                  /* ── Rádió / zenelejátszás ── */
+                  <>
+                    <div style={{fontSize:64}}>📻</div>
+                    <div className="vp-radio-title">Iskolarádió</div>
+                    {timeLeft !== null && (
+                      <div className="vp-radio-timeleft">
+                        {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2,"0")}
+                      </div>
+                    )}
+                    {audioPct > 0 && (
+                      <div className="vp-msg-progress-wrap">
+                        <div className="vp-msg-progress" style={{ width: `${audioPct}%` }} />
+                      </div>
+                    )}
+                  </>
+                ) : activeMsg.action === "TTS" ? (
+                  /* ── TTS üzenet ── */
+                  <>
+                    {activeMsg.text && (
+                      <div
+                        className="vp-msg-text"
+                        style={{ fontSize: calcFontSize(activeMsg.text) }}
+                      >
+                        {activeMsg.text}
+                      </div>
+                    )}
+                    {/* Olvasási sáv lejátszás közben */}
+                    {readingPct > 0 && lingerPct === 0 && (
+                      <div className="vp-msg-progress-wrap">
+                        <div className="vp-msg-reading-progress" style={{ width: `${readingPct}%` }} />
+                      </div>
+                    )}
+                    {/* Linger csík (100→0) lejátszás után */}
+                    {lingerPct > 0 && (
+                      <div className="vp-msg-progress-wrap">
+                        <div className="vp-msg-linger-progress" style={{ width: `${lingerPct}%` }} />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* ── Egyéb (PLAY_URL, nem rádió forrás) ── */
+                  <>
+                    <div style={{fontSize:48}}>🎵</div>
+                    {audioPct > 0 && (
+                      <div className="vp-msg-progress-wrap">
+                        <div className="vp-msg-progress" style={{ width: `${audioPct}%` }} />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
