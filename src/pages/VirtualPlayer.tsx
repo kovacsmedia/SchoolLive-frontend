@@ -389,9 +389,10 @@ export default function VirtualPlayer() {
       const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
       if (!token) return;
       try {
+        // sendBeacon nem tud Authorization headert küldeni → tokent body-ban küldjük
         navigator.sendBeacon(
           "https://api.schoollive.hu/auth/logout",
-          new Blob([JSON.stringify({})], { type: "application/json" })
+          new Blob([JSON.stringify({ token })], { type: "application/json" })
         );
       } catch {}
     };
