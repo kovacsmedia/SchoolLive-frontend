@@ -29,6 +29,11 @@ type RadioSchedule = {
 type Device      = { id: string; name: string; online: boolean; deviceClass: string };
 type DeviceGroup = { id: string; name: string };
 
+// ─── YouTube playlist típusok ─────────────────────────────────────────────
+type YtPlaylistStatus = "IDLE" | "BUILDING" | "DONE" | "ERROR";
+type YtPlaylistItem   = { id: string; youtubeUrl: string; title?: string | null; sortOrder: number };
+type YtPlaylist       = { id: string; name: string; status: YtPlaylistStatus; errorMsg?: string | null; radioFileId?: string | null; items: YtPlaylistItem[]; createdAt: string };
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec) return "–";
@@ -225,6 +230,15 @@ export default function SchoolRadio() {
   const [formBusy,     setFormBusy]     = useState(false);
   const [formError,    setFormError]    = useState<string|null>(null);
   const [, setFormConflict] = useState<any>(null);
+
+  // ── YouTube playlist állapot ──────────────────────────────────────────────
+  const [ytPlaylists,  setYtPlaylists]  = useState<YtPlaylist[]>([]);
+  const [ytOpen,       setYtOpen]       = useState<string|null>(null);
+  const [ytName,       setYtName]       = useState("");
+  const [ytItems,      setYtItems]      = useState<{url:string;title:string}[]>([{url:"",title:""}]);
+  const [ytBusy,       setYtBusy]       = useState<string|null>(null);
+  const [ytError,      setYtError]      = useState<string|null>(null);
+  const [,             setYtPollTimer]  = useState<ReturnType<typeof setInterval>|null>(null);
 
   // ── Betöltés ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
