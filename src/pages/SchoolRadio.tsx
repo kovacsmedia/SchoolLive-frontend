@@ -125,7 +125,7 @@ const CSS = `
   }
   .sr-file-item:last-child{border-bottom:none}
   .sr-file-item:hover{background:rgba(59,130,246,0.03)}
-  .sr-file-item.selected{background:linear-gradient(135deg,#eff6ff,#f5f3ff)}
+  .sr-file-item.selected{background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6}
   .sr-file-name{font-size:13.5px;font-weight:700;color:var(--sl-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
   .sr-file-meta{font-size:11px;color:var(--sl-muted);display:flex;gap:10px;margin-top:3px;flex-wrap:wrap}
   .sr-file-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
@@ -181,7 +181,7 @@ const CSS = `
   .sr-device-list{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto;padding:6px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg)}
   .sr-device-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;cursor:pointer;transition:background 0.12s;border:1.5px solid transparent}
   .sr-device-item:hover{background:var(--sl-border)}
-  .sr-device-item.sel{background:#eff6ff;border-color:#bfdbfe}
+  .sr-device-item.sel{background:rgba(59,130,246,0.18);border-color:#3b82f6;color:var(--sl-text)}
   .sr-dot-on{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0}
   .sr-dot-off{width:6px;height:6px;border-radius:50%;background:#94a3b8;flex-shrink:0}
   .sr-time-preview{background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1px solid #bfdbfe;border-radius:11px;padding:10px 14px;font-size:13px;color:#1d4ed8;display:flex;align-items:center;gap:10px}
@@ -892,7 +892,7 @@ export default function SchoolRadio() {
                         : devices.map(d => (
                           <div key={d.id}
                             className={`sr-device-item${formTargetId===d.id?" sel":""}`}
-                            onClick={() => setFormTargetId(d.id)}>
+                            onClick={() => setFormTargetId(formTargetId === d.id ? "" : d.id)}>
                             <span className={d.online?"sr-dot-on":"sr-dot-off"} />
                             <span style={{fontSize:13.5,fontWeight:600}}>{d.name}</span>
                             <span style={{fontSize:11,color:"var(--sl-muted)",marginLeft:"auto"}}>{d.deviceClass}</span>

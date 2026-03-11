@@ -127,7 +127,7 @@ const CSS = `
   .ms-device-list{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto;padding:8px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg)}
   .ms-device-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:background 0.12s;border:1.5px solid transparent}
   .ms-device-item:hover{background:var(--sl-border)}
-  .ms-device-item.selected{background:#eff6ff;border-color:#bfdbfe}
+  .ms-device-item.selected{background:rgba(59,130,246,0.18);border-color:#3b82f6;color:var(--sl-text)}
   .ms-dot-on{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0}
   .ms-dot-off{width:7px;height:7px;border-radius:50%;background:#94a3b8;flex-shrink:0}
 
@@ -455,7 +455,7 @@ export default function Messages() {
                     <div className="ms-device-list">
                       {devices.length===0 && <div style={{ fontSize:13,color:"var(--sl-muted)",padding:8 }}>Nincs elérhető eszköz</div>}
                       {devices.map(d => (
-                        <div key={d.id} className={"ms-device-item"+(targetId===d.id?" selected":"")} onClick={() => setTargetId(d.id)}>
+                        <div key={d.id} className={"ms-device-item"+(targetId===d.id?" selected":"")} onClick={() => setTargetId(targetId === d.id ? "" : d.id)}>
                           <span className={d.online?"ms-dot-on":"ms-dot-off"} />
                           <span style={{ fontSize:13.5,fontWeight:600 }}>{d.name}</span>
                           <span style={{ fontSize:11,color:"var(--sl-muted)",marginLeft:"auto" }}>{d.deviceClass}</span>

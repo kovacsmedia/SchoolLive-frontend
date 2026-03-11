@@ -601,7 +601,14 @@ export default function VirtualPlayer() {
     if (s > 58) return;
     if (lastBellKeyRef.current === key) return;
 
-    const due = bellsRef.current.find(b => b.hour === h && b.minute === m);
+    const bells = bellsRef.current;
+    if (bells.length === 0) {
+      // Ha nincs betöltve csengetési rend, logoljuk hogy látsszon
+      if (s < 6) console.warn("[VP-BELL] ⚠️ Csengetési rend üres – csengő nem szólhat");
+      return;
+    }
+
+    const due = bells.find(b => b.hour === h && b.minute === m);
     if (!due) return;
 
     lastBellKeyRef.current = key;
@@ -636,8 +643,22 @@ export default function VirtualPlayer() {
     }
 
     setUnlocked(true);
-    // Bells újratöltése (ha még nem sikerült)
-    setTimeout(() => fetchBells(), 200);
+    // Bells újratöltése (ha még nem sikerült) + már betöltöttek re-decode-ja
+    setTimeout(async () => {
+      // Ha már van adat a bellsRef-ben de nem decode-olva, most próbálunk
+      const existing = bellsRef.current;
+      if (existing.length > 0 && bellBuffers.size === 0) {
+        console.log("[VP-BELL] 🔁 Re-cache after unlock:", existing.length, "bell");
+        const unique = Array.from(new Set(existing.map(b => b.soundFile)));
+        for (const filename of unique) {
+          const url = `https://api.schoollive.hu/audio/bells/${filename}`;
+          await cacheBellSound(filename, url);
+        }
+        console.log("[VP-BELL] ✅ Re-cache kész, buffer count:", bellBuffers.size);
+      } else {
+        fetchBells();
+      }
+    }, 300);
   }, [fetchBells]);
 
   // ── PLAYER automatikus újrabejelentkezés (token lejárat esetén) ────────────
@@ -783,7 +804,11 @@ export default function VirtualPlayer() {
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
     if (token) {
       try {
-        const p = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+        const b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+        const decoded = new TextDecoder("utf-8").decode(
+          Uint8Array.from(atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "=")), ch => ch.charCodeAt(0))
+        );
+        const p = JSON.parse(decoded);
         setInstName(p.tenantName ?? p.tenant?.name ?? "");
       } catch {}
     }
@@ -1053,7 +1078,7 @@ export default function VirtualPlayer() {
                 src="/brand/schoollive-logo.svg"
                 alt=""
                 style={{
-                  opacity:0.20,
+                  opacity:0.10,
                   width:"min(80vw, 55vh)",
                   height:"auto",
                   objectFit:"contain",
