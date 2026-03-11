@@ -146,14 +146,27 @@ async function cacheBellSound(filename: string, url: string): Promise<boolean> {
 }
 
 function countCachedBells(): number {
-  // In-memory buffer count + localStorage count (whichever is larger)
-  let lsCount = 0;
+  // Csak a ténylegesen dekódolt, lejátszásra kész AudioBuffer-ek száma
+  return bellBuffers.size;
+}
+
+// Stale localStorage cache törlése – fájlok amik már nem szerepelnek az aktív bells listában
+function clearStaleBellCache(activeFilenames: string[]): void {
   try {
+    const toRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
-      if (localStorage.key(i)?.startsWith(BELL_CACHE_PREFIX)) lsCount++;
+      const key = localStorage.key(i);
+      if (!key?.startsWith(BELL_CACHE_PREFIX)) continue;
+      const filename = key.slice(BELL_CACHE_PREFIX.length);
+      if (!activeFilenames.includes(filename)) {
+        toRemove.push(key);
+      }
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+    if (toRemove.length > 0) {
+      console.log(`[VP-BELL] 🧹 Stale cache törölve: ${toRemove.length} fájl`);
     }
   } catch {}
-  return Math.max(bellBuffers.size, lsCount);
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -513,14 +526,26 @@ export default function VirtualPlayer() {
   // ── Bell hangfájlok letöltése cache-be ────────────────────────────────────
   const cacheBells = useCallback(async (bellList: BellEntry[]) => {
     const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
-    console.log(`[VP] 📥 Csengőhangok cache-elése: ${unique.join(", ")}`);
+    console.log(`[VP] 📥 Csengőhangok cache-elése: [${unique.join(", ")}]`);
+
+    // Töröljük a stale localStorage bejegyzéseket
+    clearStaleBellCache(unique);
+    // Töröljük a már nem aktuális in-memory buffereket is
+    for (const key of bellBuffers.keys()) {
+      if (!unique.includes(key)) {
+        bellBuffers.delete(key);
+        console.log(`[VP-BELL] 🗑 Eltávolítva memóriából: ${key}`);
+      }
+    }
+
     let decoded = 0;
     for (const filename of unique) {
       const url = `https://api.schoollive.hu/audio/bells/${filename}`;
       const ok = await cacheBellSound(filename, url);
       if (ok) decoded++;
+      else console.error(`[VP-BELL] ❌ Nem sikerült cache-elni: ${filename}`);
     }
-    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva`);
+    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva (bellBuffers.size=${bellBuffers.size})`);
     setCachedBellCount(countCachedBells());
   }, []);
 
@@ -645,19 +670,22 @@ export default function VirtualPlayer() {
     setUnlocked(true);
     // Bells újratöltése (ha még nem sikerült) + már betöltöttek re-decode-ja
     setTimeout(async () => {
-      // Ha már van adat a bellsRef-ben de nem decode-olva, most próbálunk
       const existing = bellsRef.current;
-      if (existing.length > 0 && bellBuffers.size === 0) {
-        console.log("[VP-BELL] 🔁 Re-cache after unlock:", existing.length, "bell");
+      if (existing.length > 0) {
+        // Már van bells adat – re-decode (AudioContext most már aktív)
+        console.log("[VP-BELL] 🔁 Unlock utáni re-decode:", existing.length, "bejegyzés");
         const unique = Array.from(new Set(existing.map(b => b.soundFile)));
         for (const filename of unique) {
+          // Töröljük az in-memory buffert hogy újra decode-olja
+          bellBuffers.delete(filename);
           const url = `https://api.schoollive.hu/audio/bells/${filename}`;
           await cacheBellSound(filename, url);
         }
-        console.log("[VP-BELL] ✅ Re-cache kész, buffer count:", bellBuffers.size);
-      } else {
-        fetchBells();
+        console.log("[VP-BELL] ✅ Re-decode kész, buffer count:", bellBuffers.size);
+        setCachedBellCount(bellBuffers.size);
       }
+      // Mindig frissítjük a bells listát is (lehet új fájl)
+      fetchBells();
     }, 300);
   }, [fetchBells]);
 
@@ -1088,11 +1116,17 @@ export default function VirtualPlayer() {
             </picture>
             <div className="vp-clock" style={{position:"relative",zIndex:1}}>{fmtTime(time)}</div>
             <div className="vp-date" style={{position:"relative",zIndex:1}}>{fmtDate(time)}</div>
-            {nextBell && (
+            {bells.length > 0 && (
               <div className="vp-next-bell" style={{position:"relative",zIndex:1}}>
-                <span className="vp-bell-icon">🔔</span>
-                <span className="vp-bell-label">Következő csengetés:</span>
-                <span className="vp-bell-time">{nextBell}</span>
+                {nextBell ? (
+                  <>
+                    <span className="vp-bell-icon">🔔</span>
+                    <span className="vp-bell-label">Következő csengetés:</span>
+                    <span className="vp-bell-time">{nextBell}</span>
+                  </>
+                ) : (
+                  <span style={{opacity:0.45,fontSize:"0.85em"}}>Nincs több csengetés ma</span>
+                )}
               </div>
             )}
           </div>
@@ -1103,8 +1137,15 @@ export default function VirtualPlayer() {
               <span>WP-{clientId.slice(0,8).toUpperCase()}</span>
             </div>
             <div className="vp-footer-item">
-              <span className="vp-cache-dot" style={{ background: cachedBellCount > 0 ? "#22c55e" : "#ef4444" }} />
-              <span>{cachedBellCount > 0 ? `${cachedBellCount} csengőhang cache-ben` : "Csengőhang letöltés…"}</span>
+              <span className="vp-cache-dot" style={{ background: cachedBellCount > 0 ? "#22c55e" : bells.length > 0 ? "#f59e0b" : "#ef4444" }} />
+              <span>
+                {bells.length === 0
+                  ? "Csengetési rend betöltés…"
+                  : cachedBellCount === 0
+                    ? `${bells.length} csengő – hangfájl betöltés…`
+                    : `${bells.length} csengő, ${cachedBellCount} hang cache-ben`
+                }
+              </span>
             </div>
             <div className="vp-vol-wrap">
               <span style={{ fontSize:13 }}>🔈</span>
