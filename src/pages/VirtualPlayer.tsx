@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../lib/api";
 
-// ─── Típusok ──────────────────────────────────────────────────────────────
+// ─── Típusok ──────────────────────────────────────────────────────────────────
 type PlayerStatus = "registering" | "pending" | "active";
 type CommandPayload = {
   action:       string;
@@ -12,15 +12,10 @@ type CommandPayload = {
   durationSec?: number;
   source?:      string;
 };
-type BellEntry = { hour: number; minute: number; type: string; soundFile: string };
-type RadioState = {
-  url:         string;
-  currentTime: number;
-  isStream:    boolean;
-  isPlaying:   boolean;
-};
+type BellEntry    = { hour: number; minute: number; type: string; soundFile: string };
+type RadioState   = { url: string; currentTime: number; isStream: boolean; isPlaying: boolean };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function getOrCreateClientId(): string {
   const KEY = "vpClientId";
   let id = localStorage.getItem(KEY);
@@ -50,29 +45,51 @@ function nextBellLabel(bells: BellEntry[]): string | null {
   return `${String(next.hour).padStart(2,"0")}:${String(next.minute).padStart(2,"0")}`;
 }
 
-// ─── Bell hangfájl cache (localStorage base64 Data URL) ───────────────────
+// ─── Üzenet olvasási idő kalkulátor ──────────────────────────────────────────
+// ~200 karakter/perc kényelmes olvasási tempó, minimum 6 másodperc
+function calcReadingMs(text: string): number {
+  const chars = text.trim().length;
+  return Math.max(6000, Math.min(30000, chars * 300));
+}
+
+// ─── Szöveg méret az oldal szélességéhez igazítva ────────────────────────────
+function calcFontSize(text: string): string {
+  const len = text.trim().length;
+  if (len <= 40)  return "clamp(28px, 5vw, 64px)";
+  if (len <= 80)  return "clamp(22px, 4vw, 48px)";
+  if (len <= 160) return "clamp(18px, 3vw, 38px)";
+  return "clamp(15px, 2.5vw, 28px)";
+}
+
+// ─── Bell hangfájl cache (localStorage base64 Data URL) ───────────────────────
 const BELL_CACHE_PREFIX = "vpBellCache_";
 
-async function cacheBellSound(filename: string, url: string): Promise<void> {
+async function cacheBellSound(filename: string, url: string): Promise<boolean> {
   const key = BELL_CACHE_PREFIX + filename;
-  try { if (localStorage.getItem(key)) return; } catch { return; }
+  try { if (localStorage.getItem(key)) return true; } catch { return false; }
   try {
     const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const blob = await resp.blob();
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        try { localStorage.setItem(key, reader.result as string); } catch (e) {
+        try {
+          localStorage.setItem(key, reader.result as string);
+          resolve();
+        } catch (e) {
           console.warn("[VP] Bell cache save failed (storage full?):", e);
+          resolve(); // nem fatal
         }
-        resolve();
       };
-      reader.onerror = () => resolve();
+      reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
-    console.log("[VP] Cached bell sound:", filename);
+    console.log("[VP] ✅ Cached bell sound:", filename);
+    return true;
   } catch (e) {
-    console.warn("[VP] Failed to cache bell sound:", filename, e);
+    console.warn("[VP] ❌ Failed to cache bell sound:", filename, e);
+    return false;
   }
 }
 
@@ -84,7 +101,18 @@ function getCachedBellUrl(filename: string, fallbackUrl: string): string {
   return fallbackUrl;
 }
 
-// ─── CSS ──────────────────────────────────────────────────────────────────
+function countCachedBells(): number {
+  let count = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(BELL_CACHE_PREFIX)) count++;
+    }
+  } catch {}
+  return count;
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -114,8 +142,7 @@ const CSS = `
     display: flex; flex-direction: column; align-items: center;
     gap: 20px; padding: 40px; text-align: center; max-width: 500px;
   }
-  .vp-pending-icon { font-size: 64px; animation: vp-pulse 2s ease-in-out infinite; }
-  @keyframes vp-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .vp-pending-icon  { font-size: 64px; animation: vp-pulse 2s ease-in-out infinite; }
   .vp-pending-title { font-size: 26px; font-weight: 900; color: #f0f6ff; }
   .vp-pending-sub   { font-size: 15px; color: #8da4c0; line-height: 1.6; }
   .vp-pending-id {
@@ -127,14 +154,18 @@ const CSS = `
     display: inline-block; margin-right: 8px;
     animation: vp-pulse 1.5s ease-in-out infinite;
   }
+  @keyframes vp-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
   .vp-screen { width: 100%; height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
   .vp-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 20px 36px; background: rgba(13,27,46,0.8); border-bottom: 1px solid #1a2d47;
   }
-  .vp-inst-name { font-size: 18px; font-weight: 900; color: #3b82f6; }
+  .vp-inst-name  { font-size: 18px; font-weight: 900; color: #3b82f6; }
   .vp-online-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; }
   .vp-status-txt { font-size: 12px; color: #4a6280; font-weight: 700; }
+
   .vp-center {
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -146,7 +177,7 @@ const CSS = `
     text-shadow: 0 0 60px rgba(59,130,246,0.3);
     font-variant-numeric: tabular-nums;
   }
-  .vp-date { font-size: clamp(14px,2vw,22px); color: #8da4c0; font-weight: 700; text-transform: capitalize; }
+  .vp-date     { font-size: clamp(14px,2vw,22px); color: #8da4c0; font-weight: 700; text-transform: capitalize; }
   .vp-next-bell {
     margin-top: 16px; display: flex; align-items: center; gap: 12px;
     background: rgba(13,27,46,0.7); border: 1px solid #1a2d47;
@@ -155,26 +186,59 @@ const CSS = `
   .vp-bell-icon  { font-size: 22px; }
   .vp-bell-label { font-size: 14px; color: #8da4c0; font-weight: 700; }
   .vp-bell-time  { font-size: 22px; font-weight: 900; color: #f0f6ff; margin-left: 4px; }
+
+  /* ── Üzenet overlay ── */
   .vp-msg-overlay {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    background: rgba(7,16,31,0.92); backdrop-filter: blur(8px);
-    gap: 20px; padding: 40px; animation: vp-fadein 0.4s ease; z-index: 10;
+    background: rgba(7,16,31,0.95); backdrop-filter: blur(12px);
+    gap: 24px; padding: 48px;
+    animation: vp-fadein 0.35s ease; z-index: 10;
   }
-  @keyframes vp-fadein { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
-  .vp-msg-icon  { font-size: 52px; }
-  .vp-msg-title { font-size: clamp(18px,3vw,32px); font-weight: 900; color: #3b82f6; text-align: center; }
-  .vp-msg-text  { font-size: clamp(14px,2.5vw,24px); color: #f0f6ff; text-align: center; line-height: 1.5; max-width: 700px; }
+  .vp-msg-overlay.vp-msg-fadeout {
+    animation: vp-fadeout 0.5s ease forwards;
+  }
+  @keyframes vp-fadein  { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
+  @keyframes vp-fadeout { from{opacity:1} to{opacity:0} }
+  .vp-msg-icon  { font-size: 56px; }
+  .vp-msg-title {
+    font-size: clamp(18px,3vw,36px); font-weight: 900;
+    color: #3b82f6; text-align: center;
+    text-shadow: 0 0 30px rgba(59,130,246,0.5);
+  }
+  .vp-msg-text {
+    font-weight: 800; color: #f0f6ff; text-align: center;
+    line-height: 1.4; max-width: 85vw;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  }
+  .vp-msg-progress-wrap {
+    width: min(500px, 80vw); height: 5px;
+    background: #1a2d47; border-radius: 99px; overflow: hidden;
+  }
+  .vp-msg-progress {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg,#3b82f6,#6366f1);
+    transition: width 0.5s linear;
+  }
+  .vp-msg-reading-progress {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg,#22c55e,#3b82f6);
+    transition: none;
+    animation: vp-reading linear forwards;
+  }
+
+  /* ── Hang haladás sáv ── */
   .vp-audio-bar { width: 100%; max-width: 400px; height: 4px; background: #1a2d47; border-radius: 99px; overflow: hidden; margin-top: 8px; }
   .vp-audio-progress { height: 100%; background: linear-gradient(90deg,#3b82f6,#6366f1); border-radius: 99px; transition: width 0.5s linear; }
+
   .vp-footer {
     display: flex; align-items: center; justify-content: center;
     padding: 14px 36px; background: rgba(13,27,46,0.8); border-top: 1px solid #1a2d47;
-    gap: 20px; font-size: 12px; color: #4a6280;
+    gap: 20px; font-size: 12px; color: #4a6280; flex-wrap: wrap;
   }
   .vp-footer-item { display: flex; align-items: center; gap: 6px; }
-  .vp-vol-wrap { display: flex; align-items: center; gap: 8px; }
+  .vp-vol-wrap    { display: flex; align-items: center; gap: 8px; }
   .vp-vol-btn {
     width: 30px; height: 30px; border-radius: 8px;
     border: 1px solid #1a2d47; background: transparent;
@@ -183,102 +247,166 @@ const CSS = `
   }
   .vp-vol-btn:hover { background: #1a2d47; color: #f0f6ff; }
   .vp-vol-val { font-size: 13px; color: #8da4c0; min-width: 24px; text-align: center; }
+
   .vp-bell-banner {
     position: fixed; top: 0; left: 0; right: 0; z-index: 50;
     background: linear-gradient(90deg, #f59e0b, #f97316);
-    color: #fff; font-size: 14px; font-weight: 800;
-    text-align: center; padding: 7px;
+    color: #fff; font-size: 15px; font-weight: 800;
+    text-align: center; padding: 8px;
     animation: vp-fadein 0.2s ease;
+  }
+  .vp-cache-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 4px; vertical-align: middle;
   }
 `;
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function VirtualPlayer() {
   const clientId = getOrCreateClientId();
 
-  const [status,    setStatus]    = useState<PlayerStatus>("registering");
-  const [time,      setTime]      = useState(new Date());
-  const [bells,     setBells]     = useState<BellEntry[]>([]);
-  const [instName,  setInstName]  = useState<string>("");
-  const [activeMsg, setActiveMsg] = useState<CommandPayload | null>(null);
-  const [audioPct,  setAudioPct]  = useState(0);
-  const [volume,    setVolume]    = useState(7);
-  const [isOnline,  setIsOnline]  = useState(navigator.onLine);
-  const [unlocked,  setUnlocked]  = useState(false);
+  const [status,     setStatus]     = useState<PlayerStatus>("registering");
+  const [time,       setTime]       = useState(new Date());
+  const [bells,      setBells]      = useState<BellEntry[]>([]);
+  const [instName,   setInstName]   = useState<string>("");
+  const [activeMsg,  setActiveMsg]  = useState<CommandPayload | null>(null);
+  const [msgFadeout, setMsgFadeout] = useState(false);
+  const [audioPct,   setAudioPct]   = useState(0);
+  const [readingPct, setReadingPct] = useState(0);
+  const [volume,     setVolume]     = useState(7);
+  const [isOnline,   setIsOnline]   = useState(navigator.onLine);
+  const [unlocked,   setUnlocked]   = useState(false);
   const [bellBanner, setBellBanner] = useState(false);
+  const [cachedBellCount, setCachedBellCount] = useState(0);
 
-  // Két külön audio elem: főhang (rádió/TTS) és csengő (prioritás)
+  // Két külön audio elem
   const audioRef     = useRef<HTMLAudioElement>(null);
   const bellAudioRef = useRef<HTMLAudioElement>(null);
 
   const pollTimer      = useRef<ReturnType<typeof setInterval> | null>(null);
   const beaconTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
   const offlineBellRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readingTimer   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dismissTimer   = useRef<ReturnType<typeof setTimeout>  | null>(null);
 
   // Rádió állapot – megszakítás utáni folytatáshoz
-  const radioStateRef = useRef<RadioState | null>(null);
-
+  const radioStateRef  = useRef<RadioState | null>(null);
+  // Az aktuális aktív üzenet action típusa – ref hogy closure-okból mindig friss legyen
+  const activeMsgActionRef = useRef<string>("");
   // Offline csengetés deduplikáció
   const lastBellKeyRef = useRef<string>("");
-
   // Ref-ek closure-okhoz
-  const bellsRef  = useRef<BellEntry[]>([]);
-  const volumeRef = useRef(volume);
-  const activeMsgRef = useRef<CommandPayload | null>(null);
+  const bellsRef   = useRef<BellEntry[]>([]);
+  const volumeRef  = useRef(volume);
 
-  useEffect(() => { bellsRef.current  = bells;     }, [bells]);
-  useEffect(() => { volumeRef.current = volume;    }, [volume]);
-  useEffect(() => { activeMsgRef.current = activeMsg; }, [activeMsg]);
+  useEffect(() => { bellsRef.current  = bells;  }, [bells]);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
 
-  // ── Rádió folytatása megszakítás után ────────────────────────────────────
+  // ── Üzenet overlay eltüntetése (fadeout animáció + state törlés) ──────────
+  const dismissMsg = useCallback(() => {
+    if (readingTimer.current) { clearInterval(readingTimer.current); readingTimer.current = null; }
+    if (dismissTimer.current) { clearTimeout(dismissTimer.current);  dismissTimer.current = null; }
+    setMsgFadeout(true);
+    setTimeout(() => {
+      setActiveMsg(null);
+      setAudioPct(0);
+      setReadingPct(0);
+      setMsgFadeout(false);
+      activeMsgActionRef.current = "";
+    }, 500); // fadeout animáció ideje
+  }, []);
+
+  // ── Üzenet megjelenítése olvasási időzítővel ──────────────────────────────
+  const showMsg = useCallback((payload: CommandPayload, readingMs?: number) => {
+    if (dismissTimer.current) { clearTimeout(dismissTimer.current);  dismissTimer.current = null; }
+    if (readingTimer.current) { clearInterval(readingTimer.current); readingTimer.current = null; }
+    activeMsgActionRef.current = payload.action;
+    setActiveMsg(payload);
+    setMsgFadeout(false);
+    setAudioPct(0);
+    setReadingPct(0);
+
+    if (readingMs && readingMs > 0) {
+      // Olvasási sáv animáció
+      const startTime = Date.now();
+      readingTimer.current = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const pct = Math.min(100, (elapsed / readingMs) * 100);
+        setReadingPct(pct);
+        if (elapsed >= readingMs) {
+          if (readingTimer.current) { clearInterval(readingTimer.current); readingTimer.current = null; }
+        }
+      }, 100);
+      // Auto-dismiss
+      dismissTimer.current = setTimeout(dismissMsg, readingMs);
+    }
+  }, [dismissMsg]);
+
+  // ── Rádió folytatása megszakítás után ─────────────────────────────────────
   const resumeRadio = useCallback(() => {
     const rs = radioStateRef.current;
-    if (!rs || !rs.isPlaying) return;
+    if (!rs || !rs.isPlaying) {
+      console.log("[VP] resumeRadio: nincs aktív rádió állapot");
+      return;
+    }
     const a = audioRef.current;
     if (!a) return;
 
+    console.log(`[VP] ▶ Rádió folytatása: ${rs.isStream ? "stream" : `MP3 @ ${rs.currentTime.toFixed(1)}s`}`);
+
+    a.volume = volumeRef.current / 10;
+
     if (rs.isStream) {
-      // Élő stream: elejétől
-      a.src = rs.url;
-      a.volume = volumeRef.current / 10;
+      a.src = rs.url + (rs.url.includes("?") ? "&" : "?") + "_r=" + Date.now();
       a.load();
-      a.play().catch(() => {});
+      a.play().catch(e => console.warn("[VP] stream resume blocked:", e));
     } else {
-      // MP3 fájl: mentett pozícióból
       a.src = rs.url;
-      a.volume = volumeRef.current / 10;
       a.load();
       const seekAndPlay = () => {
-        if (rs.currentTime > 0) a.currentTime = rs.currentTime;
-        a.play().catch(() => {});
         a.removeEventListener("canplay", seekAndPlay);
+        if (rs.currentTime > 0) {
+          try { a.currentTime = rs.currentTime; } catch {}
+        }
+        a.play().catch(e => console.warn("[VP] mp3 resume blocked:", e));
       };
       a.addEventListener("canplay", seekAndPlay);
     }
-    setActiveMsg({ action: "PLAY_URL", url: rs.url, title: "Iskolarádió", source: "RADIO" });
-    setAudioPct(0);
-  }, []);
 
-  // ── Csengetés lejátszása (legmagasabb prioritás) ──────────────────────────
-  const playBell = useCallback((url: string) => {
-    const mainAudio = audioRef.current;
+    showMsg({ action: "PLAY_URL", url: rs.url, title: "Iskolarádió", source: "RADIO" });
+  }, [showMsg]);
+
+  // ── Csengetés lejátszása (legmagasabb prioritás) ───────────────────────────
+  const playBell = useCallback((soundFile: string, fallbackUrl: string) => {
     const bellAudio = bellAudioRef.current;
+    const mainAudio = audioRef.current;
     if (!bellAudio) return;
 
-    // Főhang szüneteltetése, de állapot megőrzése
-    if (mainAudio && !mainAudio.paused && radioStateRef.current) {
+    // Főhang szüneteltetése, állapot megőrzése
+    if (mainAudio && !mainAudio.paused && radioStateRef.current?.isPlaying) {
       radioStateRef.current.currentTime = mainAudio.currentTime;
       mainAudio.pause();
     }
+
+    const url = getCachedBellUrl(soundFile, fallbackUrl);
+    console.log(`[VP-BELL] 🔔 ${soundFile} (${url.startsWith("data:") ? "cache" : "hálózat"})`);
 
     setBellBanner(true);
     bellAudio.src = url;
     bellAudio.volume = volumeRef.current / 10;
     bellAudio.load();
-    bellAudio.play().catch(err => console.warn("[VP] bell play() blocked:", err));
+    bellAudio.play().catch(err => {
+      console.warn("[VP-BELL] play() blocked:", err);
+      // Ha cache-ből nem ment, próbáljuk hálózatról
+      if (url !== fallbackUrl) {
+        bellAudio.src = fallbackUrl;
+        bellAudio.load();
+        bellAudio.play().catch(() => {});
+      }
+    });
   }, []);
 
-  // ── Audio lejátszás helper ───────────────────────────────────────────────
+  // ── Audio lejátszás helper ─────────────────────────────────────────────────
   const playAudio = useCallback((url: string) => {
     const a = audioRef.current;
     if (!a) return;
@@ -288,31 +416,62 @@ export default function VirtualPlayer() {
     a.play().catch(err => console.warn("[VP] play() blocked:", err));
   }, []);
 
-  // ── Command kezelő ───────────────────────────────────────────────────────
+  // ── Bell hangfájlok letöltése cache-be ────────────────────────────────────
+  const cacheBells = useCallback(async (bellList: BellEntry[]) => {
+    const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
+    console.log(`[VP] 📥 Csengőhangok cache-elése: ${unique.join(", ")}`);
+    for (const filename of unique) {
+      const url = `https://api.schoollive.hu/audio/bells/${filename}`;
+      await cacheBellSound(filename, url);
+    }
+    setCachedBellCount(countCachedBells());
+  }, []);
+
+  // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
+  const fetchBells = useCallback(() => {
+    console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
+    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+      .then(r => {
+        if (r.bells) {
+          setBells(r.bells);
+          void cacheBells(r.bells);
+        }
+      })
+      .catch(() => {});
+  }, [cacheBells]);
+
+  // ── Command kezelő ────────────────────────────────────────────────────────
   const handleCommand = useCallback(async (cmd: { id: string; payload: CommandPayload }) => {
     const { action, url, text, title } = cmd.payload;
+    console.log(`[VP] 📨 Command: ${action}`, url ?? text ?? "");
 
     if (action === "BELL" && url) {
-      // Csengetés – LEGMAGASABB PRIORITÁS, rádió fölé megy
-      playBell(url);
+      // Csengetés – LEGMAGASABB PRIORITÁS
+      const soundFile = url.split("/").pop() ?? url;
+      playBell(soundFile, url);
+
+    } else if (action === "SYNC_BELLS") {
+      // Csengetési rend frissítése
+      console.log("[VP] 🔔 SYNC_BELLS parancs – csengetési rend újratöltése");
+      fetchBells();
 
     } else if (action === "PLAY_URL" && url) {
       // Rádió indítása
       const isStream = !url.match(/\.(mp3|wav|ogg|aac|m4a)(\?|$)/i);
       radioStateRef.current = { url, currentTime: 0, isStream, isPlaying: true };
-      setActiveMsg({ action, url, title: title ?? "Iskolarádió", source: cmd.payload.source });
-      setAudioPct(0);
+      showMsg({ action, url, title: title ?? "Iskolarádió", source: cmd.payload.source });
       playAudio(url);
 
     } else if (action === "TTS" && url) {
-      // TTS üzenet – rádió szüneteltetése, de NEM töröljük az állapotát
+      // TTS üzenet – rádió szüneteltetése, állapot megőrzése
       const mainAudio = audioRef.current;
       if (mainAudio && radioStateRef.current?.isPlaying && !mainAudio.paused) {
         radioStateRef.current.currentTime = mainAudio.currentTime;
         mainAudio.pause();
       }
-      setActiveMsg({ action, url, text, title: title ?? "Üzenet" });
-      setAudioPct(0);
+      // Üzenet megjelenítése olvasási időzítővel (hang + olvasás max-a)
+      const readingMs = text ? calcReadingMs(text) : 0;
+      showMsg({ action, url, text, title: title ?? "Üzenet" }, readingMs);
       playAudio(url);
     }
 
@@ -320,18 +479,9 @@ export default function VirtualPlayer() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commandId: cmd.id }),
     }).catch(() => {});
-  }, [playAudio, playBell]);
+  }, [playAudio, playBell, fetchBells, showMsg]);
 
-  // ── Bell hangfájlok cache-elése ──────────────────────────────────────────
-  const cacheBells = useCallback(async (bellList: BellEntry[]) => {
-    const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
-    for (const filename of unique) {
-      const url = `https://api.schoollive.hu/audio/bells/${filename}`;
-      await cacheBellSound(filename, url);
-    }
-  }, []);
-
-  // ── Offline csengetés ticker (30 mp-enként fut) ──────────────────────────
+  // ── Offline csengetés ticker (10 mp-enként fut) ───────────────────────────
   const offlineBellTick = useCallback(() => {
     const now = new Date();
     const h   = now.getHours();
@@ -339,20 +489,20 @@ export default function VirtualPlayer() {
     const s   = now.getSeconds();
     const key = `${h}:${m}`;
 
-    // Csak az adott perc első 30 mp-ében játssza le
-    if (s > 30) return;
+    // 55 másodperces ablak (0-55s), deduplikáció
+    if (s > 55) return;
     if (lastBellKeyRef.current === key) return;
 
     const due = bellsRef.current.find(b => b.hour === h && b.minute === m);
     if (!due) return;
 
     lastBellKeyRef.current = key;
-    const url = getCachedBellUrl(due.soundFile, `https://api.schoollive.hu/audio/bells/${due.soundFile}`);
-    console.log(`[VP-BELL] ${key} → ${due.soundFile} (${url.startsWith("data:") ? "cached" : "network"})`);
-    playBell(url);
+    const fallbackUrl = `https://api.schoollive.hu/audio/bells/${due.soundFile}`;
+    console.log(`[VP-BELL] ⏰ Offline tick: ${key} → ${due.soundFile}`);
+    playBell(due.soundFile, fallbackUrl);
   }, [playBell]);
 
-  // ── Autoplay unlock ──────────────────────────────────────────────────────
+  // ── Autoplay unlock ────────────────────────────────────────────────────────
   const unlockAudio = useCallback(() => {
     const a    = audioRef.current;
     const bell = bellAudioRef.current;
@@ -369,7 +519,7 @@ export default function VirtualPlayer() {
     });
   }, []);
 
-  // ── Regisztráció ─────────────────────────────────────────────────────────
+  // ── Regisztráció ──────────────────────────────────────────────────────────
   const register = useCallback(async () => {
     setStatus("registering");
     const ipAddress = await getPublicIp();
@@ -383,13 +533,12 @@ export default function VirtualPlayer() {
     } catch { setStatus("pending"); }
   }, [clientId]);
 
-  // ── Logout on page unload (session felszabadítás) ──────────────────────
+  // ── Logout on page unload ─────────────────────────────────────────────────
   useEffect(() => {
     const onUnload = () => {
       const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
       if (!token) return;
       try {
-        // sendBeacon nem tud Authorization headert küldeni → tokent body-ban küldjük
         navigator.sendBeacon(
           "https://api.schoollive.hu/auth/logout",
           new Blob([JSON.stringify({ token })], { type: "application/json" })
@@ -400,7 +549,7 @@ export default function VirtualPlayer() {
     return () => window.removeEventListener("beforeunload", onUnload);
   }, []);
 
-  // ── Fullscreen + Wake Lock ───────────────────────────────────────────────
+  // ── Fullscreen + Wake Lock ─────────────────────────────────────────────────
   useEffect(() => {
     const el = document.documentElement;
     if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(() => {});
@@ -408,7 +557,7 @@ export default function VirtualPlayer() {
     (async () => {
       try { if ("wakeLock" in navigator) wakeLock = await (navigator as any).wakeLock.request("screen"); } catch {}
     })();
-    const onOnline  = () => setIsOnline(true);
+    const onOnline  = () => { setIsOnline(true);  fetchBells(); } // online visszatéréskor szinkron
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online",  onOnline);
     window.addEventListener("offline", onOffline);
@@ -417,21 +566,16 @@ export default function VirtualPlayer() {
       window.removeEventListener("online",  onOnline);
       window.removeEventListener("offline", onOffline);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Óra ─────────────────────────────────────────────────────────────────
+  // ── Óra ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // ── Intézmény neve + csengetési rend + cache ─────────────────────────────
-  const fetchBells = useCallback(() => {
-    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(r => { if (r.bells) { setBells(r.bells); cacheBells(r.bells); } })
-      .catch(() => {});
-  }, [cacheBells]);
-
+  // ── Csengetési rend betöltése + intézmény neve ────────────────────────────
   useEffect(() => {
     if (status !== "active") return;
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
@@ -442,23 +586,23 @@ export default function VirtualPlayer() {
       } catch {}
     }
     fetchBells();
-    // 5 percenként újraszinkronizálja a csengetési rendet
-    const bellSyncTimer = setInterval(fetchBells, 5 * 60 * 1000);
+    // 1 percenként szinkronizál (nem 5)
+    const bellSyncTimer = setInterval(fetchBells, 60_000);
     return () => clearInterval(bellSyncTimer);
   }, [status, fetchBells]);
 
-  // ── Offline bell ticker indítása ─────────────────────────────────────────
+  // ── Offline bell ticker (10 mp-enként) ────────────────────────────────────
   useEffect(() => {
     if (status !== "active") return;
     offlineBellTick();
-    offlineBellRef.current = setInterval(offlineBellTick, 30_000);
+    offlineBellRef.current = setInterval(offlineBellTick, 10_000);
     return () => { if (offlineBellRef.current) clearInterval(offlineBellRef.current); };
   }, [status, offlineBellTick]);
 
-  // ── Regisztráció indítása ────────────────────────────────────────────────
+  // ── Regisztráció indítása ─────────────────────────────────────────────────
   useEffect(() => { void register(); }, [register]);
 
-  // ── Polling ──────────────────────────────────────────────────────────────
+  // ── Polling ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (status === "registering") return;
     const poll = async () => {
@@ -476,28 +620,31 @@ export default function VirtualPlayer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  // ── Beacon ───────────────────────────────────────────────────────────────
+  // ── Beacon ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (status !== "active") return;
     const beacon = async () => {
       const ip = await getPublicIp();
-      apiFetch("/player/device/beacon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clientId, ipAddress: ip }) }).catch(() => {});
+      apiFetch("/player/device/beacon", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, ipAddress: ip }),
+      }).catch(() => {});
     };
     beacon();
     beaconTimer.current = setInterval(beacon, 30000);
     return () => { if (beaconTimer.current) clearInterval(beaconTimer.current); };
   }, [status, clientId]);
 
-  // ── Hangerő ──────────────────────────────────────────────────────────────
+  // ── Hangerő szinkron ─────────────────────────────────────────────────────
   useEffect(() => {
     if (audioRef.current)     audioRef.current.volume     = volume / 10;
     if (bellAudioRef.current) bellAudioRef.current.volume = volume / 10;
   }, [volume]);
 
-  // ── Audio event handlers ─────────────────────────────────────────────────
+  // ── Audio event handlers ──────────────────────────────────────────────────
   const onMainTimeUpdate = () => {
     const a = audioRef.current;
-    if (a?.duration) {
+    if (a?.duration && !isNaN(a.duration)) {
       setAudioPct((a.currentTime / a.duration) * 100);
       // Rádió pozíció folyamatos mentése
       if (radioStateRef.current?.isPlaying && !radioStateRef.current.isStream) {
@@ -507,40 +654,46 @@ export default function VirtualPlayer() {
   };
 
   const onMainEnded = () => {
-    const msg = activeMsgRef.current;
-    if (msg?.action === "TTS") {
-      // TTS véget ért → rádió folytatása ha volt
-      setActiveMsg(null);
-      setAudioPct(0);
-      if (radioStateRef.current?.isPlaying) resumeRadio();
-    } else {
-      // Rádió fájl véget ért
+    const currentAction = activeMsgActionRef.current;
+    console.log(`[VP] onMainEnded: action="${currentAction}"`);
+
+    if (currentAction === "TTS") {
+      // TTS véget ért → overlay elrejtése, rádió folytatása
+      dismissMsg();
+      if (radioStateRef.current?.isPlaying) {
+        setTimeout(resumeRadio, 300); // kis késleltetés a fadeout után
+      }
+    } else if (currentAction === "PLAY_URL") {
+      // Rádió/fájl véget ért természetesen
       radioStateRef.current = null;
-      setActiveMsg(null);
-      setAudioPct(0);
+      dismissMsg();
     }
   };
 
   const onMainError = () => {
-    setActiveMsg(null);
-    setAudioPct(0);
-    if (radioStateRef.current?.isPlaying) resumeRadio();
+    console.warn("[VP] audioRef error");
+    dismissMsg();
+    if (radioStateRef.current?.isPlaying) {
+      setTimeout(resumeRadio, 1000);
+    }
   };
 
   const onBellEnded = () => {
     setBellBanner(false);
-    // Csengő után rádió folytatása ha volt
-    if (radioStateRef.current?.isPlaying) resumeRadio();
+    console.log("[VP-BELL] 🔕 Csengő vége, rádió folytatása...");
+    if (radioStateRef.current?.isPlaying) {
+      setTimeout(resumeRadio, 200);
+    }
   };
 
   const nextBell = nextBellLabel(bells);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="vp-root">
       <style>{CSS}</style>
 
-      {/* Főhang – rádió és TTS, mindig mounted */}
+      {/* Főhang – rádió és TTS */}
       <audio
         ref={audioRef}
         onTimeUpdate={onMainTimeUpdate}
@@ -548,17 +701,19 @@ export default function VirtualPlayer() {
         onError={onMainError}
         style={{ display: "none" }}
       />
-
       {/* Csengő audio – külön elem, legmagasabb prioritás */}
       <audio
         ref={bellAudioRef}
         onEnded={onBellEnded}
-        onError={() => { setBellBanner(false); if (radioStateRef.current?.isPlaying) resumeRadio(); }}
+        onError={() => {
+          setBellBanner(false);
+          if (radioStateRef.current?.isPlaying) setTimeout(resumeRadio, 200);
+        }}
         style={{ display: "none" }}
       />
 
-      {/* Csengetés jelzősáv */}
-      {bellBanner && <div className="vp-bell-banner">🔔 Csengetés</div>}
+      {/* Csengetés sáv */}
+      {bellBanner && <div className="vp-bell-banner">🔔 Csengetés folyamatban</div>}
 
       {/* Autoplay unlock overlay */}
       {!unlocked && (
@@ -574,7 +729,10 @@ export default function VirtualPlayer() {
         <div className="vp-pending">
           <div className="vp-pending-icon">📱</div>
           <div className="vp-pending-title">Virtuális lejátszó</div>
-          <div className="vp-pending-sub">Ez az eszköz még nincs aktiválva.<br />Kérj meg egy rendszergazdát, hogy aktiválja az <strong>Eszközök</strong> menüben.</div>
+          <div className="vp-pending-sub">
+            Ez az eszköz még nincs aktiválva.<br />
+            Kérj meg egy rendszergazdát, hogy aktiválja az <strong>Eszközök</strong> menüben.
+          </div>
           <div className="vp-pending-id">
             <div style={{ marginBottom:6, color:"#8da4c0", fontSize:11, textTransform:"uppercase", letterSpacing:"0.8px" }}>Eszköz azonosító</div>
             <div>WP-{clientId.slice(0,8).toUpperCase()}</div>
@@ -594,15 +752,40 @@ export default function VirtualPlayer() {
               {isOnline ? "Online" : "Offline"}
             </div>
           </div>
+
           <div className="vp-center">
+            {/* Üzenet overlay */}
             {activeMsg && (
-              <div className="vp-msg-overlay">
-                <div className="vp-msg-icon">{activeMsg.source === "RADIO" ? "📻" : activeMsg.action === "TTS" ? "📢" : "🎵"}</div>
-                {activeMsg.title && <div className="vp-msg-title">{activeMsg.title}</div>}
-                {activeMsg.text  && <div className="vp-msg-text">{activeMsg.text}</div>}
-                <div className="vp-audio-bar"><div className="vp-audio-progress" style={{ width:`${audioPct}%` }} /></div>
+              <div className={`vp-msg-overlay${msgFadeout ? " vp-msg-fadeout" : ""}`}>
+                <div className="vp-msg-icon">
+                  {activeMsg.source === "RADIO" ? "📻" : activeMsg.action === "TTS" ? "📢" : "🎵"}
+                </div>
+                {activeMsg.title && (
+                  <div className="vp-msg-title">{activeMsg.title}</div>
+                )}
+                {activeMsg.text && (
+                  <div
+                    className="vp-msg-text"
+                    style={{ fontSize: calcFontSize(activeMsg.text) }}
+                  >
+                    {activeMsg.text}
+                  </div>
+                )}
+                {/* Hang haladás */}
+                {activeMsg.action !== "TTS" && audioPct > 0 && (
+                  <div className="vp-msg-progress-wrap">
+                    <div className="vp-msg-progress" style={{ width: `${audioPct}%` }} />
+                  </div>
+                )}
+                {/* Olvasási idő haladás (TTS) */}
+                {activeMsg.action === "TTS" && activeMsg.text && (
+                  <div className="vp-msg-progress-wrap">
+                    <div className="vp-msg-reading-progress" style={{ width: `${readingPct}%` }} />
+                  </div>
+                )}
               </div>
             )}
+
             <div className="vp-clock">{fmtTime(time)}</div>
             <div className="vp-date">{fmtDate(time)}</div>
             {nextBell && (
@@ -613,8 +796,16 @@ export default function VirtualPlayer() {
               </div>
             )}
           </div>
+
           <div className="vp-footer">
-            <div className="vp-footer-item"><span style={{ fontSize:14 }}>📱</span><span>Virtuális lejátszó · WP-{clientId.slice(0,8).toUpperCase()}</span></div>
+            <div className="vp-footer-item">
+              <span style={{ fontSize:14 }}>📱</span>
+              <span>WP-{clientId.slice(0,8).toUpperCase()}</span>
+            </div>
+            <div className="vp-footer-item">
+              <span className="vp-cache-dot" style={{ background: cachedBellCount > 0 ? "#22c55e" : "#ef4444" }} />
+              <span>{cachedBellCount > 0 ? `${cachedBellCount} csengőhang cache-ben` : "Csengőhang letöltés…"}</span>
+            </div>
             <div className="vp-vol-wrap">
               <span style={{ fontSize:13 }}>🔈</span>
               <button className="vp-vol-btn" onClick={() => setVolume(v => Math.max(0, v-1))} type="button">−</button>
