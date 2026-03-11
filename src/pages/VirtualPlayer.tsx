@@ -125,15 +125,22 @@ async function cacheBellSound(filename: string, url: string): Promise<boolean> {
     }
   }
 
-  // 3. Decode → AudioBuffer (az AudioContext decodeAudioData-hoz kell)
+  // 3. Decode → AudioBuffer
+  // Az AudioContext suspended állapotban is képes decodeAudioData-t futtatni,
+  // de néhány Android böngészőn biztonságosabb ha résumálva van.
   try {
-    const ctx    = getAudioCtx();
-    const buffer = await ctx.decodeAudioData(arrayBuf!.slice(0)); // slice: avoid detached buffer
+    const ctx = getAudioCtx();
+    // Ha suspended, próbálunk résumálni (előzetes user gesture után már működik)
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch {}
+    }
+    const buffer = await ctx.decodeAudioData(arrayBuf!.slice(0));
     bellBuffers.set(filename, buffer);
     console.log("[VP] ✅ Bell decoded:", filename);
     return true;
   } catch (e) {
     console.warn("[VP] ❌ Bell decode failed:", filename, e);
+    // Ha decode failed, legalább a hálózati fallback működjön
     return false;
   }
 }
@@ -151,11 +158,12 @@ function countCachedBells(): number {
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=Noto+Sans:wght@400;700;800;900&display=swap&subset=latin,latin-ext');
+  @charset "UTF-8";
   * { box-sizing: border-box; margin: 0; padding: 0; }
   .vp-root {
     width: 100vw; height: 100vh; overflow: hidden;
-    background: #07101f; font-family: 'Nunito', 'Segoe UI', sans-serif;
+    background: #07101f; font-family: 'Nunito', 'Noto Sans', 'Segoe UI', Arial, sans-serif;
     color: #f0f6ff; display: flex; flex-direction: column;
     align-items: center; justify-content: center; user-select: none;
   }
@@ -506,10 +514,13 @@ export default function VirtualPlayer() {
   const cacheBells = useCallback(async (bellList: BellEntry[]) => {
     const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
     console.log(`[VP] 📥 Csengőhangok cache-elése: ${unique.join(", ")}`);
+    let decoded = 0;
     for (const filename of unique) {
       const url = `https://api.schoollive.hu/audio/bells/${filename}`;
-      await cacheBellSound(filename, url);
+      const ok = await cacheBellSound(filename, url);
+      if (ok) decoded++;
     }
+    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva`);
     setCachedBellCount(countCachedBells());
   }, []);
 
@@ -518,12 +529,15 @@ export default function VirtualPlayer() {
     console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
     apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
       .then(r => {
-        if (r.bells) {
+        if (r.bells && r.bells.length > 0) {
+          console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
           setBells(r.bells);
           void cacheBells(r.bells);
+        } else {
+          console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
         }
       })
-      .catch(() => {});
+      .catch(e => console.error("[VP-BELL] ❌ fetchBells hiba:", e));
   }, [cacheBells]);
 
   // ── Command kezelő ────────────────────────────────────────────────────────
@@ -583,8 +597,8 @@ export default function VirtualPlayer() {
     const s   = now.getSeconds();
     const key = `${h}:${m}`;
 
-    // 55 másodperces ablak (0-55s), deduplikáció
-    if (s > 55) return;
+    // 58 másodperces ablak (0-58s), deduplikáció
+    if (s > 58) return;
     if (lastBellKeyRef.current === key) return;
 
     const due = bellsRef.current.find(b => b.hour === h && b.minute === m);
@@ -601,17 +615,30 @@ export default function VirtualPlayer() {
     // AudioContext unlock (bell hangokhoz)
     unlockAudioCtx();
 
+    const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
     // A fő rádió <audio> elem unlock (stream lejátszáshoz)
     const a = audioRef.current;
     if (a) {
-      const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
       a.src = SILENT; a.volume = 0;
       a.play().then(() => a.pause()).catch(() => {}).finally(() => {
         a.src = ""; a.volume = volumeRef.current / 10;
       });
     }
+
+    // A bell <audio> elem unlock (fallback lejátszáshoz)
+    const b = bellAudioRef.current;
+    if (b) {
+      b.src = SILENT; b.volume = 0;
+      b.play().then(() => b.pause()).catch(() => {}).finally(() => {
+        b.src = ""; b.volume = volumeRef.current / 10;
+      });
+    }
+
     setUnlocked(true);
-  }, []);
+    // Bells újratöltése (ha még nem sikerült)
+    setTimeout(() => fetchBells(), 200);
+  }, [fetchBells]);
 
   // ── PLAYER automatikus újrabejelentkezés (token lejárat esetén) ────────────
   // A PLAYER fiók jelszava a token-ben tárolt email-ből visszafejthető,
@@ -770,7 +797,7 @@ export default function VirtualPlayer() {
   useEffect(() => {
     if (status !== "active") return;
     offlineBellTick();
-    offlineBellRef.current = setInterval(offlineBellTick, 10_000);
+    offlineBellRef.current = setInterval(offlineBellTick, 5_000); // 5s precision
     return () => { if (offlineBellRef.current) clearInterval(offlineBellRef.current); };
   }, [status, offlineBellTick]);
 
@@ -947,12 +974,9 @@ export default function VirtualPlayer() {
       {unlocked && status === "active" && (
         <div className="vp-screen">
           <div className="vp-header">
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <picture>
-                <source srcSet="/brand/schoollive-logow.svg" type="image/svg+xml" />
-                <img src="/brand/schoollive-logo.svg" alt="SchoolLive" style={{height:22,width:"auto",objectFit:"contain"}} />
-              </picture>
-              <div className="vp-inst-name">{instName || "SchoolLive"}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:0,lineHeight:1.15}}>
+              <div style={{fontSize:15,fontWeight:900,letterSpacing:"-0.3px",color:"#3b82f6",fontFamily:"'Nunito','Noto Sans',sans-serif"}}>SchoolLive</div>
+              {instName && <div style={{fontSize:13,fontWeight:700,color:"#8da4c0",wordBreak:"break-word",maxWidth:180,fontFamily:"'Nunito','Noto Sans',sans-serif"}}>{instName}</div>}
             </div>
             <div className="vp-status-txt">
               <span className="vp-online-dot" style={{ background: isOnline ? "#22c55e" : "#ef4444", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }} />
@@ -1018,10 +1042,29 @@ export default function VirtualPlayer() {
               </div>
             )}
 
-            <div className="vp-clock">{fmtTime(time)}</div>
-            <div className="vp-date">{fmtDate(time)}</div>
+            {/* SchoolLive watermark – portrait: fit width, landscape: fit height */}
+            <picture style={{
+              position:"absolute", inset:0, display:"flex",
+              alignItems:"center", justifyContent:"center",
+              pointerEvents:"none", zIndex:0,
+            }}>
+              <source srcSet="/brand/schoollive-logow.svg" type="image/svg+xml" />
+              <img
+                src="/brand/schoollive-logo.svg"
+                alt=""
+                style={{
+                  opacity:0.20,
+                  width:"min(80vw, 55vh)",
+                  height:"auto",
+                  objectFit:"contain",
+                  display:"block",
+                }}
+              />
+            </picture>
+            <div className="vp-clock" style={{position:"relative",zIndex:1}}>{fmtTime(time)}</div>
+            <div className="vp-date" style={{position:"relative",zIndex:1}}>{fmtDate(time)}</div>
             {nextBell && (
-              <div className="vp-next-bell">
+              <div className="vp-next-bell" style={{position:"relative",zIndex:1}}>
                 <span className="vp-bell-icon">🔔</span>
                 <span className="vp-bell-label">Következő csengetés:</span>
                 <span className="vp-bell-time">{nextBell}</span>
