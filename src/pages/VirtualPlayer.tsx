@@ -69,7 +69,7 @@ function calcFontSize(text: string): string {
 //      De NEM blokkolja a lejátszást – ha IDB lassú/hibás, a fetch is megy
 //   3. Default hangok: az API /bells/today válaszban érkeznek (defaultSounds mező)
 
-const DEFAULT_SOUNDS: string[] = []; // A tényleges fájlneveket az API adja (/bells/today)
+const DEFAULT_SOUNDS = ["jelzo.mp3", "kibe.mp3"]; // Mindig letöltve offline napokra
 const API_BASE       = "https://api.schoollive.hu";
 const BELL_DB_NAME   = "sl-bells-v3";
 const BELL_STORE     = "ab"; // "audiobuffers"
@@ -540,9 +540,9 @@ export default function VirtualPlayer() {
   }, []);
 
   // ── Bell hangfájlok letöltése cache-be ────────────────────────────────────
-  const cacheBells = useCallback(async (bellList: BellEntry[], extraSounds: string[] = []) => {
+  const cacheBells = useCallback(async (bellList: BellEntry[]) => {
     const todaySounds = Array.from(new Set(bellList.map(b => b.soundFile)));
-    const allNeeded   = Array.from(new Set([...todaySounds, ...extraSounds]));
+    const allNeeded   = Array.from(new Set([...todaySounds, ...DEFAULT_SOUNDS]));
     console.log(`[BELL] 📋 Szükséges hangok: [${allNeeded.join(", ")}]`);
 
     // Régi hangok eltakarítása
@@ -585,12 +585,12 @@ export default function VirtualPlayer() {
   // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
   const fetchBells = useCallback(() => {
     console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
-    apiFetch<{ ok: boolean; bells?: BellEntry[]; defaultSounds?: string[] }>("/bells/today")
+    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
       .then(r => {
         if (r.bells && r.bells.length > 0) {
           console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
           setBells(r.bells);
-          void cacheBells(r.bells, r.defaultSounds ?? []);
+          void cacheBells(r.bells);
         } else {
           console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
         }
@@ -704,7 +704,7 @@ export default function VirtualPlayer() {
 
     // 3. Hangok betöltése + dekódolása (AudioContext most már aktív)
     const existing = bellsRef.current;
-    const toLoad = Array.from(new Set(existing.map(e => e.soundFile)));
+    const toLoad = Array.from(new Set([...existing.map(e => e.soundFile), ...DEFAULT_SOUNDS]));
     console.log(`[BELL] 🔓 Unlock → ${toLoad.length} hang betöltése: [${toLoad.join(", ")}]`);
 
     let ready = 0;
