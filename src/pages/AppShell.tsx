@@ -14,6 +14,7 @@ function safeRemove(s:Storage,k:string){try{s.removeItem(k)}catch{}}
 const NAV_ITEMS = [
   {to:"/app/devices",  label:"Eszközök",       icon:"🔊", roles:["all"]},
   {to:"/app/messages", label:"Üzenetek",        icon:"📢", roles:["all"]},
+  {to:"/app/radio",    label:"Iskolai Rádió",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/bells",    label:"Csengetési rend", icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/users",    label:"Felhasználók",    icon:"👥", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/tenants",  label:"Intézmények",     icon:"🏫", roles:["SUPER_ADMIN"]},
@@ -75,7 +76,7 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
   color:var(--sl-text-2); border:1.5px solid transparent; transition:all 0.15s;
   margin-bottom:3px;
 }
-.asl-nav-link:hover{background:#eef5ff;color:var(--sl-text)}
+.asl-nav-link:hover{background:#cbd5e1;color:var(--sl-text)}
 .asl-nav-link.active{
   font-weight:800; color:var(--sl-blue-dark);
   background:linear-gradient(135deg,#dbeafe,#ede9fe);
