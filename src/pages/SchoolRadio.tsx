@@ -778,7 +778,7 @@ export default function SchoolRadio() {
                       {(item.audioPreviewUrl || item.source==="upload") && (
                         <audio controls src={item.audioPreviewUrl} style={{height:24,width:80}} preload="none" />
                       )}
-                      <div style={{display:"flex",gap:4",flexShrink:0}}>
+                      <div style={{display:"flex",gap:4,flexShrink:0}}>
                         <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                           disabled={idx===0} onClick={()=>setPlItems(prev=>{const n=[...prev];[n[idx-1],n[idx]]=[n[idx],n[idx-1]];return n;})}>↑</button>
                         <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
