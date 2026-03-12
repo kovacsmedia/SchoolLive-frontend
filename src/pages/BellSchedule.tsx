@@ -75,7 +75,7 @@ export default function BellSchedule() {
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calDays, setCalDays] = useState<CalendarDay[]>([]);
   const [calLoading, setCalLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [editDay, setEditDay] = useState<{ isHoliday: boolean; templateId: string | null } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -168,25 +168,59 @@ export default function BellSchedule() {
     return calDays.find(d => d.date.startsWith(dateStr));
   }
 
-  function onDayClick(dateStr: string) {
+  function onDayClick(dateStr: string, e?: React.MouseEvent) {
     if (!hasLock) return;
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(dateStr)) {
+        next.delete(dateStr);
+      } else {
+        // Shift: range select between last selected and this
+        if (e?.shiftKey && next.size > 0) {
+          const allDates = getAllCalendarDates();
+          const last = [...next].at(-1)!;
+          const from = allDates.indexOf(last);
+          const to   = allDates.indexOf(dateStr);
+          const [lo, hi] = from < to ? [from, to] : [to, from];
+          allDates.slice(lo, hi + 1).forEach(d => next.add(d));
+        } else {
+          if (!e?.ctrlKey && !e?.metaKey) next.clear(); // egyszerű kattintás: korábbi törlése
+          next.add(dateStr);
+        }
+      }
+      return next;
+    });
+    // editDay az első kijelölt nap adatait mutatja
     const existing = getDayData(dateStr);
-    setSelectedDate(dateStr);
     setEditDay({ isHoliday: existing?.isHoliday ?? false, templateId: existing?.templateId ?? null });
+    setDirty(false);
+  }
+
+  function getAllCalendarDates(): string[] {
+    const dates: string[] = [];
+    const d = new Date(calYear, calMonth, 1);
+    while (d.getMonth() === calMonth) {
+      dates.push(toDateStr(d.getFullYear(), d.getMonth(), d.getDate()));
+      d.setDate(d.getDate() + 1);
+    }
+    return dates;
   }
 
   async function saveDay() {
-    if (!selectedDate || !editDay) return;
+    if (selectedDates.size === 0 || !editDay) return;
     setSaving(true);
     try {
-      await apiFetch(`/bells/calendar/${selectedDate}`, {
-        method: "PUT",
-        body: JSON.stringify(editDay),
-        headers: { "Content-Type": "application/json" },
-      });
+      await Promise.all([...selectedDates].map(dateStr =>
+        apiFetch(`/bells/calendar/${dateStr}`, {
+          method: "PUT",
+          body: JSON.stringify(editDay),
+          headers: { "Content-Type": "application/json" },
+        })
+      ));
       await loadCalendar();
-      setSelectedDate(null); setEditDay(null); setDirty(false);
-      setSuccess("Nap mentve!"); setTimeout(() => setSuccess(null), 3000);
+      setSelectedDates(new Set()); setEditDay(null); setDirty(false);
+      const n = selectedDates.size;
+      setSuccess(`${n} nap mentve!`); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
       setError(e?.message ?? "Mentési hiba");
     } finally {
@@ -366,6 +400,7 @@ export default function BellSchedule() {
           <button className="sl-btn sl-btn-secondary" onClick={() => setCalYear(y => y + 1)}>{calYear + 1} ▶</button>
           {hasLock && <button className="sl-btn" onClick={initHolidays} style={{ marginLeft: "auto" }}>🗓 Ünnepnapok betöltése</button>}
         </div>
+        <div style={{ fontSize: 12, color: "#8da4c0", marginBottom: 6 }}>💡 Kattintás = napok kijelölése · <b>Ctrl+katt</b> = több nap · <b>Shift+katt</b> = tartomány</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 2 }}>
           {["H", "K", "Sz", "Cs", "P", "Sz", "V"].map((d, i) => (
             <div key={i} style={{ textAlign: "center", fontWeight: 700, fontSize: 12, color: i >= 5 ? "#e55" : "#888", padding: "4px 0" }}>{d}</div>
@@ -380,14 +415,16 @@ export default function BellSchedule() {
             const isWeekend = ((idx % 7) >= 5);
             const isHoliday = data?.isHoliday || isWeekend;
             const hasCustomTemplate = data?.templateId != null;
-            const isSelected = selectedDate === dateStr;
-            let bg = "#1a1a2e";
-            if (isHoliday) bg = "#2a1a1a";
-            if (hasCustomTemplate) bg = "#1a2a1a";
-            if (isToday) bg = "#1a1a3e";
-            if (isSelected) bg = "#2a2a4e";
+            const isSelected = selectedDates.has(dateStr);
+            // CSS változók: világos/sötét témához automatikusan igazodik
+            let cellBg = "var(--sl-surface)";
+            let cellBorder = "transparent";
+            if (isHoliday) cellBg = "var(--sl-cell-holiday)";
+            if (hasCustomTemplate) cellBg = "var(--sl-cell-custom)";
+            if (isToday) cellBorder = "var(--sl-blue)";
+            if (isSelected) { cellBg = "var(--sl-cell-selected)"; cellBorder = "#3b82f6"; }
             return (
-              <div key={idx} onClick={() => onDayClick(dateStr)} style={{ background: bg, border: isSelected ? "2px solid #3b82f6" : "2px solid transparent", borderRadius: 6, padding: "6px 4px", minHeight: 52, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s" }} title={data?.template?.name ?? (isHoliday ? "Szünnap" : "Normál rend")}>
+              <div key={idx} onClick={(e) => onDayClick(dateStr, e)} style={{ background: cellBg, border: `2px solid ${cellBorder}`, borderRadius: 6, padding: "6px 4px", minHeight: 52, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s", userSelect: "none" }} title={data?.template?.name ?? (isHoliday ? "Szünnap" : "Normál rend")}>
                 <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? "#3b82f6" : isWeekend ? "#ef4444" : "var(--sl-text)" }}>{day}</div>
                 {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>SZÜNNAP</div>}
                 {isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>HÉTVÉGE</div>}
@@ -396,9 +433,14 @@ export default function BellSchedule() {
             );
           })}
         </div>
-        {selectedDate && editDay && (
+        {selectedDates.size > 0 && editDay && (
           <div style={{ marginTop: 20, background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 16 }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>📅 {selectedDate} szerkesztése</h3>
+            <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>
+              📅 {selectedDates.size === 1
+                ? [...selectedDates][0]
+                : `${selectedDates.size} nap kijelölve`} szerkesztése
+              {selectedDates.size > 1 && <span style={{ fontSize: 12, color: "#8da4c0", marginLeft: 8 }}>(Ctrl+katt = hozzáad, Shift+katt = tartomány, katt = csak ez)</span>}
+            </h3>
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
               <input type="checkbox" checked={editDay.isHoliday} onChange={e => { setEditDay({ ...editDay, isHoliday: e.target.checked, templateId: e.target.checked ? null : editDay.templateId }); setDirty(true); }} />
               <span>Csengetésmentes nap (szünnap)</span>
@@ -414,7 +456,7 @@ export default function BellSchedule() {
             )}
             <div style={{ display: "flex", gap: 8 }}>
               <button className="sl-btn sl-btn-primary" onClick={() => { if (!confirm("Biztosan mentod?")) return; saveDay(); }} disabled={saving}>{saving ? "Mentés..." : "💾 Mentés"}</button>
-              <button className="sl-btn sl-btn-secondary" onClick={() => { if (dirty && !confirm("Elveted a változtatásokat?")) return; setSelectedDate(null); setEditDay(null); setDirty(false); }}>Mégse</button>
+              <button className="sl-btn sl-btn-secondary" onClick={() => { if (dirty && !confirm("Elveted a változtatásokat?")) return; setSelectedDates(new Set()); setEditDay(null); setDirty(false); }}>Mégse</button>
             </div>
           </div>
         )}
@@ -483,7 +525,7 @@ export default function BellSchedule() {
 
             {/* Pending sor – a lista TETEJÉN, kiemelve */}
             {pendingBell && (
-              <div style={{ display: "grid", gridTemplateColumns: "120px 80px 1fr auto", gap: 8, marginBottom: 8, alignItems: "center", background: "#1a2a1a", border: "1px solid #bbf7d0", borderRadius: 6, padding: "6px 8px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "120px 80px 1fr auto", gap: 8, marginBottom: 8, alignItems: "center", background: "var(--sl-cell-custom)", border: "1px solid #bbf7d0", borderRadius: 6, padding: "6px 8px" }}>
                 <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
                   <input type="number" className="sl-input" style={{ width: 52, padding: "4px 2px", textAlign: "center" }} min={0} max={23} value={pendingBell.hour}
                     onChange={e => setPendingBell({ ...pendingBell, hour: Math.min(23, Math.max(0, parseInt(e.target.value) || 0)) })} />
@@ -608,11 +650,15 @@ export default function BellSchedule() {
           --sl-indigo:#6366f1; --sl-green:#22c55e; --sl-red:#ef4444; --sl-amber:#f59e0b;
           --sl-bg:#f1f5fd; --sl-surface:#fff; --sl-border:#e2eaf8;
           --sl-text:#1e293b; --sl-text-2:#475569; --sl-muted:#94a3b8;
+          --sl-cell-holiday:#fef2f2; --sl-cell-custom:#f0fdf4;
+          --sl-cell-selected:#eff6ff;
         }
         @media(prefers-color-scheme:dark){
           :root{
             --sl-bg:#07101f; --sl-surface:#0d1b2e; --sl-border:#1a2d47;
             --sl-text:#f0f6ff; --sl-text-2:#8da4c0; --sl-muted:#4a6280; --sl-blue-light:#0c2040;
+            --sl-cell-holiday:#2a1a1a; --sl-cell-custom:#1a2a1a;
+            --sl-cell-selected:#1e2d4a;
           }
         }
         /* ── Button overrides ── */
