@@ -14,7 +14,6 @@ function safeRemove(s:Storage,k:string){try{s.removeItem(k)}catch{}}
 const NAV_ITEMS = [
   {to:"/app/devices",  label:"Eszközök",       icon:"🔊", roles:["all"]},
   {to:"/app/messages", label:"Üzenetek",        icon:"📢", roles:["all"]},
-  {to:"/app/radio",    label:"Iskolai Rádió",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/bells",    label:"Csengetési rend", icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/users",    label:"Felhasználók",    icon:"👥", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/tenants",  label:"Intézmények",     icon:"🏫", roles:["SUPER_ADMIN"]},
@@ -59,13 +58,13 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
 .asl-logo-area{
   padding:22px 18px 16px; border-bottom:1px solid var(--sl-border); text-align:center;
 }
-.asl-logo-area img{width:100%; max-width:210px; height:auto}
+.asl-logo-area img{width:148px; height:auto}
 .asl-inst-badge{
-  margin-top:10px; display:block;
+  margin-top:10px; display:inline-flex; align-items:center; gap:5px;
   padding:5px 12px; background:linear-gradient(135deg,#dbeafe,#ede9fe);
   border:1px solid #bfdbfe; border-radius:20px;
-  font-size:14px; font-weight:800; color:var(--sl-blue-dark);
-  max-width:100%; white-space:normal; word-break:break-word;
+  font-size:11.5px; font-weight:800; color:var(--sl-blue-dark);
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .asl-inst-badge.warn{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a;color:#d97706}
 .asl-nav-area{flex:1;padding:14px 10px;overflow-y:auto}
@@ -76,7 +75,7 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
   color:var(--sl-text-2); border:1.5px solid transparent; transition:all 0.15s;
   margin-bottom:3px;
 }
-.asl-nav-link:hover{background:#cbd5e1;color:var(--sl-text)}
+.asl-nav-link:hover{background:#eef5ff;color:var(--sl-text)}
 .asl-nav-link.active{
   font-weight:800; color:var(--sl-blue-dark);
   background:linear-gradient(135deg,#dbeafe,#ede9fe);
@@ -180,6 +179,85 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
 }
 `;
 
+
+// ─── Topbar státuszsáv ────────────────────────────────────────────────────────
+type BellEntry = { hour: number; minute: number; type: string; soundFile: string };
+
+function pad2(n: number) { return String(n).padStart(2, "0"); }
+
+function useStatusBar(isAuthed: boolean) {
+  const [now,         setNow]         = useState(() => new Date());
+  const [bells,       setBells]       = useState<BellEntry[]>([]);
+  const [nextMessage, setNextMessage] = useState<string | null>(null);
+  const [nextRadio,   setNextRadio]   = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthed) return;
+    let alive = true;
+    async function refresh() {
+      try {
+        const rb = await apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today").catch(() => null);
+        if (alive && rb?.bells) setBells(rb.bells);
+      } catch {}
+      try {
+        const rm = await apiFetch<{ ok: boolean; messages?: any[] }>("/messages?limit=50").catch(() => null);
+        if (alive && rm?.messages) {
+          const n = new Date();
+          const next = rm.messages
+            .filter(m => m.scheduledAt && new Date(m.scheduledAt) > n)
+            .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+          setNextMessage(next ? `${pad2(new Date(next.scheduledAt).getHours())}:${pad2(new Date(next.scheduledAt).getMinutes())}` : null);
+        }
+      } catch {}
+      try {
+        const from = new Date().toISOString();
+        const rr = await apiFetch<{ ok: boolean; schedules?: any[] }>(`/radio/schedules?from=${from}`).catch(() => null);
+        if (alive && rr?.schedules) {
+          const next = rr.schedules
+            .filter(s => new Date(s.scheduledAt) > new Date())
+            .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+          setNextRadio(next ? `${pad2(new Date(next.scheduledAt).getHours())}:${pad2(new Date(next.scheduledAt).getMinutes())}` : null);
+        }
+      } catch {}
+    }
+    refresh();
+    const t = setInterval(refresh, 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, [isAuthed]);
+
+  const nextBell = useMemo(() => {
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const next = bells
+      .map(b => ({ ...b, total: b.hour * 60 + b.minute }))
+      .filter(b => b.total > mins)
+      .sort((a, b) => a.total - b.total)[0];
+    return next ? `${pad2(next.hour)}:${pad2(next.minute)}` : null;
+  }, [bells, now]);
+
+  const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+  return { timeStr, nextBell, nextMessage, nextRadio };
+}
+
+function StatusPill({ icon, label, value }: { icon: string; label: string; value: string | null }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5,
+      background: "var(--sl-bg)", border: "1px solid var(--sl-border)",
+      borderRadius: 10, padding: "4px 10px", fontSize: 12, fontWeight: 700,
+      color: value ? "var(--sl-text)" : "var(--sl-muted)", whiteSpace: "nowrap",
+    }}>
+      <span style={{ fontSize: 13 }}>{icon}</span>
+      <span style={{ color: "var(--sl-muted)", fontWeight: 600 }}>{label}</span>
+      <span style={{ color: value ? "var(--sl-blue)" : "var(--sl-muted)" }}>{value ?? "–"}</span>
+    </div>
+  );
+}
+
 export default function AppShell() {
   const { logout, state } = useAuth();
   const navigate  = useNavigate();
@@ -202,12 +280,7 @@ export default function AppShell() {
     safeGet(sessionStorage, ACTIVE_TENANT_KEY) || safeGet(localStorage, ACTIVE_TENANT_KEY) || ""
   );
 
-  async function onLogout() {
-    // Session törlése a backenden
-    const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
-    if (token) {
-      apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
-    }
+  function onLogout() {
     safeRemove(sessionStorage, ACTIVE_TENANT_KEY);
     safeRemove(localStorage, ACTIVE_TENANT_KEY);
     logout(); navigate("/login", { replace: true });
@@ -253,10 +326,10 @@ export default function AppShell() {
     [isSuperAdmin, tenants, activeTenantId, tenantName]
   );
 
+  const { timeStr, nextBell, nextMessage, nextRadio } = useStatusBar(isAuthed);
   const tenantGuardBlocked = isAuthed && isSuperAdmin && !activeTenantId;
   const institutionLabel   = isSuperAdmin ? activeTenantLabel : tenantName;
   const avatarLetter       = userName.charAt(0).toUpperCase();
-  const currentPage        = NAV_ITEMS.find(n => location.pathname.startsWith(n.to));
 
   function navAllowed(roles: string[]) { return roles.includes("all") || roles.includes(role); }
 
@@ -310,7 +383,7 @@ export default function AppShell() {
             </picture>
           </Link>
           {institutionLabel
-            ? <div className="asl-inst-badge" title={institutionLabel}>{institutionLabel}</div>
+            ? <div className="asl-inst-badge" title={institutionLabel}>🏫 {institutionLabel}</div>
             : isSuperAdmin ? <div className="asl-inst-badge warn">⚠️ Válassz intézményt</div> : null
           }
         </div>
@@ -334,7 +407,7 @@ export default function AppShell() {
           </div>
           {institutionLabel && (
             <div style={{ padding:"8px 14px" }}>
-              <div className="asl-inst-badge">{institutionLabel}</div>
+              <div className="asl-inst-badge">🏫 {institutionLabel}</div>
             </div>
           )}
           <div style={{ padding:"12px 10px", flex:1 }}>
@@ -347,12 +420,12 @@ export default function AppShell() {
       {/* Main */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
         <header className="asl-topbar">
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
             <button className="asl-burger" onClick={() => setNavOpen(true)} aria-label="Menü" type="button">☰</button>
-            <div className="asl-topbar-title">
-              {currentPage && <span style={{ fontSize:22 }}>{currentPage.icon}</span>}
-              {currentPage?.label || "SchoolLive"}
-            </div>
+            <StatusPill icon="🕐" label="Idő:" value={timeStr} />
+            <StatusPill icon="🔔" label="Csengő:" value={nextBell} />
+            <StatusPill icon="📢" label="Üzenet:" value={nextMessage} />
+            <StatusPill icon="📻" label="Rádió:" value={nextRadio} />
           </div>
           {isSuperAdmin && (
             <div className="asl-tenant-pill">
