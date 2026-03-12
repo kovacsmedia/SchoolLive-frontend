@@ -350,8 +350,8 @@ export default function SchoolRadio() {
         xhr.upload.onprogress = e => { if (e.lengthComputable) setUploadPct(Math.round(e.loaded/e.total*100)); };
         xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(JSON.parse(xhr.responseText)?.error ?? `HTTP ${xhr.status}`));
         xhr.onerror = () => reject(new Error("Hálózati hiba"));
-        const token = (state as any).token ?? localStorage.getItem("token") ?? "";
-        const tenantId = sessionStorage.getItem("activeTenantId") ?? "";
+        const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? (state as any).token ?? "";
+        const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
         xhr.open("POST", `${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/radio/files`);
         if (token)    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         if (tenantId) xhr.setRequestHeader("x-tenant-id", tenantId);
@@ -532,8 +532,8 @@ export default function SchoolRadio() {
           else reject(new Error(JSON.parse(xhr.responseText)?.error ?? `HTTP ${xhr.status}`));
         };
         xhr.onerror = () => reject(new Error("Hálózati hiba"));
-        const token = (state as any).token ?? localStorage.getItem("token") ?? "";
-        const tenantId = sessionStorage.getItem("activeTenantId") ?? "";
+        const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? (state as any).token ?? "";
+        const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
         xhr.open("POST", `${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/radio/files`);
         if (token)    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         if (tenantId) xhr.setRequestHeader("x-tenant-id", tenantId);
@@ -558,22 +558,25 @@ export default function SchoolRadio() {
     if (!plName.trim()) { setPlError("Adj nevet az összeállításnak!"); return; }
     setPlBusy(true); setPlError(null); setPlBuiltFileId(null); setPlBuiltUrl(null);
     try {
-      const res = await apiFetch<{ok:boolean;fileId:string;fileUrl:string;name:string}>("/radio/ytplaylists/build-custom", {
+      const res = await apiFetch<{ok:boolean;fileId:string}>("/radio/ytplaylists/build-custom", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           name: plName.trim(),
           items: readyItems.map(i => ({ url: i.url, title: i.title, source: i.source })),
         }),
       });
-      // Poll
-      const fileId = res.fileId;
+      // Poll a buildId-vel
+      const buildId = res.fileId;
       const poll = setInterval(async () => {
         try {
-          const s = await apiFetch<{ok:boolean;status:string;fileUrl:string;name:string}>(`/radio/ytplaylists/build-status/${fileId}`);
+          const s = await apiFetch<{ok:boolean;status:string;fileUrl:string;name:string;fileId?:string}>(`/radio/ytplaylists/build-status/${buildId}`);
           if (s.status === "DONE") {
             clearInterval(poll);
-            setPlBuiltFileId(fileId); setPlBuiltUrl(s.fileUrl); setPlBuiltName(s.name);
-            setPlBusy(false); await loadAll();
+            setPlBuiltFileId(s.fileId ?? null);   // a tényleges RadioFile ID
+            setPlBuiltUrl(s.fileUrl);
+            setPlBuiltName(s.name);
+            setPlBusy(false);
+            await loadAll();
           } else if (s.status === "ERROR") {
             clearInterval(poll);
             setPlError("Összeállítás sikertelen. Ellenőrizd a linkeket!"); setPlBusy(false);
