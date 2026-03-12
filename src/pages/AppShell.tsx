@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
@@ -339,7 +339,6 @@ export default function AppShell() {
   const tenantGuardBlocked = isAuthed && isSuperAdmin && !activeTenantId;
   const institutionLabel   = isSuperAdmin ? activeTenantLabel : tenantName;
   const avatarLetter       = userName.charAt(0).toUpperCase();
-  const currentPage        = NAV_ITEMS.find(n => location.pathname.startsWith(n.to));
 
   function navAllowed(roles: string[]) { return roles.includes("all") || roles.includes(role); }
 
