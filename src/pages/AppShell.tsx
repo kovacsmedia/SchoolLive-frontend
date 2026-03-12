@@ -281,7 +281,8 @@ export default function AppShell() {
     try {
       const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
       if (!token) return "";
-      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+      const b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+      const payload = JSON.parse(decodeURIComponent(atob(b64).split("").map(c=>"%" + c.charCodeAt(0).toString(16).padStart(2,"0")).join("")));
       return payload?.tenantName || "";
     } catch { return ""; }
   })() : "";
