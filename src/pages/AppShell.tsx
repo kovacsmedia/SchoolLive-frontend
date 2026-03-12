@@ -73,10 +73,12 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
   display:flex; align-items:center; gap:11px;
   padding:10px 13px; border-radius:13px; text-decoration:none;
   font-size:14px; font-family:var(--sl-font); font-weight:600;
-  color:var(--sl-text-2); border:1.5px solid transparent; transition:all 0.15s;
+  color:var(--sl-text-2); border:1.5px solid transparent;
+  background:transparent;
+  transition:background 0.15s, color 0.15s, border-color 0.15s;
   margin-bottom:3px;
 }
-.asl-nav-link:hover{background:#cbd5e1;color:var(--sl-text)}
+.asl-nav-link:hover{background:#94a3b8;color:#fff}
 .asl-nav-link.active{
   font-weight:800; color:var(--sl-blue-dark);
   background:linear-gradient(135deg,#dbeafe,#ede9fe);
