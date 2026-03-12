@@ -62,11 +62,13 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
 }
 .asl-logo-area img{width:148px; height:auto; display:block}
 .asl-inst-badge{
-  margin-top:10px; display:inline-flex; align-items:center; gap:5px;
-  padding:5px 12px; background:linear-gradient(135deg,#dbeafe,#ede9fe);
-  border:1px solid #bfdbfe; border-radius:20px;
-  font-size:11.5px; font-weight:800; color:var(--sl-blue-dark);
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  margin-top:10px; display:flex; align-items:center; justify-content:center;
+  gap:6px; padding:8px 12px;
+  background:linear-gradient(135deg,#dbeafe,#ede9fe);
+  border:1px solid #bfdbfe; border-radius:14px;
+  font-size:13px; font-weight:800; color:var(--sl-blue-dark);
+  width:100%; text-align:center; line-height:1.4;
+  white-space:normal; word-break:break-word;
 }
 .asl-inst-badge.warn{background:linear-gradient(135deg,#fffbeb,#fef3c7);border-color:#fde68a;color:#d97706}
 .asl-nav-area{flex:1;padding:14px 10px;overflow-y:auto}
@@ -270,8 +272,19 @@ export default function AppShell() {
   const isAuthed     = state.status === "authed";
   const role         = isAuthed ? (state.user as any)?.role || "" : "";
   const isSuperAdmin = role === "SUPER_ADMIN";
-  const tenantName   = isAuthed
-    ? (state.user as any)?.tenantName || (state.user as any)?.tenant?.name || "" : "";
+
+  // tenantName: az API user objektumból, fallback: JWT token base64 dekódolás
+  const tenantName = isAuthed ? (() => {
+    const fromUser = (state.user as any)?.tenantName || (state.user as any)?.tenant?.name || "";
+    if (fromUser) return fromUser;
+    // JWT fallback – a token middle részéből
+    try {
+      const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      if (!token) return "";
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/")));
+      return payload?.tenantName || "";
+    } catch { return ""; }
+  })() : "";
   const userName  = isAuthed
     ? (state.user as any)?.name || (state.user as any)?.displayName || (state.user as any)?.email || "Felhasználó" : "";
 
