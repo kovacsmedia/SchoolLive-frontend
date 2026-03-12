@@ -57,9 +57,10 @@ body{font-family:var(--sl-font);background:var(--sl-bg);color:var(--sl-text)}
   box-shadow:2px 0 18px rgba(59,130,246,0.07);
 }
 .asl-logo-area{
-  padding:22px 18px 16px; border-bottom:1px solid var(--sl-border); text-align:center;
+  padding:22px 18px 16px; border-bottom:1px solid var(--sl-border);
+  display:flex; flex-direction:column; align-items:center;
 }
-.asl-logo-area img{width:148px; height:auto}
+.asl-logo-area img{width:148px; height:auto; display:block}
 .asl-inst-badge{
   margin-top:10px; display:inline-flex; align-items:center; gap:5px;
   padding:5px 12px; background:linear-gradient(135deg,#dbeafe,#ede9fe);
@@ -378,7 +379,7 @@ export default function AppShell() {
       {/* Desktop sidebar */}
       <aside className="asl-sidebar">
         <div className="asl-logo-area">
-          <Link to="/app" style={{ textDecoration:"none", display:"block" }}>
+          <Link to="/app" style={{ textDecoration:"none", display:"flex", justifyContent:"center" }}>
             <picture>
               <source srcSet="/brand/schoollive-logow.svg" media="(prefers-color-scheme:dark)" type="image/svg+xml" />
               <source srcSet="/brand/schoollive-logo.svg"  media="(prefers-color-scheme:light)" type="image/svg+xml" />
