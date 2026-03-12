@@ -61,14 +61,25 @@ function calcFontSize(text: string): string {
   return "clamp(15px, 2.5vw, 28px)";
 }
 
-// ─── Bell hangfájl cache – AudioContext alapú (autoplay-safe) ─────────────────
-// Az AudioContext egyszer unlock után örökre engedélyezett,
-// src csere nem kell, a setInterval-ból is biztonságosan szól.
-const BELL_CACHE_PREFIX = "vpBellCache_";
+// ─── Bell hangfájl cache – IndexedDB alapú ───────────────────────────────────
+//
+// Tárolás: IndexedDB (bináris ArrayBuffer – nincs btoa, nincs méretlimit)
+// Memória: bellBuffers Map<string, AudioBuffer> (session-szintű, lejátszáshoz)
+// Default hangok: jelzocsengo.mp3 + kibecsengo.mp3 – mindig letöltve (offline napokra)
+//
+// Életciklus:
+//   1. fetchBells() → letöltés IndexedDB-be (ha nincs) → setBells()
+//   2. unlockAudio() → IndexedDB-ből decode → bellBuffers (AudioContext aktív)
+//   3. Lejátszás: bellBuffers.get(filename) → AudioContext (guaranteed)
 
-// In-memory AudioBuffer cache (oldal életciklusára)
+const BELL_DB_NAME    = "schoollive-bells";
+const BELL_DB_VERSION = 2;
+const BELL_STORE      = "sounds";
+const DEFAULT_SOUNDS  = ["jelzocsengo.mp3", "kibecsengo.mp3"];
+const API_BASE        = "https://api.schoollive.hu";
+
+// In-memory AudioBuffer cache (session, lejátszáshoz kész)
 const bellBuffers = new Map<string, AudioBuffer>();
-// Singleton AudioContext
 let sharedAudioCtx: AudioContext | null = null;
 
 function getAudioCtx(): AudioContext {
@@ -77,8 +88,6 @@ function getAudioCtx(): AudioContext {
   }
   return sharedAudioCtx;
 }
-
-// Unlock: felhasználói gesztusnál hívjuk, hogy az AudioContext resumed állapotba kerüljön
 function unlockAudioCtx(): void {
   const ctx = getAudioCtx();
   if (ctx.state === "suspended") {
@@ -86,106 +95,112 @@ function unlockAudioCtx(): void {
   }
 }
 
-// Párhuzamos hívások guard: ha ugyanaz a fájl már töltés alatt van, várunk
-const _caching = new Map<string, Promise<boolean>>();
-
-async function cacheBellSound(filename: string, url: string): Promise<boolean> {
-  // Ha már be van töltve a memóriába, kész
-  if (bellBuffers.has(filename)) return true;
-  // Ha már fut egy töltés ugyanerre a fájlra, csatlakozunk hozzá (ne töltsük 2x)
-  if (_caching.has(filename)) return _caching.get(filename)!;
-  const promise = _doCache(filename, url);
-  _caching.set(filename, promise);
-  promise.finally(() => _caching.delete(filename));
-  return promise;
+// ── IndexedDB helpers ─────────────────────────────────────────────────────────
+function openBellDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(BELL_DB_NAME, BELL_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(BELL_STORE)) {
+        db.createObjectStore(BELL_STORE); // key: filename
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function idbGet(filename: string): Promise<ArrayBuffer | null> {
+  try {
+    const db = await openBellDB();
+    return await new Promise((res, rej) => {
+      const tx  = db.transaction(BELL_STORE, "readonly");
+      const req = tx.objectStore(BELL_STORE).get(filename);
+      req.onsuccess = () => res(req.result ?? null);
+      req.onerror   = () => rej(req.error);
+    });
+  } catch { return null; }
+}
+async function idbPut(filename: string, buf: ArrayBuffer): Promise<void> {
+  try {
+    const db = await openBellDB();
+    await new Promise<void>((res, rej) => {
+      const tx  = db.transaction(BELL_STORE, "readwrite");
+      const req = tx.objectStore(BELL_STORE).put(buf, filename);
+      req.onsuccess = () => res();
+      req.onerror   = () => rej(req.error);
+    });
+  } catch (e) { console.warn("[VP-BELL] IDB put error:", e); }
+}
+async function idbDelete(filename: string): Promise<void> {
+  try {
+    const db = await openBellDB();
+    await new Promise<void>((res, rej) => {
+      const tx  = db.transaction(BELL_STORE, "readwrite");
+      const req = tx.objectStore(BELL_STORE).delete(filename);
+      req.onsuccess = () => res();
+      req.onerror   = () => rej(req.error);
+    });
+  } catch {}
+}
+async function idbKeys(): Promise<string[]> {
+  try {
+    const db = await openBellDB();
+    return await new Promise((res, rej) => {
+      const tx  = db.transaction(BELL_STORE, "readonly");
+      const req = tx.objectStore(BELL_STORE).getAllKeys();
+      req.onsuccess = () => res(req.result as string[]);
+      req.onerror   = () => rej(req.error);
+    });
+  } catch { return []; }
 }
 
-async function _doCache(filename: string, url: string): Promise<boolean> {
-
-  let arrayBuf: ArrayBuffer | null = null;
-
-  // 1. localStorage-ból próbálunk (base64 → ArrayBuffer)
+// ── Core: letölt + IndexedDB-be ment ha még nincs ────────────────────────────
+async function ensureDownloaded(filename: string): Promise<boolean> {
+  const existing = await idbGet(filename);
+  if (existing) { console.log(`[VP-BELL] 📦 IDB-ből: ${filename}`); return true; }
   try {
-    const b64 = localStorage.getItem(BELL_CACHE_PREFIX + filename);
-    if (b64) {
-      const binary = atob(b64.split(",")[1] ?? b64);
-      const bytes  = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      arrayBuf = bytes.buffer;
-    }
-  } catch {}
-
-  // 2. Ha nincs localStorage-ban, letöltjük
-  if (!arrayBuf) {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      arrayBuf = await resp.arrayBuffer();
-
-      // Elmentjük localStorage-ba a következő betöltéshez
-      try {
-        const bytes = new Uint8Array(arrayBuf);
-        // Chunked btoa – elkerüli az O(n²) string concat és stack overflow-t
-        let binary = "";
-        const CHUNK = 8192;
-        for (let i = 0; i < bytes.length; i += CHUNK) {
-          binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
-        }
-        localStorage.setItem(BELL_CACHE_PREFIX + filename, "data:audio/mpeg;base64," + btoa(binary));
-      } catch (e) {
-        console.warn("[VP] Bell localStorage save failed (quota?):", filename, e);
-        // Töröljük a félkész bejegyzést ha volt
-        try { localStorage.removeItem(BELL_CACHE_PREFIX + filename); } catch {}
-      }
-    } catch (e) {
-      console.warn("[VP] ❌ Bell download failed:", filename, e);
-      return false;
-    }
-  }
-
-  // 3. Decode → AudioBuffer
-  // Az AudioContext suspended állapotban is képes decodeAudioData-t futtatni,
-  // de néhány Android böngészőn biztonságosabb ha résumálva van.
-  try {
-    const ctx = getAudioCtx();
-    // Ha suspended, próbálunk résumálni (előzetes user gesture után már működik)
-    if (ctx.state === "suspended") {
-      try { await ctx.resume(); } catch {}
-    }
-    const buffer = await ctx.decodeAudioData(arrayBuf!.slice(0));
-    bellBuffers.set(filename, buffer);
-    console.log("[VP] ✅ Bell decoded:", filename);
+    const resp = await fetch(`${API_BASE}/audio/bells/${filename}`, { cache: "reload" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    await idbPut(filename, buf);
+    console.log(`[VP-BELL] ⬇️ Letöltve+mentve: ${filename} (${(buf.byteLength/1024).toFixed(0)} KB)`);
     return true;
   } catch (e) {
-    console.warn("[VP] ❌ Bell decode failed:", filename, e);
-    // Ha decode failed, legalább a hálózati fallback működjön
+    console.error(`[VP-BELL] ❌ Letöltés sikertelen: ${filename}`, e);
     return false;
   }
 }
 
-function countCachedBells(): number {
-  // Csak a ténylegesen dekódolt, lejátszásra kész AudioBuffer-ek száma
-  return bellBuffers.size;
+// ── Core: IDB-ből AudioBuffer decode ─────────────────────────────────────────
+async function decodeFromIDB(filename: string): Promise<boolean> {
+  if (bellBuffers.has(filename)) return true;
+  const buf = await idbGet(filename);
+  if (!buf) { console.warn(`[VP-BELL] ⚠️ IDB-ben nincs: ${filename}`); return false; }
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") { try { await ctx.resume(); } catch {} }
+    const audio = await ctx.decodeAudioData(buf.slice(0)); // slice = másolat (decode elhasználja)
+    bellBuffers.set(filename, audio);
+    console.log(`[VP-BELL] ✅ Dekódolva: ${filename}`);
+    return true;
+  } catch (e) {
+    console.warn(`[VP-BELL] ❌ Dekódolás sikertelen: ${filename}`, e);
+    return false;
+  }
 }
 
-// Stale localStorage cache törlése – fájlok amik már nem szerepelnek az aktív bells listában
-function clearStaleBellCache(activeFilenames: string[]): void {
-  try {
-    const toRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key?.startsWith(BELL_CACHE_PREFIX)) continue;
-      const filename = key.slice(BELL_CACHE_PREFIX.length);
-      if (!activeFilenames.includes(filename)) {
-        toRemove.push(key);
-      }
-    }
-    toRemove.forEach(k => localStorage.removeItem(k));
-    if (toRemove.length > 0) {
-      console.log(`[VP-BELL] 🧹 Stale cache törölve: ${toRemove.length} fájl`);
-    }
-  } catch {}
+// ── Régi, már nem szükséges hangok törlése IDB-ből ───────────────────────────
+async function pruneOldSounds(keepFilenames: string[]): Promise<void> {
+  const keep  = new Set([...keepFilenames, ...DEFAULT_SOUNDS]);
+  const keys  = await idbKeys();
+  const stale = keys.filter(k => !keep.has(k));
+  for (const k of stale) {
+    await idbDelete(k);
+    bellBuffers.delete(k);
+  }
+  if (stale.length > 0) console.log(`[VP-BELL] 🧹 ${stale.length} régi hang törölve`);
 }
+
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -543,47 +558,35 @@ export default function VirtualPlayer() {
 
   // ── Bell hangfájlok letöltése cache-be ────────────────────────────────────
   const cacheBells = useCallback(async (bellList: BellEntry[]) => {
-    const unique = Array.from(new Set(bellList.map(b => b.soundFile)));
-    console.log(`[VP] 📥 Csengőhangok cache-elése: [${unique.join(", ")}]`);
+    const todaySounds = Array.from(new Set(bellList.map(b => b.soundFile)));
+    const allNeeded   = Array.from(new Set([...todaySounds, ...DEFAULT_SOUNDS]));
+    console.log(`[VP-BELL] 📥 Hangok letöltése: [${allNeeded.join(", ")}]`);
 
-    // Töröljük a stale localStorage bejegyzéseket
-    clearStaleBellCache(unique);
-    // Töröljük a már nem aktuális in-memory buffereket is
-    for (const key of bellBuffers.keys()) {
-      if (!unique.includes(key)) {
-        bellBuffers.delete(key);
-        console.log(`[VP-BELL] 🗑 Eltávolítva memóriából: ${key}`);
+    // Régi, felesleges hangok törlése IDB-ből
+    await pruneOldSounds(todaySounds);
+
+    // 1. lépés: letöltés IndexedDB-be (hálózat csak ha még nincs ott)
+    let downloaded = 0;
+    for (const filename of allNeeded) {
+      const ok = await ensureDownloaded(filename);
+      if (ok) downloaded++;
+    }
+    console.log(`[VP-BELL] 💾 ${downloaded}/${allNeeded.length} hang az IDB-ben`);
+
+    // 2. lépés: AudioBuffer decode (csak ha AudioContext már aktív / unlocked)
+    const ctx = getAudioCtx();
+    if (ctx.state !== "suspended") {
+      let decoded = 0;
+      for (const filename of allNeeded) {
+        const ok = await decodeFromIDB(filename);
+        if (ok) decoded++;
       }
+      console.log(`[VP-BELL] 🎵 ${decoded}/${allNeeded.length} hang memóriában kész`);
+    } else {
+      console.log("[VP-BELL] ⏳ AudioContext suspended – decode az unlock után lesz");
     }
 
-    let decoded = 0;
-    const failed: string[] = [];
-    for (const filename of unique) {
-      const url = `https://api.schoollive.hu/audio/bells/${filename}`;
-      const ok = await cacheBellSound(filename, url);
-      if (ok) decoded++;
-      else { failed.push(filename); console.error(`[VP-BELL] ❌ Nem sikerült cache-elni: ${filename}`); }
-    }
-    setCachedBellCount(countCachedBells());
-    console.log(`[VP-BELL] 📦 ${decoded}/${unique.length} hangfájl dekódolva (bellBuffers.size=${bellBuffers.size})`);
-
-    // Újrapróbálás: ha volt sikertelen letöltés, 3mp múlva még egyszer
-    if (failed.length > 0) {
-      console.warn(`[VP-BELL] 🔁 ${failed.length} hangfájl újrapróbálás 3mp múlva: [${failed.join(", ")}]`);
-      setTimeout(async () => {
-        let retried = 0;
-        for (const filename of failed) {
-          // localStorage stale bejegyzés törlése – hátha rossz adat volt benne
-          try { localStorage.removeItem(BELL_CACHE_PREFIX + filename); } catch {}
-          bellBuffers.delete(filename);
-          const url = `https://api.schoollive.hu/audio/bells/${filename}`;
-          const ok = await cacheBellSound(filename, url);
-          if (ok) { retried++; console.log(`[VP-BELL] ✅ Újrapróbálás sikeres: ${filename}`); }
-          else console.error(`[VP-BELL] ❌ Újrapróbálás sikertelen: ${filename}`);
-        }
-        if (retried > 0) setCachedBellCount(countCachedBells());
-      }, 3000);
-    }
+    setCachedBellCount(bellBuffers.size);
   }, []);
 
   // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
@@ -684,13 +687,12 @@ export default function VirtualPlayer() {
   }, [playBell]);
 
   // ── Autoplay unlock ────────────────────────────────────────────────────────
-  const unlockAudio = useCallback(() => {
-    // AudioContext unlock (bell hangokhoz)
+  const unlockAudio = useCallback(async () => {
+    // AudioContext unlock
     unlockAudioCtx();
 
+    // Rádió <audio> elem unlock (silent play trick)
     const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
-
-    // A fő rádió <audio> elem unlock (stream lejátszáshoz)
     const a = audioRef.current;
     if (a) {
       a.src = SILENT; a.volume = 0;
@@ -698,36 +700,39 @@ export default function VirtualPlayer() {
         a.src = ""; a.volume = volumeRef.current / 10;
       });
     }
-
-    // A bell <audio> elem unlock (fallback lejátszáshoz)
+    // Bell <audio> fallback unlock
     const b = bellAudioRef.current;
-    if (b) {
-      b.src = SILENT; b.volume = 0;
-      b.play().then(() => b.pause()).catch(() => {}).finally(() => {
-        b.src = ""; b.volume = volumeRef.current / 10;
-      });
-    }
+    if (b) { b.play().then(() => b.pause()).catch(() => {}); }
 
     setUnlocked(true);
-    // Bells újratöltése (ha még nem sikerült) + már betöltöttek re-decode-ja
-    setTimeout(async () => {
-      const existing = bellsRef.current;
-      if (existing.length > 0) {
-        // Már van bells adat – re-decode (AudioContext most már aktív)
-        console.log("[VP-BELL] 🔁 Unlock utáni re-decode:", existing.length, "bejegyzés");
-        const unique = Array.from(new Set(existing.map(b => b.soundFile)));
-        for (const filename of unique) {
-          // Töröljük az in-memory buffert hogy újra decode-olja
-          bellBuffers.delete(filename);
-          const url = `https://api.schoollive.hu/audio/bells/${filename}`;
-          await cacheBellSound(filename, url);
+
+    // AudioContext most már aktív → dekódolás IDB-ből (hálózat nem kell)
+    const existing = bellsRef.current;
+    const toDecode = Array.from(new Set([
+      ...existing.map(e => e.soundFile),
+      ...DEFAULT_SOUNDS,
+    ]));
+
+    console.log(`[VP-BELL] 🔓 Unlock → decode ${toDecode.length} hang IDB-ből`);
+    let decoded = 0;
+    for (const filename of toDecode) {
+      bellBuffers.delete(filename); // friss decode
+      const ok = await decodeFromIDB(filename);
+      if (ok) decoded++;
+      else {
+        // IDB-ben sincs? Próbáljuk letölteni most
+        const dl = await ensureDownloaded(filename);
+        if (dl) {
+          const ok2 = await decodeFromIDB(filename);
+          if (ok2) decoded++;
         }
-        console.log("[VP-BELL] ✅ Re-decode kész, buffer count:", bellBuffers.size);
-        setCachedBellCount(bellBuffers.size);
       }
-      // Mindig frissítjük a bells listát is (lehet új fájl)
-      fetchBells();
-    }, 300);
+    }
+    console.log(`[VP-BELL] ✅ Unlock decode kész: ${decoded}/${toDecode.length}`);
+    setCachedBellCount(bellBuffers.size);
+
+    // Bells lista frissítése
+    fetchBells();
   }, [fetchBells]);
 
   // ── PLAYER automatikus újrabejelentkezés (token lejárat esetén) ────────────
@@ -1183,8 +1188,8 @@ export default function VirtualPlayer() {
                 {bells.length === 0
                   ? "Csengetési rend betöltés…"
                   : cachedBellCount === 0
-                    ? `${bells.length} csengő – hangfájl betöltés…`
-                    : `${bells.length} csengő, ${cachedBellCount} hang cache-ben`
+                    ? `${bells.length} csengő – hangok letöltés alatt…`
+                    : `${bells.length} csengő, ${cachedBellCount} hang kész`
                 }
               </span>
             </div>
