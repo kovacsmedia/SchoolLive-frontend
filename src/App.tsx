@@ -9,7 +9,7 @@ import Devices            from "./pages/Devices";
 import Messages           from "./pages/Messages";
 import BellSchedule       from "./pages/BellSchedule";
 import Users              from "./pages/Users";
-import Tenants            from "./pages/Tenants";
+import Tenants            from "./pages/TenantsPage";
 import VirtualPlayer      from "./pages/VirtualPlayer";
 import VirtualPlayerLegacy from "./pages/VirtualPlayerLegacy";
 
