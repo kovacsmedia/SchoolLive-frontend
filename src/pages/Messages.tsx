@@ -189,7 +189,14 @@ export default function Messages() {
     try { const r = await apiFetch<{ok:boolean;templates:Template[]}>("/messages/templates"); setTemplates(r.templates); } catch {}
   }
   async function loadDevices() {
-    try { const r = await apiFetch<{devices:Device[]}>("/admin/devices/health"); setDevices(r.devices??[]); } catch {}
+    try {
+      const r = await apiFetch<{devices:any[]}>("/admin/devices/health");
+      const normalized = (r.devices ?? []).map((d: any) => ({
+        ...d,
+        id: String(d.id ?? d.deviceId ?? d._id ?? d.clientId ?? ""),
+      }));
+      setDevices(normalized);
+    } catch {}
   }
   async function loadGroups() {
     try { const r = await apiFetch<{groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); } catch {}
@@ -454,21 +461,17 @@ export default function Messages() {
                   {targetType==="DEVICE" && (
                     <div className="ms-device-list">
                       {devices.length===0 && <div style={{ fontSize:13,color:"var(--sl-muted)",padding:8 }}>Nincs elérhető eszköz</div>}
-                      {devices.map(d => {
-                        const did = String(d.id ?? "");
-                        const isSelected = did !== "" && did === String(targetId ?? "");
-                        return (
-                          <div
-                            key={did || d.name}
-                            className={"ms-device-item" + (isSelected ? " selected" : "")}
-                            onClick={e => { e.stopPropagation(); setTargetId(isSelected ? "" : did); }}
-                          >
-                            <span className={d.online ? "ms-dot-on" : "ms-dot-off"} />
-                            <span style={{ fontSize:13.5, fontWeight:600 }}>{d.name}</span>
-                            <span style={{ fontSize:11, color:"var(--sl-muted)", marginLeft:"auto" }}>{d.deviceClass}</span>
-                          </div>
-                        );
-                      })}
+                      {devices.map(d => (
+                        <div
+                          key={d.id || d.name}
+                          className={"ms-device-item" + (targetId === d.id && d.id !== "" ? " selected" : "")}
+                          onClick={() => setTargetId(prev => prev === d.id ? "" : d.id)}
+                        >
+                          <span className={d.online ? "ms-dot-on" : "ms-dot-off"} />
+                          <span style={{ fontSize:13.5, fontWeight:600 }}>{d.name}</span>
+                          <span style={{ fontSize:11, color:"var(--sl-muted)", marginLeft:"auto" }}>{d.deviceClass}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                   {targetType==="GROUP" && (
