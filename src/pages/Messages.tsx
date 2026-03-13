@@ -454,13 +454,21 @@ export default function Messages() {
                   {targetType==="DEVICE" && (
                     <div className="ms-device-list">
                       {devices.length===0 && <div style={{ fontSize:13,color:"var(--sl-muted)",padding:8 }}>Nincs elérhető eszköz</div>}
-                      {devices.map(d => (
-                        <div key={d.id} className={"ms-device-item"+(targetId===d.id?" selected":"")} onClick={() => setTargetId(targetId === d.id ? "" : d.id)}>
-                          <span className={d.online?"ms-dot-on":"ms-dot-off"} />
-                          <span style={{ fontSize:13.5,fontWeight:600 }}>{d.name}</span>
-                          <span style={{ fontSize:11,color:"var(--sl-muted)",marginLeft:"auto" }}>{d.deviceClass}</span>
-                        </div>
-                      ))}
+                      {devices.map(d => {
+                        const did = String(d.id ?? "");
+                        const isSelected = did !== "" && did === String(targetId ?? "");
+                        return (
+                          <div
+                            key={did || d.name}
+                            className={"ms-device-item" + (isSelected ? " selected" : "")}
+                            onClick={e => { e.stopPropagation(); setTargetId(isSelected ? "" : did); }}
+                          >
+                            <span className={d.online ? "ms-dot-on" : "ms-dot-off"} />
+                            <span style={{ fontSize:13.5, fontWeight:600 }}>{d.name}</span>
+                            <span style={{ fontSize:11, color:"var(--sl-muted)", marginLeft:"auto" }}>{d.deviceClass}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {targetType==="GROUP" && (
