@@ -818,7 +818,7 @@ export default function SchoolRadio() {
                       {ytResults.map(r => (
                         <div key={r.id} className={`sr-search-result${ytSelResult===r.id?" sel":""}`}
                           onClick={()=>setYtSelResult(ytSelResult===r.id?null:r.id)}>
-                          <div className="sr-search-thumb" style={{backgroundImage:`url(${r.thumbnail})`,backgroundSize:"cover",backgroundPosition:"center",borderRadius:7}} />
+                          <img src={r.thumbnail} alt="" className="sr-search-thumb" referrerPolicy="no-referrer" crossOrigin="anonymous" />
                           <div style={{minWidth:0}}>
                             <div className="sr-search-title">{r.title}</div>
                             <div className="sr-search-meta">⏱ {r.duration}</div>
