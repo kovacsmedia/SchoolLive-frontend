@@ -193,7 +193,7 @@ const CSS = `
   /* Search results */
   .sr-search-result{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;cursor:pointer;transition:background 0.12s;border:1.5px solid transparent}
   .sr-search-result:hover{background:var(--sl-bg);border-color:var(--sl-border)}
-  .sr-search-result.sel{background:#eff6ff;border-color:#3b82f6}
+  .sr-search-result.sel{background:rgba(59,130,246,0.18);border-color:#3b82f6;color:var(--sl-text)}
   .sr-search-thumb{width:60px;height:45px;border-radius:7px;object-fit:cover;flex-shrink:0;background:#1e293b}
   .sr-search-title{font-size:13px;font-weight:700;color:var(--sl-text);line-height:1.4}
   .sr-search-meta{font-size:11px;color:var(--sl-muted);margin-top:2px}
