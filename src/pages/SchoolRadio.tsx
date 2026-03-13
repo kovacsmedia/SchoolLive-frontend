@@ -482,7 +482,7 @@ export default function SchoolRadio() {
     if (!ytQuery.trim()) return;
     setYtSearching(true); setYtResults([]);
     try {
-      const res = await apiFetch<{ok:boolean;results:typeof ytResults}>(`/radio/yt-search?q=${encodeURIComponent(ytQuery)}&limit=5`);
+      const res = await apiFetch<{ok:boolean;results:typeof ytResults}>(`/radio/yt-search?q=${encodeURIComponent(ytQuery)}&limit=10`);
       setYtResults(res.results ?? []);
     } catch { setYtResults([]); }
     finally { setYtSearching(false); }
@@ -818,7 +818,7 @@ export default function SchoolRadio() {
                       {ytResults.map(r => (
                         <div key={r.id} className={`sr-search-result${ytSelResult===r.id?" sel":""}`}
                           onClick={()=>setYtSelResult(ytSelResult===r.id?null:r.id)}>
-                          <img src={r.thumbnail} alt="" className="sr-search-thumb" />
+                          <div className="sr-search-thumb" style={{backgroundImage:`url(${r.thumbnail})`,backgroundSize:"cover",backgroundPosition:"center",borderRadius:7}} />
                           <div style={{minWidth:0}}>
                             <div className="sr-search-title">{r.title}</div>
                             <div className="sr-search-meta">⏱ {r.duration}</div>
