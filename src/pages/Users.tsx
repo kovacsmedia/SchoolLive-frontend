@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
-import { useAuth } from "../auth/AuthContext";
 
 type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
 type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
@@ -12,6 +11,11 @@ const UI_ROLE_OPTIONS: Array<{uiRole:UiRole;label:string;description:string;back
   { uiRole:"CONTRIBUTOR", label:"Közreműködő",  description:"Azonnali üzenetek küldése.",                    backendRole:"OPERATOR" },
   { uiRole:"PLAYER",      label:"Player",       description:"Player nézet jogosultsága.",                    backendRole:"PLAYER" },
 ];
+
+type UserMessage = {
+  id: string; title: string; text?: string | null; type: string;
+  targetType: string; scheduledAt: string | null; playedAt: string | null; createdAt: string;
+};
 
 function formatDT(iso?:string|null) { if (!iso) return "–"; const d=new Date(iso); return isNaN(d.getTime())?"–":d.toLocaleString("hu-HU"); }
 function safeErr(e:unknown):string {
@@ -82,6 +86,18 @@ const CSS = `
 `;
 
 function Modal({ title, icon, onClose, children }: { title:string; icon:string; onClose:()=>void; children:React.ReactNode }) {
+  async function openMessages(user: UserDto) {
+    setSelectedUser(user);
+    setUserMessages([]);
+    setIsMessagesOpen(true);
+    setUserMsgLoading(true);
+    try {
+      const r = await apiFetch<{ok:boolean;messages:UserMessage[]}>(`/messages?createdBy=${user.id}&limit=50`);
+      setUserMessages(r.messages ?? []);
+    } catch { setUserMessages([]); }
+    finally { setUserMsgLoading(false); }
+  }
+
   return (
     <div className="us-overlay" onClick={onClose}>
       <div className="us-modal" onClick={e => e.stopPropagation()}>
@@ -97,55 +113,7 @@ function Modal({ title, icon, onClose, children }: { title:string; icon:string; 
 
 type UserFormState = { email:string; displayName:string; uiRole:UiRole; password:string; isActive:boolean };
 
-// ── UserForm kiemelve a Users()-ből, hogy ne veszítse el a fókuszt ──────────
-function UserForm({ form, setForm, isEdit }: {
-  form: UserFormState;
-  setForm: React.Dispatch<React.SetStateAction<UserFormState>>;
-  isEdit: boolean;
-}) {
-  return (
-    <>
-      <div className="us-grid2">
-        <div>
-          <label className="us-label">E-mail cím *</label>
-          <input className="us-input" type="email" value={form.email} onChange={e => setForm(s=>({...s,email:e.target.value}))} placeholder="pl. tanar@iskola.hu" />
-        </div>
-        <div>
-          <label className="us-label">Megjelenített név</label>
-          <input className="us-input" value={form.displayName} onChange={e => setForm(s=>({...s,displayName:e.target.value}))} placeholder="pl. Kiss Péter" />
-          <div className="us-hint">Opcionális</div>
-        </div>
-      </div>
-      <div className="us-grid2">
-        <div>
-          <label className="us-label">Szerepkör</label>
-          <select className="us-select" value={form.uiRole} onChange={e => setForm(s=>({...s,uiRole:e.target.value as UiRole}))}>
-            {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
-          </select>
-          <div className="us-hint">{UI_ROLE_OPTIONS.find(r=>r.uiRole===form.uiRole)?.description}</div>
-        </div>
-        <div>
-          <label className="us-label">Státusz</label>
-          <label className="us-check-row" style={{ marginTop:10 }}>
-            <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
-            Aktív felhasználó
-          </label>
-        </div>
-      </div>
-      <div>
-        <label className="us-label">Jelszó</label>
-        <input type="password" className="us-input" value={form.password} onChange={e => setForm(s=>({...s,password:e.target.value}))} placeholder="Minimum 6 karakter" />
-        <div className="us-hint">{isEdit ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
-      </div>
-    </>
-  );
-}
-
 export default function Users() {
-  const { state } = useAuth();
-  const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
-  const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
-  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
@@ -153,6 +121,8 @@ export default function Users() {
   const [isCreateOpen, setIsCreateOpen]   = useState(false);
   const [isEditOpen, setIsEditOpen]       = useState(false);
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [userMessages,    setUserMessages]    = useState<UserMessage[]>([]);
+  const [userMsgLoading,  setUserMsgLoading]  = useState(false);
   const [selectedUser, setSelectedUser]   = useState<UserDto|null>(null);
   const [form, setForm] = useState<UserFormState>({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
   const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete">(null);
@@ -166,11 +136,9 @@ export default function Users() {
   useEffect(() => { void loadUsers(); }, []);
 
   const filtered = useMemo(() => {
-    let list = showInactive ? users : users.filter(u => u.isActive !== false);
-    const n = q.trim().toLowerCase();
-    if (!n) return list;
-    return list.filter(u => [u.email,u.displayName,u.role,u.lastLoginAt,u.createdAt].join(" ").toLowerCase().includes(n));
-  }, [q, users, showInactive]);
+    const n = q.trim().toLowerCase(); if (!n) return users;
+    return users.filter(u => [u.email,u.displayName,u.role,u.lastLoginAt,u.createdAt].join(" ").toLowerCase().includes(n));
+  }, [q, users]);
 
   function openCreate() {
     setSelectedUser(null); setForm({ email:"",displayName:"",uiRole:"CONTRIBUTOR",password:"",isActive:true }); setIsCreateOpen(true);
@@ -208,19 +176,50 @@ export default function Users() {
     if (!window.confirm(`Biztos deaktiválod? (${u.email})`)) return;
     setError(null); setBusyAction("delete");
     try {
-      await apiFetch<unknown>(`/admin/users/${u.id}`,{method:"DELETE"});
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{method:"DELETE"});
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
-  async function doHardDelete(u:UserDto) {
-    if (!window.confirm(`Véglegesen törlöd? Ez nem visszafordítható!\n\n${u.email}`)) return;
-    setError(null); setBusyAction("delete");
-    try {
-      await apiFetch<unknown>(`/admin/users/${u.id}?permanent=true`,{method:"DELETE"});
-      await loadUsers();
-    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
-    finally { setBusyAction(null); }
+
+  function UserForm() {
+    return (
+      <>
+        <div className="us-grid2">
+          <div>
+            <label className="us-label">E-mail cím *</label>
+            <input className="us-input" type="email" value={form.email} onChange={e => setForm(s=>({...s,email:e.target.value}))} placeholder="pl. tanar@iskola.hu" />
+          </div>
+          <div>
+            <label className="us-label">Megjelenített név</label>
+            <input className="us-input" value={form.displayName} onChange={e => setForm(s=>({...s,displayName:e.target.value}))} placeholder="pl. Kiss Péter" />
+            <div className="us-hint">Opcionális</div>
+          </div>
+        </div>
+        <div className="us-grid2">
+          <div>
+            <label className="us-label">Szerepkör</label>
+            <select className="us-select" value={form.uiRole} onChange={e => setForm(s=>({...s,uiRole:e.target.value as UiRole}))}>
+              {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
+            </select>
+            <div className="us-hint">{UI_ROLE_OPTIONS.find(r=>r.uiRole===form.uiRole)?.description}</div>
+          </div>
+          <div>
+            <label className="us-label">Státusz</label>
+            <label className="us-check-row" style={{ marginTop:10 }}>
+              <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
+              Aktív felhasználó
+            </label>
+          </div>
+        </div>
+        <div>
+          <label className="us-label">Jelszó</label>
+          <input type="password" className="us-input" value={form.password} onChange={e => setForm(s=>({...s,password:e.target.value}))} placeholder="Minimum 6 karakter" />
+          <div className="us-hint">{isEditOpen ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -235,9 +234,6 @@ export default function Users() {
         <div className="us-actions">
           <input className="us-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
           <button className="us-btn us-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új felhasználó</button>
-          <button className="us-btn us-btn-ghost" onClick={() => setShowInactive(v=>!v)} type="button" style={showInactive?{borderColor:"#3b82f6",color:"#3b82f6"}:{}}>
-            {showInactive ? "👁 Inaktívak elrejtve" : "👁 Inaktívak mutatása"}
-          </button>
           <button className="us-btn us-btn-ghost" onClick={() => void loadUsers()} disabled={loading} type="button">🔄</button>
         </div>
       </div>
@@ -285,12 +281,9 @@ export default function Users() {
                     <td style={{ fontSize:12 }}>{formatDT(u.lastLoginAt)}</td>
                     <td style={{ textAlign:"right" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => { setSelectedUser(u); setIsMessagesOpen(true); }} type="button">📧</button>
+                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openMessages(u)} type="button">📧</button>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
                         <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
-                        {canDelete && (
-                          <button className="us-btn us-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(u)} disabled={busyAction==="delete"} type="button">🗑 Törlés</button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -304,7 +297,7 @@ export default function Users() {
       {/* Create modal */}
       {isCreateOpen && (
         <Modal title="Új felhasználó" icon="👤" onClose={() => setIsCreateOpen(false)}>
-          <div className="us-modal-body"><UserForm form={form} setForm={setForm} isEdit={false} /></div>
+          <div className="us-modal-body"><UserForm /></div>
           <div className="us-modal-footer">
             <button className="us-btn us-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
             <button className="us-btn us-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
@@ -318,7 +311,7 @@ export default function Users() {
       {isEditOpen && selectedUser && (
         <Modal title={`Szerkesztés: ${selectedUser.email}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
           <div className="us-modal-body">
-            <UserForm form={form} setForm={setForm} isEdit={true} />
+            <UserForm />
             <div className="us-meta-row">
               <span>Létrehozva: {formatDT(selectedUser.createdAt)}</span>
               <span>Utolsó belépés: {formatDT(selectedUser.lastLoginAt)}</span>
@@ -337,11 +330,35 @@ export default function Users() {
       {isMessagesOpen && selectedUser && (
         <Modal title={`Üzenetek: ${selectedUser.email}`} icon="📧" onClose={() => setIsMessagesOpen(false)}>
           <div className="us-modal-body">
-            <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:11, padding:"10px 14px", fontSize:13, color:"#d97706" }}>
-              ⚠ Ez a nézet még nincs bekötve – a backend endpointot a következő lépésben implementáljuk.
-            </div>
+            {userMsgLoading ? (
+              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>⏳ Betöltés…</div>
+            ) : userMessages.length === 0 ? (
+              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>
+                <div style={{fontSize:28,marginBottom:8}}>📭</div>
+                Még nem küldött üzenetet ez a felhasználó.
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
+                {userMessages.map(m => (
+                  <div key={m.id} style={{padding:"10px 14px",border:"1px solid var(--sl-border)",borderRadius:11,background:"var(--sl-bg)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                      <span style={{fontSize:13.5,fontWeight:800,color:"var(--sl-text)"}}>{m.title}</span>
+                      <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",fontWeight:700}}>{m.type}</span>
+                      <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"var(--sl-surface)",color:"var(--sl-muted)",border:"1px solid var(--sl-border)",fontWeight:600}}>{m.targetType}</span>
+                    </div>
+                    {m.text && <div style={{fontSize:12.5,color:"var(--sl-text-2)",marginBottom:4,lineHeight:1.5}}>{m.text}</div>}
+                    <div style={{fontSize:11,color:"var(--sl-muted)",display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {m.scheduledAt && <span>📅 {formatDT(m.scheduledAt)}</span>}
+                      {m.playedAt    && <span>▶ {formatDT(m.playedAt)}</span>}
+                      <span>🕐 {formatDT(m.createdAt)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="us-modal-footer">
+            <span style={{fontSize:12,color:"var(--sl-muted)"}}>{userMessages.length} üzenet</span>
             <button className="us-btn us-btn-ghost" onClick={() => setIsMessagesOpen(false)} type="button">Bezár</button>
           </div>
         </Modal>
