@@ -86,18 +86,6 @@ const CSS = `
 `;
 
 function Modal({ title, icon, onClose, children }: { title:string; icon:string; onClose:()=>void; children:React.ReactNode }) {
-  async function openMessages(user: UserDto) {
-    setSelectedUser(user);
-    setUserMessages([]);
-    setIsMessagesOpen(true);
-    setUserMsgLoading(true);
-    try {
-      const r = await apiFetch<{ok:boolean;messages:UserMessage[]}>(`/messages?createdBy=${user.id}&limit=50`);
-      setUserMessages(r.messages ?? []);
-    } catch { setUserMessages([]); }
-    finally { setUserMsgLoading(false); }
-  }
-
   return (
     <div className="us-overlay" onClick={onClose}>
       <div className="us-modal" onClick={e => e.stopPropagation()}>
@@ -126,6 +114,18 @@ export default function Users() {
   const [selectedUser, setSelectedUser]   = useState<UserDto|null>(null);
   const [form, setForm] = useState<UserFormState>({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
   const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete">(null);
+
+  async function openMessages(user: UserDto) {
+    setSelectedUser(user);
+    setUserMessages([]);
+    setIsMessagesOpen(true);
+    setUserMsgLoading(true);
+    try {
+      const r = await apiFetch<{ok:boolean;messages:UserMessage[]}>(`/messages?createdBy=${user.id}&limit=50`);
+      setUserMessages(r.messages ?? []);
+    } catch { setUserMessages([]); }
+    finally { setUserMsgLoading(false); }
+  }
 
   async function loadUsers() {
     setLoading(true); setError(null);
