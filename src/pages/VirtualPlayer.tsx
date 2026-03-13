@@ -605,12 +605,20 @@ export default function VirtualPlayer() {
 
     if (action === "BELL" && url) {
       // Csengetés – LEGMAGASABB PRIORITÁS
-      const soundFile = url.split("/").pop() ?? url;
-      // Fallback URL mindig abszolút legyen (a frontend domain ≠ API domain)
-      const absoluteUrl = url.startsWith("http")
-        ? url
-        : `https://api.schoollive.hu${url.startsWith("/") ? url : "/audio/bells/" + soundFile}`;
-      playBell(soundFile, absoluteUrl);
+      // Deduplikáció: ha az offline ticker már elsütötte ebben a percben, csak ACK-olunk
+      const now = new Date();
+      const bellKey = `${now.getHours()}:${now.getMinutes()}`;
+      if (lastBellKeyRef.current === bellKey) {
+        console.log(`[VP-BELL] ⏭ BELL parancs kihagyva (offline ticker már lejátszta): ${bellKey}`);
+      } else {
+        lastBellKeyRef.current = bellKey;
+        const soundFile = url.split("/").pop() ?? url;
+        // Fallback URL mindig abszolút legyen (a frontend domain ≠ API domain)
+        const absoluteUrl = url.startsWith("http")
+          ? url
+          : `https://api.schoollive.hu${url.startsWith("/") ? url : "/audio/bells/" + soundFile}`;
+        playBell(soundFile, absoluteUrl);
+      }
 
     } else if (action === "SYNC_BELLS") {
       // Csengetési rend frissítése

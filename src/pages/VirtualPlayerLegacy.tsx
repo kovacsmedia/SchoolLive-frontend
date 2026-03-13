@@ -550,8 +550,16 @@ export default function VirtualPlayerLegacy() {
     console.log("[VP-LEGACY] Command:", action, p.url || p.text || "");
 
     if (action === "BELL" && p.url) {
-      const soundFile = p.url.split("/").pop() || p.url;
-      playBell(soundFile);
+      // Deduplikáció: ha az offline ticker már elsütötte ebben a percben, csak ACK-olunk
+      const now = new Date();
+      const bellKey = now.getHours() + ":" + now.getMinutes();
+      if (lastBellKeyRef.current === bellKey) {
+        console.log("[VP-LEGACY] BELL parancs kihagyva (ticker már lejátszta): " + bellKey);
+      } else {
+        lastBellKeyRef.current = bellKey;
+        const soundFile = p.url.split("/").pop() || p.url;
+        playBell(soundFile);
+      }
 
     } else if (action === "SYNC_BELLS") {
       fetchBells();
