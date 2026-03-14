@@ -738,19 +738,53 @@ export default function VirtualPlayer() {
     }));
   }, [clientId]);
 
-  // ── PLAY handler – precíz indítás a playAt timestamp alapján ─────────────
+  // ── PLAY handler – AudioContext sample-accurate scheduling ──────────────
   const handlePlay = useCallback((cmd: PlayCmd) => {
     const serverNow = Date.now() + serverTimeOffsetRef.current;
     const delayMs   = Math.max(0, new Date(cmd.playAt).getTime() - serverNow);
+    const delaySec  = delayMs / 1000;
     console.log(`[VP-SYNC] 🎵 PLAY in ${delayMs}ms: commandId=${cmd.commandId}`);
+
     const prepare = pendingPreparesRef.current.get(cmd.commandId);
-    setTimeout(() => {
-      if (prepare?.audio) {
-        prepare.audio.volume = volumeRef.current / 10;
-        prepare.audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
-        pendingPreparesRef.current.delete(cmd.commandId);
+    if (!prepare?.audio) return;
+    const audio = prepare.audio;
+
+    // AudioContext sample-accurate scheduling – böngészők között <1ms pontosság
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state !== "suspended" && delaySec > 0.05) {
+        const scheduleAt = ctx.currentTime + delaySec;
+        fetch(audio.src)
+          .then(r => r.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(audioBuffer => {
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            const gain = ctx.createGain();
+            gain.gain.value = volumeRef.current / 10;
+            source.connect(gain);
+            gain.connect(ctx.destination);
+            source.start(scheduleAt);
+            pendingPreparesRef.current.delete(cmd.commandId);
+            console.log(`[VP-SYNC] 🎵 AudioContext scheduled @ +${delaySec.toFixed(3)}s`);
+          })
+          .catch(() => {
+            setTimeout(() => {
+              audio.volume = volumeRef.current / 10;
+              audio.play().catch(() => {});
+              pendingPreparesRef.current.delete(cmd.commandId);
+            }, delayMs);
+          });
+        return;
       }
-    }, delayMs);
+    } catch {}
+
+    // Fallback: setTimeout
+    setTimeout(() => {
+      audio.volume = volumeRef.current / 10;
+      audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
+      pendingPreparesRef.current.delete(cmd.commandId);
+    }, Math.max(0, delayMs));
   }, []);
 
   // ── WebSocket kapcsolat ────────────────────────────────────────────────────
