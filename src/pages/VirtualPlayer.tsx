@@ -676,40 +676,31 @@ export default function VirtualPlayer() {
     }).catch(() => {});
   }, [playAudio, playBell, fetchBells, showMsg]);
 
-  // ── Crystal Clock Sync – 8 minta, RTT-súlyozott medián ─────────────────
+  // ── Crystal Clock Sync ───────────────────────────────────────────────────
+  // NTP-szerű időszinkron: 8 mérés, legkisebb RTT-k mediánja
   const syncClock = useCallback(async () => {
     const samples: Array<{ offset: number; rtt: number }> = [];
     for (let i = 0; i < 8; i++) {
       try {
-        const t0    = performance.now();
-        const r     = await fetch(`${API_BASE}/time`, { cache: "no-store" });
-        const t1    = performance.now();
+        const t0 = performance.now();
+        const r  = await fetch(`${API_BASE}/time`, { cache: "no-store" });
+        const t1 = performance.now();
         const { now: serverNow } = await r.json();
-        const rtt   = t1 - t0;
-        if (rtt < 150) {
+        const rtt = t1 - t0;
+        if (rtt < 200) {
           const t0epoch = Date.now() - (performance.now() - t0);
           samples.push({ offset: serverNow - (t0epoch + rtt / 2), rtt });
         }
       } catch {}
-      await new Promise(res => setTimeout(res, 50));
+      await new Promise(res => setTimeout(res, 100));
     }
     if (samples.length === 0) return;
-    // Legjobb 5 (legkisebb RTT) medián offsetje
     samples.sort((a, b) => a.rtt - b.rtt);
-    const best = samples.slice(0, 5).map(s => s.offset).sort((a, b) => a - b);
-    const newOffset = best[Math.floor(best.length / 2)];
-    // Smooth update – ne ugorjon nagyot egyszerre
-    serverTimeOffsetRef.current = serverTimeOffsetRef.current === 0
-      ? newOffset
-      : serverTimeOffsetRef.current * 0.3 + newOffset * 0.7;
-    const finalOffset = serverTimeOffsetRef.current;
-    console.log(`[VP-SYNC] ⏱ Offset: ${finalOffset.toFixed(1)}ms (${samples.length} minta, RTT min: ${samples[0].rtt.toFixed(1)}ms)`);
-
-    // Ha az offset nagy (> 200ms) → azonnali teljes korrekció (nem smooth)
-    if (Math.abs(newOffset) > 200) {
-      serverTimeOffsetRef.current = newOffset;
-      console.warn(`[VP-SYNC] ⚠️ Nagy offset (${newOffset.toFixed(0)}ms) – azonnali korrekció`);
-    }
+    const best = samples.slice(0, Math.min(5, samples.length)).map(s => s.offset);
+    best.sort((a, b) => a - b);
+    // Mindig az aktuális legjobb becslést használjuk – nincs smooth update
+    serverTimeOffsetRef.current = best[Math.floor(best.length / 2)];
+    console.log(`[VP-SYNC] ⏱ Offset: ${serverTimeOffsetRef.current.toFixed(1)}ms | RTT min: ${samples[0].rtt.toFixed(1)}ms`);
   }, []);
 
 
