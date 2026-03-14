@@ -14,6 +14,8 @@ type CommandPayload = {
 };
 type BellEntry    = { hour: number; minute: number; type: string; soundFile: string };
 type RadioState   = { url: string; currentTime: number; isStream: boolean; isPlaying: boolean };
+type PrepareCmd   = { phase: "PREPARE"; commandId: string; action: string; url?: string; text?: string; title?: string; prepareDeadline: string };
+type PlayCmd      = { phase: "PLAY"; commandId: string; playAt: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getOrCreateClientId(): string {
@@ -71,6 +73,8 @@ function calcFontSize(text: string): string {
 
 const DEFAULT_SOUNDS = ["jelzo.mp3", "kibe.mp3"]; // Mindig letöltve offline napokra
 const API_BASE       = "https://api.schoollive.hu";
+const WS_URL         = "wss://api.schoollive.hu/sync";
+const WS_RECONNECT_MS = 3_000;   // reconnect delay
 const BELL_DB_NAME   = "sl-bells-v3";
 const BELL_STORE     = "ab"; // "audiobuffers"
 
@@ -382,6 +386,12 @@ export default function VirtualPlayer() {
 
   // Rádió állapot – megszakítás utáni folytatáshoz
   const radioStateRef  = useRef<RadioState | null>(null);
+
+  // ── SyncCast – WebSocket + időszinkron ────────────────────────────────────
+  const wsRef              = useRef<WebSocket | null>(null);
+  const wsReconnectRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverTimeOffsetRef = useRef<number>(0);   // ms: szerveridő - böngészőidő
+  const pendingPreparesRef  = useRef<Map<string, { audio: HTMLAudioElement; startedAt: number }>>(new Map());
   // Az aktuális aktív üzenet action típusa – ref hogy closure-okból mindig friss legyen
   const activeMsgActionRef = useRef<string>("");
   // Offline csengetés deduplikáció
@@ -581,6 +591,175 @@ export default function VirtualPlayer() {
     console.log(`[BELL] ${canDecode ? "✅ Kész" : "💾 IDB-ben"}: ${ready}/${allNeeded.length} hang`);
     setCachedBellCount(bellBuffers.size);
   }, []);
+
+  // ── Crystal Clock Sync – 5 méréses medián offset ────────────────────────
+  const syncClock = useCallback(async () => {
+    const samples: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      try {
+        const t0 = Date.now();
+        const r  = await fetch(`${API_BASE}/time`);
+        const t1 = Date.now();
+        const { now: serverNow } = await r.json();
+        const offset = serverNow - (t0 + t1) / 2;
+        samples.push(offset);
+      } catch {}
+      await new Promise(res => setTimeout(res, 80));
+    }
+    if (samples.length === 0) return;
+    samples.sort((a, b) => a - b);
+    serverTimeOffsetRef.current = samples[Math.floor(samples.length / 2)];
+    console.log(`[VP-SYNC] ⏱ Szerver offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta)`);
+  }, []);
+
+  // ── PREPARE handler – audio prefetch + READY ACK ──────────────────────────
+  const handlePrepare = useCallback(async (cmd: PrepareCmd) => {
+    console.log(`[VP-SYNC] 📦 PREPARE: ${cmd.action} commandId=${cmd.commandId}`);
+    const startedAt = Date.now();
+
+    if (!cmd.url) {
+      // Nincs URL (pl. SYNC_BELLS) – azonnal READY
+      wsRef.current?.send(JSON.stringify({
+        type: "READY_ACK", commandId: cmd.commandId,
+        deviceId: clientId, readyAt: new Date().toISOString(), bufferMs: 0,
+      }));
+      return;
+    }
+
+    // Prefetch: új <audio> elem, preload=auto
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.volume  = volumeRef.current / 10;
+    audio.src     = cmd.url;
+
+    pendingPreparesRef.current.set(cmd.commandId, { audio, startedAt });
+
+    // Ha a csengőhang már az AudioBuffer cache-ben van → azonnal READY
+    if (cmd.action === "BELL" && cmd.url) {
+      const soundFile = cmd.url.split("/").pop() ?? "";
+      if (bellBuffers.has(soundFile)) {
+        const bufferMs = Date.now() - startedAt;
+        console.log(`[VP-SYNC] ✅ READY (AudioBuffer cache): ${cmd.commandId} bufferMs=${bufferMs}`);
+        wsRef.current?.send(JSON.stringify({
+          type: "READY_ACK", commandId: cmd.commandId,
+          deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
+        }));
+        return;
+      }
+    }
+
+    // Vár a canplaythrough eventre vagy a deadline-ra
+    const deadline = new Date(cmd.prepareDeadline).getTime();
+    const timeoutMs = Math.max(100, deadline - Date.now() - 100);
+
+    await new Promise<void>((resolve) => {
+      const done = () => { audio.removeEventListener("canplaythrough", done); resolve(); };
+      audio.addEventListener("canplaythrough", done);
+      setTimeout(resolve, timeoutMs);
+      audio.load();
+    });
+
+    const bufferMs = Date.now() - startedAt;
+    console.log(`[VP-SYNC] ✅ READY ACK: ${cmd.commandId} bufferMs=${bufferMs}`);
+
+    wsRef.current?.send(JSON.stringify({
+      type: "READY_ACK", commandId: cmd.commandId,
+      deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
+    }));
+  }, [clientId]);
+
+  // ── PLAY handler – precíz indítás a playAt timestamp alapján ─────────────
+  const handlePlay = useCallback((cmd: PlayCmd) => {
+    const serverNow = Date.now() + serverTimeOffsetRef.current;
+    const playAt    = new Date(cmd.playAt).getTime();
+    const delayMs   = Math.max(0, playAt - serverNow);
+
+    console.log(`[VP-SYNC] 🎵 PLAY in ${delayMs}ms: commandId=${cmd.commandId}`);
+
+    const prepare = pendingPreparesRef.current.get(cmd.commandId);
+
+    setTimeout(() => {
+      // Ha van prefetchelt audio elem → azt játsszuk
+      if (prepare?.audio) {
+        prepare.audio.volume = volumeRef.current / 10;
+        prepare.audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
+        pendingPreparesRef.current.delete(cmd.commandId);
+      }
+      // A handleCommand-ot is meghívjuk hogy az overlay és state frissüljön
+      // A parancsot szintetikusan hozzuk létre – id-ként a commandId-t használjuk
+    }, delayMs);
+  }, []);
+
+  // ── WebSocket kapcsolat ────────────────────────────────────────────────────
+  const connectWS = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+    if (!token) return;
+
+    const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(token)}`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("[VP-SYNC] 🔌 WebSocket csatlakozva");
+      // Időszinkron indítása csatlakozáskor
+      void syncClock();
+    };
+
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+
+        if (msg.type === "HELLO") {
+          // Szerver üdvözlő – finomítjuk az offsetet
+          const serverNow = new Date(msg.serverNow).getTime();
+          serverTimeOffsetRef.current = serverNow - Date.now();
+          return;
+        }
+
+        if (msg.phase === "PREPARE") {
+          void handlePrepare(msg as PrepareCmd);
+          return;
+        }
+
+        if (msg.phase === "PLAY") {
+          handlePlay(msg as PlayCmd);
+          // A PLAY után a handleCommand-ot is kell hívni az overlay-hez
+          // A pending prepare alapján rekonstruáljuk a payloadot
+          const prepare = pendingPreparesRef.current.get(msg.commandId);
+          if (prepare) {
+            // overlay és state kezelés – szintetikus command
+            const syntheticCmd = {
+              id: msg.commandId,
+              payload: { action: "BELL", url: prepare.audio.src } as CommandPayload,
+            };
+            // Delay-t a handlePlay már beállította, itt csak az overlay-t kezeljük
+            const serverNow = Date.now() + serverTimeOffsetRef.current;
+            const delayMs   = Math.max(0, new Date(msg.playAt).getTime() - serverNow);
+            setTimeout(() => void handleCommand(syntheticCmd), delayMs);
+          }
+          return;
+        }
+
+        // Azonnali broadcast parancsok (SYNC_BELLS, STOP_PLAYBACK stb.)
+        if (msg.action) {
+          void handleCommand({ id: msg.commandId ?? "ws-cmd", payload: msg as CommandPayload });
+        }
+      } catch (e) {
+        console.warn("[VP-SYNC] WS üzenet parse hiba:", e);
+      }
+    };
+
+    ws.onclose = (evt) => {
+      console.log(`[VP-SYNC] 🔌 WS lezárva (${evt.code}) – reconnect ${WS_RECONNECT_MS}ms`);
+      wsRef.current = null;
+      wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
+    };
+
+    ws.onerror = (e) => {
+      console.warn("[VP-SYNC] WS hiba:", e);
+      ws.close();
+    };
+  }, [syncClock, handlePrepare, handlePlay, handleCommand]);
 
   // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
   const fetchBells = useCallback(() => {
@@ -884,6 +1063,19 @@ export default function VirtualPlayer() {
     const bellSyncTimer = setInterval(fetchBells, 60_000);
     return () => clearInterval(bellSyncTimer);
   }, [status, fetchBells]);
+
+  // ── WebSocket + Crystal Clock Sync indítása ─────────────────────────────
+  useEffect(() => {
+    if (status !== "active") return;
+    connectWS();
+    // Óránként re-szinkronizál a clock drift ellen
+    const clockSync = setInterval(syncClock, 60 * 60_000);
+    return () => {
+      clearInterval(clockSync);
+      if (wsReconnectRef.current) clearTimeout(wsReconnectRef.current);
+      wsRef.current?.close(1000, "component unmount");
+    };
+  }, [status, connectWS, syncClock]);
 
   // ── Offline bell ticker (10 mp-enként) ────────────────────────────────────
   useEffect(() => {
