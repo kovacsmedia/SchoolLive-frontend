@@ -592,103 +592,22 @@ export default function VirtualPlayer() {
     setCachedBellCount(bellBuffers.size);
   }, []);
 
-  // ── Crystal Clock Sync – 5 méréses medián offset ────────────────────────
-  const syncClock = useCallback(async () => {
-    const samples: number[] = [];
-    for (let i = 0; i < 5; i++) {
-      try {
-        const t0 = Date.now();
-        const r  = await fetch(`${API_BASE}/time`);
-        const t1 = Date.now();
-        const { now: serverNow } = await r.json();
-        const offset = serverNow - (t0 + t1) / 2;
-        samples.push(offset);
-      } catch {}
-      await new Promise(res => setTimeout(res, 80));
-    }
-    if (samples.length === 0) return;
-    samples.sort((a, b) => a - b);
-    serverTimeOffsetRef.current = samples[Math.floor(samples.length / 2)];
-    console.log(`[VP-SYNC] ⏱ Szerver offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta)`);
-  }, []);
+  // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
+  const fetchBells = useCallback(() => {
+    console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
+    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+      .then(r => {
+        if (r.bells && r.bells.length > 0) {
+          console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
+          setBells(r.bells);
+          void cacheBells(r.bells);
+        } else {
+          console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
+        }
+      })
+      .catch(e => console.error("[VP-BELL] ❌ fetchBells hiba:", e));
+  }, [cacheBells]);
 
-  // ── PREPARE handler – audio prefetch + READY ACK ──────────────────────────
-  const handlePrepare = useCallback(async (cmd: PrepareCmd) => {
-    console.log(`[VP-SYNC] 📦 PREPARE: ${cmd.action} commandId=${cmd.commandId}`);
-    const startedAt = Date.now();
-
-    if (!cmd.url) {
-      // Nincs URL (pl. SYNC_BELLS) – azonnal READY
-      wsRef.current?.send(JSON.stringify({
-        type: "READY_ACK", commandId: cmd.commandId,
-        deviceId: clientId, readyAt: new Date().toISOString(), bufferMs: 0,
-      }));
-      return;
-    }
-
-    // Prefetch: új <audio> elem, preload=auto
-    const audio = new Audio();
-    audio.preload = "auto";
-    audio.volume  = volumeRef.current / 10;
-    audio.src     = cmd.url;
-
-    pendingPreparesRef.current.set(cmd.commandId, { audio, startedAt });
-
-    // Ha a csengőhang már az AudioBuffer cache-ben van → azonnal READY
-    if (cmd.action === "BELL" && cmd.url) {
-      const soundFile = cmd.url.split("/").pop() ?? "";
-      if (bellBuffers.has(soundFile)) {
-        const bufferMs = Date.now() - startedAt;
-        console.log(`[VP-SYNC] ✅ READY (AudioBuffer cache): ${cmd.commandId} bufferMs=${bufferMs}`);
-        wsRef.current?.send(JSON.stringify({
-          type: "READY_ACK", commandId: cmd.commandId,
-          deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
-        }));
-        return;
-      }
-    }
-
-    // Vár a canplaythrough eventre vagy a deadline-ra
-    const deadline = new Date(cmd.prepareDeadline).getTime();
-    const timeoutMs = Math.max(100, deadline - Date.now() - 100);
-
-    await new Promise<void>((resolve) => {
-      const done = () => { audio.removeEventListener("canplaythrough", done); resolve(); };
-      audio.addEventListener("canplaythrough", done);
-      setTimeout(resolve, timeoutMs);
-      audio.load();
-    });
-
-    const bufferMs = Date.now() - startedAt;
-    console.log(`[VP-SYNC] ✅ READY ACK: ${cmd.commandId} bufferMs=${bufferMs}`);
-
-    wsRef.current?.send(JSON.stringify({
-      type: "READY_ACK", commandId: cmd.commandId,
-      deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
-    }));
-  }, [clientId]);
-
-  // ── PLAY handler – precíz indítás a playAt timestamp alapján ─────────────
-  const handlePlay = useCallback((cmd: PlayCmd) => {
-    const serverNow = Date.now() + serverTimeOffsetRef.current;
-    const playAt    = new Date(cmd.playAt).getTime();
-    const delayMs   = Math.max(0, playAt - serverNow);
-
-    console.log(`[VP-SYNC] 🎵 PLAY in ${delayMs}ms: commandId=${cmd.commandId}`);
-
-    const prepare = pendingPreparesRef.current.get(cmd.commandId);
-
-    setTimeout(() => {
-      // Ha van prefetchelt audio elem → azt játsszuk
-      if (prepare?.audio) {
-        prepare.audio.volume = volumeRef.current / 10;
-        prepare.audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
-        pendingPreparesRef.current.delete(cmd.commandId);
-      }
-      // A handleCommand-ot is meghívjuk hogy az overlay és state frissüljön
-      // A parancsot szintetikusan hozzuk létre – id-ként a commandId-t használjuk
-    }, delayMs);
-  }, []);
 
   // ── Command kezelő ────────────────────────────────────────────────────────
   const handleCommand = useCallback(async (cmd: { id: string; payload: CommandPayload }) => {
@@ -750,22 +669,6 @@ export default function VirtualPlayer() {
       body: JSON.stringify({ commandId: cmd.id }),
     }).catch(() => {});
   }, [playAudio, playBell, fetchBells, showMsg]);
-
-  // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
-  const fetchBells = useCallback(() => {
-    console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
-    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(r => {
-        if (r.bells && r.bells.length > 0) {
-          console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
-          setBells(r.bells);
-          void cacheBells(r.bells);
-        } else {
-          console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
-        }
-      })
-      .catch(e => console.error("[VP-BELL] ❌ fetchBells hiba:", e));
-  }, [cacheBells]);
 
   // ── WebSocket kapcsolat ────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
