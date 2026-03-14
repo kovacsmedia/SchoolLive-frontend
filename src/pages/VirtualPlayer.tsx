@@ -702,7 +702,14 @@ export default function VirtualPlayer() {
     serverTimeOffsetRef.current = serverTimeOffsetRef.current === 0
       ? newOffset
       : serverTimeOffsetRef.current * 0.3 + newOffset * 0.7;
-    console.log(`[VP-SYNC] ⏱ Offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta, RTT min: ${samples[0].rtt.toFixed(1)}ms)`);
+    const finalOffset = serverTimeOffsetRef.current;
+    console.log(`[VP-SYNC] ⏱ Offset: ${finalOffset.toFixed(1)}ms (${samples.length} minta, RTT min: ${samples[0].rtt.toFixed(1)}ms)`);
+
+    // Ha az offset nagy (> 200ms) → azonnali teljes korrekció (nem smooth)
+    if (Math.abs(newOffset) > 200) {
+      serverTimeOffsetRef.current = newOffset;
+      console.warn(`[VP-SYNC] ⚠️ Nagy offset (${newOffset.toFixed(0)}ms) – azonnali korrekció`);
+    }
   }, []);
 
 
