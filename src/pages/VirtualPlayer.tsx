@@ -391,7 +391,11 @@ export default function VirtualPlayer() {
   const wsRef              = useRef<WebSocket | null>(null);
   const wsReconnectRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const serverTimeOffsetRef = useRef<number>(0);   // ms: szerveridő - böngészőidő
-  const pendingPreparesRef  = useRef<Map<string, { audio: HTMLAudioElement; startedAt: number }>>(new Map());
+  const pendingPreparesRef  = useRef<Map<string, {
+    audio:       HTMLAudioElement;
+    audioBuffer: AudioBuffer | null;  // pre-decoded – PLAY-kor azonnal ütemez
+    startedAt:   number;
+  }>>(new Map());
   // Az aktuális aktív üzenet action típusa – ref hogy closure-okból mindig friss legyen
   const activeMsgActionRef = useRef<string>("");
   // Offline csengetés deduplikáció
@@ -718,17 +722,42 @@ export default function VirtualPlayer() {
     audio.preload = "auto";
     audio.volume  = volumeRef.current / 10;
     audio.src     = cmd.url;
-    pendingPreparesRef.current.set(cmd.commandId, { audio, startedAt });
+    pendingPreparesRef.current.set(cmd.commandId, { audio, audioBuffer: null, startedAt });
 
     const deadline  = new Date(cmd.prepareDeadline).getTime();
-    const timeoutMs = Math.max(100, deadline - Date.now() - 100);
+    const timeoutMs = Math.max(100, deadline - Date.now() - 200);
 
-    await new Promise<void>((resolve) => {
-      const done = () => { audio.removeEventListener("canplaythrough", done); resolve(); };
-      audio.addEventListener("canplaythrough", done);
-      setTimeout(resolve, timeoutMs);
-      audio.load();
-    });
+    // AudioBuffer dekódolás a PREPARE fázisban – PLAY-kor azonnal ütemez
+    let audioBuffer: AudioBuffer | null = null;
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state !== "suspended") {
+        const fetchAndDecode = fetch(cmd.url)
+          .then(r => r.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf));
+        audioBuffer = await Promise.race([
+          fetchAndDecode,
+          new Promise<null>((_, reject) => setTimeout(() => reject("timeout"), timeoutMs))
+        ]) as AudioBuffer | null;
+        if (audioBuffer) {
+          const entry = pendingPreparesRef.current.get(cmd.commandId);
+          if (entry) entry.audioBuffer = audioBuffer;
+          console.log(`[VP-SYNC] 🎵 AudioBuffer kész: ${cmd.commandId}`);
+        }
+      }
+    } catch {
+      // Fallback: <audio> elem marad
+    }
+
+    if (!audioBuffer) {
+      // <audio> fallback prefetch
+      await new Promise<void>((resolve) => {
+        const done = () => { audio.removeEventListener("canplaythrough", done); resolve(); };
+        audio.addEventListener("canplaythrough", done);
+        setTimeout(resolve, timeoutMs);
+        audio.load();
+      });
+    }
 
     const bufferMs = Date.now() - startedAt;
     console.log(`[VP-SYNC] ✅ READY ACK: ${cmd.commandId} bufferMs=${bufferMs}`);
@@ -747,39 +776,31 @@ export default function VirtualPlayer() {
 
     const prepare = pendingPreparesRef.current.get(cmd.commandId);
     if (!prepare?.audio) return;
-    const audio = prepare.audio;
 
-    // AudioContext sample-accurate scheduling – böngészők között <1ms pontosság
-    try {
-      const ctx = getAudioCtx();
-      if (ctx.state !== "suspended" && delaySec > 0.05) {
-        const scheduleAt = ctx.currentTime + delaySec;
-        fetch(audio.src)
-          .then(r => r.arrayBuffer())
-          .then(buf => ctx.decodeAudioData(buf))
-          .then(audioBuffer => {
-            const source = ctx.createBufferSource();
-            source.buffer = audioBuffer;
-            const gain = ctx.createGain();
-            gain.gain.value = volumeRef.current / 10;
-            source.connect(gain);
-            gain.connect(ctx.destination);
-            source.start(scheduleAt);
-            pendingPreparesRef.current.delete(cmd.commandId);
-            console.log(`[VP-SYNC] 🎵 AudioContext scheduled @ +${delaySec.toFixed(3)}s`);
-          })
-          .catch(() => {
-            setTimeout(() => {
-              audio.volume = volumeRef.current / 10;
-              audio.play().catch(() => {});
-              pendingPreparesRef.current.delete(cmd.commandId);
-            }, delayMs);
-          });
-        return;
+    // AudioContext sample-accurate scheduling – AudioBuffer már PREPARE-ban dekódolva
+    if (prepare.audioBuffer) {
+      try {
+        const ctx = getAudioCtx();
+        if (ctx.state !== "suspended") {
+          const scheduleAt = ctx.currentTime + delaySec;
+          const source = ctx.createBufferSource();
+          source.buffer = prepare.audioBuffer;
+          const gain = ctx.createGain();
+          gain.gain.value = volumeRef.current / 10;
+          source.connect(gain);
+          gain.connect(ctx.destination);
+          source.start(Math.max(ctx.currentTime, scheduleAt));
+          pendingPreparesRef.current.delete(cmd.commandId);
+          console.log(`[VP-SYNC] 🎵 AudioContext.start @ ctx+${delaySec.toFixed(3)}s`);
+          return;
+        }
+      } catch (e) {
+        console.warn("[VP-SYNC] AudioContext schedule hiba:", e);
       }
-    } catch {}
+    }
 
-    // Fallback: setTimeout
+    // Fallback: <audio> elem + setTimeout
+    const audio = prepare.audio;
     setTimeout(() => {
       audio.volume = volumeRef.current / 10;
       audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
