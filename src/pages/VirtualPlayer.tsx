@@ -690,6 +690,83 @@ export default function VirtualPlayer() {
     }, delayMs);
   }, []);
 
+  // ── Command kezelő ────────────────────────────────────────────────────────
+  const handleCommand = useCallback(async (cmd: { id: string; payload: CommandPayload }) => {
+    const { action, url, text, title } = cmd.payload;
+    console.log(`[VP] 📨 Command: ${action}`, url ?? text ?? "");
+
+    if (action === "BELL" && url) {
+      // Csengetés – LEGMAGASABB PRIORITÁS
+      // Deduplikáció: ha az offline ticker már elsütötte ebben a percben, csak ACK-olunk
+      const now = new Date();
+      const bellKey = `${now.getHours()}:${now.getMinutes()}`;
+      if (lastBellKeyRef.current === bellKey) {
+        console.log(`[VP-BELL] ⏭ BELL parancs kihagyva (offline ticker már lejátszta): ${bellKey}`);
+      } else {
+        lastBellKeyRef.current = bellKey;
+        const soundFile = url.split("/").pop() ?? url;
+        // Fallback URL mindig abszolút legyen (a frontend domain ≠ API domain)
+        const absoluteUrl = url.startsWith("http")
+          ? url
+          : `https://api.schoollive.hu${url.startsWith("/") ? url : "/audio/bells/" + soundFile}`;
+        playBell(soundFile, absoluteUrl);
+      }
+
+    } else if (action === "SYNC_BELLS") {
+      // Csengetési rend frissítése
+      console.log("[VP] 🔔 SYNC_BELLS parancs – csengetési rend újratöltése");
+      fetchBells();
+
+    } else if (action === "PLAY_URL" && url) {
+      // Rádió indítása
+      const isStream = !url.match(/\.(mp3|wav|ogg|aac|m4a)(\?|$)/i);
+      radioStateRef.current = { url, currentTime: 0, isStream, isPlaying: true };
+      showMsg({ action, url, title: title ?? "Iskolarádió", source: cmd.payload.source });
+      playAudio(url);
+
+    } else if (action === "TTS" && url) {
+      // TTS üzenet – rádió szüneteltetése, állapot megőrzése
+      const mainAudio = audioRef.current;
+      if (mainAudio && radioStateRef.current?.isPlaying && !mainAudio.paused) {
+        radioStateRef.current.currentTime = mainAudio.currentTime;
+        mainAudio.pause();
+      }
+      // Üzenet megjelenítése olvasási időzítővel (hang + olvasás max-a)
+      const readingMs = text ? calcReadingMs(text) : 0;
+      showMsg({ action, url, text, title: title ?? "Üzenet" }, readingMs);
+      playAudio(url);
+
+    } else if (action === "STOP_PLAYBACK") {
+      // Vészleállító – azonnali leállítás, visszatérés normál módba
+      console.log("[VP] 🛑 STOP_PLAYBACK – lejátszás leállítása");
+      const a = audioRef.current;
+      if (a) { a.pause(); a.src = ""; }
+      radioStateRef.current = null;
+      dismissMsg();
+    }
+
+    await apiFetch("/player/device/ack", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ commandId: cmd.id }),
+    }).catch(() => {});
+  }, [playAudio, playBell, fetchBells, showMsg]);
+
+  // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
+  const fetchBells = useCallback(() => {
+    console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
+    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+      .then(r => {
+        if (r.bells && r.bells.length > 0) {
+          console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
+          setBells(r.bells);
+          void cacheBells(r.bells);
+        } else {
+          console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
+        }
+      })
+      .catch(e => console.error("[VP-BELL] ❌ fetchBells hiba:", e));
+  }, [cacheBells]);
+
   // ── WebSocket kapcsolat ────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -761,82 +838,6 @@ export default function VirtualPlayer() {
     };
   }, [syncClock, handlePrepare, handlePlay, handleCommand]);
 
-  // ── Csengetési rend lekérdezése + cache ───────────────────────────────────
-  const fetchBells = useCallback(() => {
-    console.log("[VP] 🔄 Csengetési rend szinkronizálása…");
-    apiFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(r => {
-        if (r.bells && r.bells.length > 0) {
-          console.log(`[VP-BELL] ✅ ${r.bells.length} bejegyzés betöltve`);
-          setBells(r.bells);
-          void cacheBells(r.bells);
-        } else {
-          console.warn("[VP-BELL] ⚠️ Üres csengetési rend érkezett");
-        }
-      })
-      .catch(e => console.error("[VP-BELL] ❌ fetchBells hiba:", e));
-  }, [cacheBells]);
-
-  // ── Command kezelő ────────────────────────────────────────────────────────
-  const handleCommand = useCallback(async (cmd: { id: string; payload: CommandPayload }) => {
-    const { action, url, text, title } = cmd.payload;
-    console.log(`[VP] 📨 Command: ${action}`, url ?? text ?? "");
-
-    if (action === "BELL" && url) {
-      // Csengetés – LEGMAGASABB PRIORITÁS
-      // Deduplikáció: ha az offline ticker már elsütötte ebben a percben, csak ACK-olunk
-      const now = new Date();
-      const bellKey = `${now.getHours()}:${now.getMinutes()}`;
-      if (lastBellKeyRef.current === bellKey) {
-        console.log(`[VP-BELL] ⏭ BELL parancs kihagyva (offline ticker már lejátszta): ${bellKey}`);
-      } else {
-        lastBellKeyRef.current = bellKey;
-        const soundFile = url.split("/").pop() ?? url;
-        // Fallback URL mindig abszolút legyen (a frontend domain ≠ API domain)
-        const absoluteUrl = url.startsWith("http")
-          ? url
-          : `https://api.schoollive.hu${url.startsWith("/") ? url : "/audio/bells/" + soundFile}`;
-        playBell(soundFile, absoluteUrl);
-      }
-
-    } else if (action === "SYNC_BELLS") {
-      // Csengetési rend frissítése
-      console.log("[VP] 🔔 SYNC_BELLS parancs – csengetési rend újratöltése");
-      fetchBells();
-
-    } else if (action === "PLAY_URL" && url) {
-      // Rádió indítása
-      const isStream = !url.match(/\.(mp3|wav|ogg|aac|m4a)(\?|$)/i);
-      radioStateRef.current = { url, currentTime: 0, isStream, isPlaying: true };
-      showMsg({ action, url, title: title ?? "Iskolarádió", source: cmd.payload.source });
-      playAudio(url);
-
-    } else if (action === "TTS" && url) {
-      // TTS üzenet – rádió szüneteltetése, állapot megőrzése
-      const mainAudio = audioRef.current;
-      if (mainAudio && radioStateRef.current?.isPlaying && !mainAudio.paused) {
-        radioStateRef.current.currentTime = mainAudio.currentTime;
-        mainAudio.pause();
-      }
-      // Üzenet megjelenítése olvasási időzítővel (hang + olvasás max-a)
-      const readingMs = text ? calcReadingMs(text) : 0;
-      showMsg({ action, url, text, title: title ?? "Üzenet" }, readingMs);
-      playAudio(url);
-
-    } else if (action === "STOP_PLAYBACK") {
-      // Vészleállító – azonnali leállítás, visszatérés normál módba
-      console.log("[VP] 🛑 STOP_PLAYBACK – lejátszás leállítása");
-      const a = audioRef.current;
-      if (a) { a.pause(); a.src = ""; }
-      radioStateRef.current = null;
-      dismissMsg();
-    }
-
-    await apiFetch("/player/device/ack", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ commandId: cmd.id }),
-    }).catch(() => {});
-  }, [playAudio, playBell, fetchBells, showMsg]);
 
   // ── Offline csengetés ticker (10 mp-enként fut) ───────────────────────────
   const offlineBellTick = useCallback(() => {

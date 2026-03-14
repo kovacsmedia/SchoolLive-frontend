@@ -632,64 +632,6 @@ export default function VirtualPlayerLegacy() {
     }, delayMs);
   }, []);
 
-  // ── WebSocket kapcsolat ────────────────────────────────────────────────────
-  const connectWS = useCallback(function() {
-    if (wsRef.current && wsRef.current.readyState === 1) return;
-    const token = getToken();
-    if (!token) return;
-    try {
-      const ws = new WebSocket(WS_URL + "?token=" + encodeURIComponent(token));
-      wsRef.current = ws;
-      ws.onopen = function() {
-        console.log("[VP-LEGACY-SYNC] WebSocket csatlakozva");
-        syncClock();
-      };
-      ws.onmessage = function(evt: MessageEvent) {
-        try {
-          const msg = JSON.parse(evt.data);
-          if (msg.type === "HELLO") {
-            serverOffsetRef.current = new Date(msg.serverNow).getTime() - Date.now();
-            return;
-          }
-          if (msg.phase === "PREPARE") { handlePrepare(msg as PrepareCmd); return; }
-          if (msg.phase === "PLAY") {
-            handlePlay(msg as PlayCmd);
-            const audio = pendingPreparesRef.current[msg.commandId];
-            if (audio) {
-              const delay = Math.max(0, new Date(msg.playAt).getTime() - (Date.now() + serverOffsetRef.current));
-              setTimeout(function() {
-                handleCommand({ id: msg.commandId || "ws-cmd", payload: { action: "BELL", url: audio.src } });
-              }, delay);
-            }
-            return;
-          }
-          if (msg.action) {
-            handleCommand({ id: msg.commandId || "ws-cmd", payload: msg as CommandPayload });
-          }
-        } catch (e) { console.warn("[VP-LEGACY-SYNC] parse hiba:", e); }
-      };
-      ws.onclose = function(evt: CloseEvent) {
-        wsRef.current = null;
-        wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
-        console.log("[VP-LEGACY-SYNC] WS lezárva (" + evt.code + ")");
-      };
-      ws.onerror = function() { ws.close(); };
-    } catch (e) { console.warn("[VP-LEGACY-SYNC] WS nem támogatott:", e); }
-  }, [syncClock, handlePrepare, handlePlay, handleCommand]);
-
-  // ── Csengetési rend lekérdezése ───────────────────────────────────────────
-  const fetchBells = useCallback(() => {
-    xhrFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
-      .then(function(r) {
-        if (r.bells && r.bells.length > 0) {
-          setBells(r.bells);
-          preloadBellSounds(r.bells);
-        }
-      })
-      .catch(function(e) { console.warn("[VP-LEGACY] fetchBells hiba:", e); });
-  }, [preloadBellSounds]);
-
-  // ── Parancs kezelő ────────────────────────────────────────────────────────
   const handleCommand = useCallback((cmd: { id: string; payload: CommandPayload }) => {
     const p = cmd.payload;
     const action = p.action;
@@ -739,6 +681,65 @@ export default function VirtualPlayerLegacy() {
       body: JSON.stringify({ commandId: cmd.id }),
     }).catch(function() {});
   }, [playAudio, playBell, fetchBells, showMsg, dismissMsg]);
+
+  // ── Csengetési rend lekérdezése ───────────────────────────────────────────
+  const fetchBells = useCallback(() => {
+    xhrFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+      .then(function(r) {
+        if (r.bells && r.bells.length > 0) {
+          setBells(r.bells);
+          preloadBellSounds(r.bells);
+        }
+      })
+      .catch(function(e) { console.warn("[VP-LEGACY] fetchBells hiba:", e); });
+  }, [preloadBellSounds]);
+
+  // ── Parancs kezelő ────────────────────────────────────────────────────────
+  // ── WebSocket kapcsolat ────────────────────────────────────────────────────
+  const connectWS = useCallback(function() {
+    if (wsRef.current && wsRef.current.readyState === 1) return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      const ws = new WebSocket(WS_URL + "?token=" + encodeURIComponent(token));
+      wsRef.current = ws;
+      ws.onopen = function() {
+        console.log("[VP-LEGACY-SYNC] WebSocket csatlakozva");
+        syncClock();
+      };
+      ws.onmessage = function(evt: MessageEvent) {
+        try {
+          const msg = JSON.parse(evt.data);
+          if (msg.type === "HELLO") {
+            serverOffsetRef.current = new Date(msg.serverNow).getTime() - Date.now();
+            return;
+          }
+          if (msg.phase === "PREPARE") { handlePrepare(msg as PrepareCmd); return; }
+          if (msg.phase === "PLAY") {
+            handlePlay(msg as PlayCmd);
+            const audio = pendingPreparesRef.current[msg.commandId];
+            if (audio) {
+              const delay = Math.max(0, new Date(msg.playAt).getTime() - (Date.now() + serverOffsetRef.current));
+              setTimeout(function() {
+                handleCommand({ id: msg.commandId || "ws-cmd", payload: { action: "BELL", url: audio.src } });
+              }, delay);
+            }
+            return;
+          }
+          if (msg.action) {
+            handleCommand({ id: msg.commandId || "ws-cmd", payload: msg as CommandPayload });
+          }
+        } catch (e) { console.warn("[VP-LEGACY-SYNC] parse hiba:", e); }
+      };
+      ws.onclose = function(evt: CloseEvent) {
+        wsRef.current = null;
+        wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
+        console.log("[VP-LEGACY-SYNC] WS lezárva (" + evt.code + ")");
+      };
+      ws.onerror = function() { ws.close(); };
+    } catch (e) { console.warn("[VP-LEGACY-SYNC] WS nem támogatott:", e); }
+  }, [syncClock, handlePrepare, handlePlay, handleCommand]);
+
 
   // ── Offline bell ticker ───────────────────────────────────────────────────
   const offlineBellTick = useCallback(() => {
