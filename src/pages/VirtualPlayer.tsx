@@ -670,6 +670,89 @@ export default function VirtualPlayer() {
     }).catch(() => {});
   }, [playAudio, playBell, fetchBells, showMsg]);
 
+  // ── Crystal Clock Sync – 5 méréses medián offset ────────────────────────
+  const syncClock = useCallback(async () => {
+    const samples: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      try {
+        const t0 = Date.now();
+        const r  = await fetch(`${API_BASE}/time`);
+        const t1 = Date.now();
+        const { now: serverNow } = await r.json();
+        samples.push(serverNow - (t0 + t1) / 2);
+      } catch {}
+      await new Promise(res => setTimeout(res, 80));
+    }
+    if (samples.length === 0) return;
+    samples.sort((a, b) => a - b);
+    serverTimeOffsetRef.current = samples[Math.floor(samples.length / 2)];
+    console.log(`[VP-SYNC] ⏱ Szerver offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta)`);
+  }, []);
+
+  // ── PREPARE handler – audio prefetch + READY ACK ──────────────────────────
+  const handlePrepare = useCallback(async (cmd: PrepareCmd) => {
+    console.log(`[VP-SYNC] 📦 PREPARE: ${cmd.action} commandId=${cmd.commandId}`);
+    const startedAt = Date.now();
+
+    if (!cmd.url) {
+      wsRef.current?.send(JSON.stringify({
+        type: "READY_ACK", commandId: cmd.commandId,
+        deviceId: clientId, readyAt: new Date().toISOString(), bufferMs: 0,
+      }));
+      return;
+    }
+
+    if (cmd.action === "BELL" && cmd.url) {
+      const soundFile = cmd.url.split("/").pop() ?? "";
+      if (bellBuffers.has(soundFile)) {
+        const bufferMs = Date.now() - startedAt;
+        wsRef.current?.send(JSON.stringify({
+          type: "READY_ACK", commandId: cmd.commandId,
+          deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
+        }));
+        return;
+      }
+    }
+
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.volume  = volumeRef.current / 10;
+    audio.src     = cmd.url;
+    pendingPreparesRef.current.set(cmd.commandId, { audio, startedAt });
+
+    const deadline  = new Date(cmd.prepareDeadline).getTime();
+    const timeoutMs = Math.max(100, deadline - Date.now() - 100);
+
+    await new Promise<void>((resolve) => {
+      const done = () => { audio.removeEventListener("canplaythrough", done); resolve(); };
+      audio.addEventListener("canplaythrough", done);
+      setTimeout(resolve, timeoutMs);
+      audio.load();
+    });
+
+    const bufferMs = Date.now() - startedAt;
+    console.log(`[VP-SYNC] ✅ READY ACK: ${cmd.commandId} bufferMs=${bufferMs}`);
+    wsRef.current?.send(JSON.stringify({
+      type: "READY_ACK", commandId: cmd.commandId,
+      deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
+    }));
+  }, [clientId]);
+
+  // ── PLAY handler – precíz indítás a playAt timestamp alapján ─────────────
+  const handlePlay = useCallback((cmd: PlayCmd) => {
+    const serverNow = Date.now() + serverTimeOffsetRef.current;
+    const delayMs   = Math.max(0, new Date(cmd.playAt).getTime() - serverNow);
+    console.log(`[VP-SYNC] 🎵 PLAY in ${delayMs}ms: commandId=${cmd.commandId}`);
+    const prepare = pendingPreparesRef.current.get(cmd.commandId);
+    setTimeout(() => {
+      if (prepare?.audio) {
+        prepare.audio.volume = volumeRef.current / 10;
+        prepare.audio.play().catch(e => console.warn("[VP-SYNC] play blocked:", e));
+        pendingPreparesRef.current.delete(cmd.commandId);
+      }
+    }, delayMs);
+  }, []);
+
   // ── WebSocket kapcsolat ────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;

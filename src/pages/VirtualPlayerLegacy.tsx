@@ -551,6 +551,93 @@ export default function VirtualPlayerLegacy() {
   }, [preloadBellSounds]);
 
   // ── Parancs kezelő ────────────────────────────────────────────────────────
+  // ── Crystal Clock Sync – XHR alapú, 5 minta, medián ────────────────────
+  const syncClock = useCallback(function() {
+    const samples: number[] = [];
+    let count = 0;
+    function doSample() {
+      if (count >= 5) {
+        if (samples.length === 0) return;
+        samples.sort(function(a, b) { return a - b; });
+        serverOffsetRef.current = samples[Math.floor(samples.length / 2)];
+        console.log("[VP-LEGACY-SYNC] Szerver offset: " + serverOffsetRef.current.toFixed(1) + "ms");
+        return;
+      }
+      count++;
+      const t0 = Date.now();
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", API_BASE + "/time", true);
+      xhr.timeout = 2000;
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState !== 4) return;
+        const t1 = Date.now();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { samples.push(JSON.parse(xhr.responseText).now - (t0 + t1) / 2); } catch (e) {}
+        }
+        setTimeout(doSample, 80);
+      };
+      xhr.onerror = xhr.ontimeout = function() { setTimeout(doSample, 80); };
+      xhr.send(null);
+    }
+    doSample();
+  }, []);
+
+  // ── PREPARE handler – <audio> prefetch + READY ACK ────────────────────────
+  const handlePrepare = useCallback(function(cmd: PrepareCmd) {
+    console.log("[VP-LEGACY-SYNC] PREPARE: " + cmd.action + " id=" + cmd.commandId);
+    const startedAt = Date.now();
+    if (!cmd.url) {
+      if (wsRef.current && wsRef.current.readyState === 1) {
+        wsRef.current.send(JSON.stringify({
+          type: "READY_ACK", commandId: cmd.commandId,
+          deviceId: clientId, readyAt: new Date().toISOString(), bufferMs: 0,
+        }));
+      }
+      return;
+    }
+    const audio = document.createElement("audio");
+    audio.preload = "auto";
+    audio.src     = cmd.url;
+    audio.style.display = "none";
+    audio.volume  = volumeRef.current / 10;
+    document.body.appendChild(audio);
+    pendingPreparesRef.current[cmd.commandId] = audio;
+    const deadline  = new Date(cmd.prepareDeadline).getTime();
+    const timeoutMs = Math.max(100, deadline - Date.now() - 100);
+    let   ackSent   = false;
+    function sendAck() {
+      if (ackSent) return;
+      ackSent = true;
+      const bufferMs = Date.now() - startedAt;
+      if (wsRef.current && wsRef.current.readyState === 1) {
+        wsRef.current.send(JSON.stringify({
+          type: "READY_ACK", commandId: cmd.commandId,
+          deviceId: clientId, readyAt: new Date().toISOString(), bufferMs: bufferMs,
+        }));
+      }
+    }
+    audio.addEventListener("canplaythrough", sendAck);
+    setTimeout(sendAck, timeoutMs);
+    audio.load();
+  }, [clientId]);
+
+  // ── PLAY handler ──────────────────────────────────────────────────────────
+  const handlePlay = useCallback(function(cmd: PlayCmd) {
+    const serverNow = Date.now() + serverOffsetRef.current;
+    const delayMs   = Math.max(0, new Date(cmd.playAt).getTime() - serverNow);
+    setTimeout(function() {
+      const audio = pendingPreparesRef.current[cmd.commandId];
+      if (audio) {
+        audio.volume = volumeRef.current / 10;
+        audio.play();
+        delete pendingPreparesRef.current[cmd.commandId];
+        setTimeout(function() {
+          try { audio.pause(); audio.src = ""; document.body.removeChild(audio); } catch (e) {}
+        }, 60000);
+      }
+    }, delayMs);
+  }, []);
+
   // ── WebSocket kapcsolat ────────────────────────────────────────────────────
 
   const handleCommand = useCallback((cmd: { id: string; payload: CommandPayload }) => {
