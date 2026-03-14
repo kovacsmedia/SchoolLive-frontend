@@ -358,6 +358,8 @@ export default function VirtualPlayer() {
 
   const [status,     setStatus]     = useState<PlayerStatus>("registering");
   const [time,       setTime]       = useState(new Date());
+  // Szerver-korrigált idő a kijelzőhöz
+  const correctedNow = () => new Date(Date.now() + serverTimeOffsetRef.current);
   const [bells,      setBells]      = useState<BellEntry[]>([]);
   const [instName,   setInstName]   = useState<string>("");
   const [activeMsg,  setActiveMsg]  = useState<CommandPayload | null>(null);
@@ -674,24 +676,35 @@ export default function VirtualPlayer() {
     }).catch(() => {});
   }, [playAudio, playBell, fetchBells, showMsg]);
 
-  // ── Crystal Clock Sync – 5 méréses medián offset ────────────────────────
+  // ── Crystal Clock Sync – 8 minta, RTT-súlyozott medián ─────────────────
   const syncClock = useCallback(async () => {
-    const samples: number[] = [];
-    for (let i = 0; i < 5; i++) {
+    const samples: Array<{ offset: number; rtt: number }> = [];
+    for (let i = 0; i < 8; i++) {
       try {
-        const t0 = Date.now();
-        const r  = await fetch(`${API_BASE}/time`);
-        const t1 = Date.now();
+        const t0    = performance.now();
+        const r     = await fetch(`${API_BASE}/time`, { cache: "no-store" });
+        const t1    = performance.now();
         const { now: serverNow } = await r.json();
-        samples.push(serverNow - (t0 + t1) / 2);
+        const rtt   = t1 - t0;
+        if (rtt < 150) {
+          const t0epoch = Date.now() - (performance.now() - t0);
+          samples.push({ offset: serverNow - (t0epoch + rtt / 2), rtt });
+        }
       } catch {}
-      await new Promise(res => setTimeout(res, 80));
+      await new Promise(res => setTimeout(res, 50));
     }
     if (samples.length === 0) return;
-    samples.sort((a, b) => a - b);
-    serverTimeOffsetRef.current = samples[Math.floor(samples.length / 2)];
-    console.log(`[VP-SYNC] ⏱ Szerver offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta)`);
+    // Legjobb 5 (legkisebb RTT) medián offsetje
+    samples.sort((a, b) => a.rtt - b.rtt);
+    const best = samples.slice(0, 5).map(s => s.offset).sort((a, b) => a - b);
+    const newOffset = best[Math.floor(best.length / 2)];
+    // Smooth update – ne ugorjon nagyot egyszerre
+    serverTimeOffsetRef.current = serverTimeOffsetRef.current === 0
+      ? newOffset
+      : serverTimeOffsetRef.current * 0.3 + newOffset * 0.7;
+    console.log(`[VP-SYNC] ⏱ Offset: ${serverTimeOffsetRef.current.toFixed(1)}ms (${samples.length} minta, RTT min: ${samples[0].rtt.toFixed(1)}ms)`);
   }, []);
+
 
   // ── PREPARE handler – audio prefetch + READY ACK ──────────────────────────
   const handlePrepare = useCallback(async (cmd: PrepareCmd) => {
@@ -819,8 +832,9 @@ export default function VirtualPlayer() {
 
     ws.onopen = () => {
       console.log("[VP-SYNC] 🔌 WebSocket csatlakozva");
-      // Időszinkron indítása csatlakozáskor
+      // Időszinkron: azonnal + 2s múlva újra (első mérés után finomítás)
       void syncClock();
+      setTimeout(() => void syncClock(), 2000);
     };
 
     ws.onmessage = (evt) => {
@@ -1082,7 +1096,7 @@ export default function VirtualPlayer() {
 
   // ── Óra ───────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
+    const t = setInterval(() => setTime(correctedNow()), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -1111,7 +1125,7 @@ export default function VirtualPlayer() {
     if (status !== "active") return;
     connectWS();
     // Óránként re-szinkronizál a clock drift ellen
-    const clockSync = setInterval(syncClock, 60 * 60_000);
+    const clockSync = setInterval(syncClock, 5 * 60_000);  // 5 percenként
     return () => {
       clearInterval(clockSync);
       if (wsReconnectRef.current) clearTimeout(wsReconnectRef.current);
