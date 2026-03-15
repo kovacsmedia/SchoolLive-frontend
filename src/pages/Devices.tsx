@@ -184,132 +184,6 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
         </div>
         {children}
       </div>
-
-      {/* ── OTA Firmware modal ───────────────────────────────────────────── */}
-      {otaOpen && (
-        <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
-          <div className="dv-modal" style={{ maxWidth:640 }} onClick={e => e.stopPropagation()}>
-            <div className="dv-modal-hdr">
-              <div className="dv-modal-title">📦 Firmware OTA kezelő</div>
-              <button className="dv-close" onClick={() => setOtaOpen(false)}>✕</button>
-            </div>
-            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"75vh", display:"flex", flexDirection:"column", gap:16 }}>
-
-              {/* Feltöltés */}
-              <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
-                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>⬆️ Új firmware feltöltése</div>
-                <div className="dv-grid2" style={{ marginBottom:10 }}>
-                  <div>
-                    <label className="dv-label">Verzió *</label>
-                    <input className="dv-input" placeholder="pl. S3.5" value={uploadForm.version}
-                      onChange={e => setUploadForm(s => ({ ...s, version:e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="dv-label">Céleszköz</label>
-                    <select className="dv-select" value={uploadForm.targetClass}
-                      onChange={e => setUploadForm(s => ({ ...s, targetClass:e.target.value }))}>
-                      <option value="ALL">Minden eszköz (ALL)</option>
-                      <option value="ESP32_S3">ESP32-S3-N16R8</option>
-                      <option value="ESP32_WROOM">ESP32-WROOM-32</option>
-                      <option value="ESP32_S3_DISPLAY">ESP32-S3 Kijelző</option>
-                      <option value="ESP32_S3_MULTI">ESP32-S3 Multi</option>
-                      <option value="SPEAKER">Összes hangszóró (SPEAKER)</option>
-                      <option value="DISPLAY">Összes kijelző (DISPLAY)</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ marginBottom:10 }}>
-                  <label className="dv-label">Megjegyzés</label>
-                  <input className="dv-input" placeholder="Release notes…" value={uploadForm.notes}
-                    onChange={e => setUploadForm(s => ({ ...s, notes:e.target.value }))} />
-                </div>
-                <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"var(--sl-text-2)", marginBottom:12, cursor:"pointer" }}>
-                  <input type="checkbox" checked={uploadForm.mandatory}
-                    onChange={e => setUploadForm(s => ({ ...s, mandatory:e.target.checked }))}
-                    style={{ accentColor:"#dc2626" }} />
-                  <span>⚠️ Kötelező frissítés (eszközök azonnal frissítenek)</span>
-                </label>
-                <input ref={uploadFileRef} type="file" accept=".bin" style={{ display:"none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirmware(f); e.target.value = ""; }} />
-                <div className="dv-upload-zone" onClick={() => !uploadBusy && uploadFileRef.current?.click()}>
-                  <div style={{ fontSize:28, marginBottom:6 }}>{uploadBusy ? "⏳" : "📁"}</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text-2)" }}>
-                    {uploadBusy ? "Feltöltés folyamatban…" : "Kattints a .bin fájl kiválasztásához"}
-                  </div>
-                </div>
-                {uploadError   && <div className="dv-alert dv-alert-error"   style={{marginTop:8}}><span>⚠️</span>{uploadError}</div>}
-                {uploadSuccess && <div className="dv-alert dv-alert-success" style={{marginTop:8}}><span>✅</span>{uploadSuccess}</div>}
-              </div>
-
-              {/* Verziólista */}
-              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
-                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>📋 Elérhető verziók</div>
-                  <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">🔄</button>
-                </div>
-                {releasesLoading ? (
-                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ Betöltés…</div>
-                ) : releases.length === 0 ? (
-                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>
-                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>Még nincs feltöltött firmware.
-                  </div>
-                ) : releases.map(r => (
-                  <div key={r.id} className="dv-fw-item">
-                    <div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                        <span className="dv-fw-version">{r.version}</span>
-                        {r.mandatory && <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>⚠️ Kötelező</span>}
-                        {r.targetClass !== "ALL" && <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>{r.targetClass}</span>}
-                      </div>
-                      <div className="dv-fw-meta">
-                        <span>💾 {(r.sizeBytes/1024).toFixed(0)} KB</span>
-                        <span>🔐 {r.sha256.slice(0,12)}…</span>
-                        <span>📅 {new Date(r.createdAt).toLocaleDateString("hu-HU")}</span>
-                        <span>👤 {r.createdBy?.displayName ?? r.createdBy?.email ?? "?"}</span>
-                        {r.notes && <span>📝 {r.notes}</span>}
-                      </div>
-                    </div>
-                    <div style={{ display:"flex", gap:6 }}>
-                      <a href={r.fileUrl} download className="dv-btn dv-btn-ghost dv-btn-sm">⬇️</a>
-                      <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
-                        onClick={() => void deleteRelease(r.id, r.version)}>🗑</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Eszközök OTA státusza */}
-              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
-                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>🔊 Eszközök frissítési állapota</div>
-                </div>
-                {devices.filter(d => !d.isVirtualPlayer).map(d => {
-                  const s2  = (d.otaStatus ?? "UP_TO_DATE") as OtaStatus;
-                  const b2  = OTA_STATUS_BADGE[s2] ?? OTA_STATUS_BADGE.UP_TO_DATE;
-                  const ver = d.otaVersion ?? d.firmwareVersion;
-                  return (
-                    <div key={d.deviceId} style={{ padding:"10px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{ width:7, height:7, borderRadius:"50%", background:isDeviceOnline(d)?"#22c55e":"#94a3b8", flexShrink:0 }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text)" }}>{d.name}</div>
-                        <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
-                          FW: {d.firmwareVersion ?? "–"}{ver && ver !== d.firmwareVersion && ` → ${ver}`}
-                        </div>
-                      </div>
-                      <span className="dv-badge" style={{ background:b2.bg, color:b2.color, borderColor:b2.border, fontSize:11 }}>
-                        {b2.icon} {b2.label}
-                      </span>
-                    </div>
-                  );
-                })}
-                {devices.filter(d => !d.isVirtualPlayer).length === 0 && (
-                  <div style={{ padding:20, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>Nincs fizikai eszköz</div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -951,7 +825,7 @@ export default function Devices() {
                                 <label key={d.deviceId} className="dv-device-check-item">
                                   <input type="checkbox" checked={isMember} onChange={() => {
                                     const ids = isMember
-                                      ? editGroup.deviceIds.filter(id => id !== d.deviceId)
+                                      ? editGroup.deviceIds.filter((id: string) => id !== d.deviceId)
                                       : [...editGroup.deviceIds, d.deviceId];
                                     setEditGroup({ ...editGroup, deviceIds: ids });
                                   }} />
@@ -978,6 +852,133 @@ export default function Devices() {
           </div>
         </div>
       )}
+      {otaOpen && (
+        <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
+          <div className="dv-modal" style={{ maxWidth:640 }} onClick={e => e.stopPropagation()}>
+            <div className="dv-modal-hdr">
+              <div className="dv-modal-title">📦 Firmware OTA kezelő</div>
+              <button className="dv-close" onClick={() => setOtaOpen(false)}>✕</button>
+            </div>
+            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"75vh", display:"flex", flexDirection:"column", gap:16 }}>
+
+              {/* Feltöltés */}
+              <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
+                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>⬆️ Új firmware feltöltése</div>
+                <div className="dv-grid2" style={{ marginBottom:10 }}>
+                  <div>
+                    <label className="dv-label">Verzió *</label>
+                    <input className="dv-input" placeholder="pl. S3.5" value={uploadForm.version}
+                      onChange={e => setUploadForm(s => ({ ...s, version:e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="dv-label">Céleszköz</label>
+                    <select className="dv-select" value={uploadForm.targetClass}
+                      onChange={e => setUploadForm(s => ({ ...s, targetClass:e.target.value }))}>
+                      <option value="ALL">Minden eszköz (ALL)</option>
+                      <option value="ESP32_S3">ESP32-S3-N16R8</option>
+                      <option value="ESP32_WROOM">ESP32-WROOM-32</option>
+                      <option value="ESP32_S3_DISPLAY">ESP32-S3 Kijelző</option>
+                      <option value="ESP32_S3_MULTI">ESP32-S3 Multi</option>
+                      <option value="SPEAKER">Összes hangszóró (SPEAKER)</option>
+                      <option value="DISPLAY">Összes kijelző (DISPLAY)</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <label className="dv-label">Megjegyzés</label>
+                  <input className="dv-input" placeholder="Release notes…" value={uploadForm.notes}
+                    onChange={e => setUploadForm(s => ({ ...s, notes:e.target.value }))} />
+                </div>
+                <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"var(--sl-text-2)", marginBottom:12, cursor:"pointer" }}>
+                  <input type="checkbox" checked={uploadForm.mandatory}
+                    onChange={e => setUploadForm(s => ({ ...s, mandatory:e.target.checked }))}
+                    style={{ accentColor:"#dc2626" }} />
+                  <span>⚠️ Kötelező frissítés (eszközök azonnal frissítenek)</span>
+                </label>
+                <input ref={uploadFileRef} type="file" accept=".bin" style={{ display:"none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirmware(f); e.target.value = ""; }} />
+                <div className="dv-upload-zone" onClick={() => !uploadBusy && uploadFileRef.current?.click()}>
+                  <div style={{ fontSize:28, marginBottom:6 }}>{uploadBusy ? "⏳" : "📁"}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text-2)" }}>
+                    {uploadBusy ? "Feltöltés folyamatban…" : "Kattints a .bin fájl kiválasztásához"}
+                  </div>
+                </div>
+                {uploadError   && <div className="dv-alert dv-alert-error"   style={{marginTop:8}}><span>⚠️</span>{uploadError}</div>}
+                {uploadSuccess && <div className="dv-alert dv-alert-success" style={{marginTop:8}}><span>✅</span>{uploadSuccess}</div>}
+              </div>
+
+              {/* Verziólista */}
+              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>📋 Elérhető verziók</div>
+                  <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">🔄</button>
+                </div>
+                {releasesLoading ? (
+                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ Betöltés…</div>
+                ) : releases.length === 0 ? (
+                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>
+                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>Még nincs feltöltött firmware.
+                  </div>
+                ) : releases.map(r => (
+                  <div key={r.id} className="dv-fw-item">
+                    <div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        <span className="dv-fw-version">{r.version}</span>
+                        {r.mandatory && <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>⚠️ Kötelező</span>}
+                        {r.targetClass !== "ALL" && <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>{r.targetClass}</span>}
+                      </div>
+                      <div className="dv-fw-meta">
+                        <span>💾 {(r.sizeBytes/1024).toFixed(0)} KB</span>
+                        <span>🔐 {r.sha256.slice(0,12)}…</span>
+                        <span>📅 {new Date(r.createdAt).toLocaleDateString("hu-HU")}</span>
+                        <span>👤 {r.createdBy?.displayName ?? r.createdBy?.email ?? "?"}</span>
+                        {r.notes && <span>📝 {r.notes}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <a href={r.fileUrl} download className="dv-btn dv-btn-ghost dv-btn-sm">⬇️</a>
+                      <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
+                        onClick={() => void deleteRelease(r.id, r.version)}>🗑</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Eszközök OTA státusza */}
+              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)" }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>🔊 Eszközök frissítési állapota</div>
+                </div>
+                {devices.filter(d => !d.isVirtualPlayer).map(d => {
+                  const s2  = (d.otaStatus ?? "UP_TO_DATE") as OtaStatus;
+                  const b2  = OTA_STATUS_BADGE[s2] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                  const ver = d.otaVersion ?? d.firmwareVersion;
+                  return (
+                    <div key={d.deviceId} style={{ padding:"10px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{ width:7, height:7, borderRadius:"50%", background:isDeviceOnline(d)?"#22c55e":"#94a3b8", flexShrink:0 }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text)" }}>{d.name}</div>
+                        <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
+                          FW: {d.firmwareVersion ?? "–"}{ver && ver !== d.firmwareVersion && ` → ${ver}`}
+                        </div>
+                      </div>
+                      <span className="dv-badge" style={{ background:b2.bg, color:b2.color, borderColor:b2.border, fontSize:11 }}>
+                        {b2.icon} {b2.label}
+                      </span>
+                    </div>
+                  );
+                })}
+                {devices.filter(d => !d.isVirtualPlayer).length === 0 && (
+                  <div style={{ padding:20, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>Nincs fizikai eszköz</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
     </div>
   );
 }
