@@ -870,12 +870,12 @@ export default function Devices() {
       )}
       {otaOpen && (
         <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
-          <div className="dv-modal" style={{ maxWidth:640 }} onClick={e => e.stopPropagation()}>
+          <div className="dv-modal" style={{ maxWidth:640, maxHeight:"92vh", display:"flex", flexDirection:"column" }} onClick={e => e.stopPropagation()}>
             <div className="dv-modal-hdr">
               <div className="dv-modal-title">📦 Firmware OTA kezelő</div>
               <button className="dv-close" onClick={() => setOtaOpen(false)}>✕</button>
             </div>
-            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"75vh", display:"flex", flexDirection:"column", gap:16 }}>
+            <div style={{ padding:"18px 22px", overflowY:"auto", flex:1, display:"flex", flexDirection:"column", gap:16 }}>
 
               {/* Feltöltés */}
               <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
