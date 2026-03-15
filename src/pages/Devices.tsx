@@ -13,10 +13,19 @@ type DeviceItem = {
   otaStatus?: string; otaProgress?: number; otaVersion?: string | null;
 };
 type HealthResponse = { ok: boolean; devices: DeviceItem[] };
-type PendingDevice  = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
-type PendingResponse = { ok: boolean; pending: PendingDevice[] };
-type TenantItem     = { id: string; name: string };
-type TenantsResponse = { ok: boolean; tenants: TenantItem[] };
+
+function isDeviceOnline(d: DeviceItem): boolean {
+  if (d.secondsSinceLastSeen === null || d.secondsSinceLastSeen === undefined) return d.isOnline;
+  return d.secondsSinceLastSeen < 60;
+}
+type DeviceGroup = { id: string; name: string; deviceIds: string[]; createdAt: string };
+
+type PendingDevice    = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
+type PendingResponse  = { ok: boolean; pending: PendingDevice[] };
+type PendingWebPlayer = { id: string; mac: string; clientId: string | null; userId: string | null; ipAddress: string | null; userAgent: string | null; firstSeenAt: string; lastSeenAt: string };
+type PendingWebResponse = { ok: boolean; pendingWeb: PendingWebPlayer[] };
+type TenantItem       = { id: string; name: string };
+type TenantsResponse  = { ok: boolean; tenants: TenantItem[] };
 
 // ── OTA típusok ───────────────────────────────────────────────────────────────
 type OtaStatus = "UP_TO_DATE"|"PENDING"|"DOWNLOADING"|"INSTALLING"|"FAILED"|"ROLLBACK";
