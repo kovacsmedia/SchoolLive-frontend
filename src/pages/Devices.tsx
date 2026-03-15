@@ -979,6 +979,3 @@ export default function Devices() {
     </div>
   );
 }
-    </div>
-  );
-}
