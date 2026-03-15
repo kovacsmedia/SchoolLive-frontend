@@ -549,7 +549,14 @@ export default function Devices() {
                       })() : <span style={{color:"var(--sl-muted)",fontSize:11}}>—</span>}
                     </td>
                     <td style={{ fontSize:12 }}>
-                      {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined ? `${d.secondsSinceLastSeen}mp` : "—"}
+                      {(() => {
+                        const s = d.secondsSinceLastSeen;
+                        if (s === null || s === undefined) return "—";
+                        if (s < 60)    return `${s}mp`;
+                        if (s < 3600)  return `${Math.floor(s/60)}p ${s%60}mp`;
+                        if (s < 86400) return `${Math.floor(s/3600)}ó ${Math.floor((s%3600)/60)}p`;
+                        return `${Math.floor(s/86400)}n ${Math.floor((s%86400)/3600)}ó`;
+                      })()}
                     </td>
                     {canWrite && (
                       <td style={{ textAlign:"right" }}>
