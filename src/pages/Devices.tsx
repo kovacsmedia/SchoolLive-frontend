@@ -18,39 +18,36 @@ type PendingResponse = { ok: boolean; pending: PendingDevice[] };
 type TenantItem     = { id: string; name: string };
 type TenantsResponse = { ok: boolean; tenants: TenantItem[] };
 
-// ── OTA típusok ──────────────────────────────────────────────────────────────
-type OtaStatus = "UP_TO_DATE" | "PENDING" | "DOWNLOADING" | "INSTALLING" | "FAILED" | "ROLLBACK";
+// ── OTA típusok ───────────────────────────────────────────────────────────────
+type OtaStatus = "UP_TO_DATE"|"PENDING"|"DOWNLOADING"|"INSTALLING"|"FAILED"|"ROLLBACK";
 type FirmwareRelease = {
-  id: string; version: string; filename: string; fileUrl: string;
-  sizeBytes: number; sha256: string; notes: string | null;
-  mandatory: boolean; targetClass: string; createdAt: string;
-  createdBy: { email: string; displayName: string | null };
+  id:string; version:string; filename:string; fileUrl:string;
+  sizeBytes:number; sha256:string; notes:string|null; mandatory:boolean;
+  targetClass:string; createdAt:string;
+  createdBy:{ email:string; displayName:string|null };
 };
 
-// Hardver modellek
 const HW_MODEL_OPTIONS = [
-  { value: "ESP32_S3",       label: "ESP32-S3-N16R8",   icon: "🔧" },
-  { value: "ESP32_WROOM",    label: "ESP32-WROOM-32",   icon: "🔧" },
-  { value: "ESP32_S3_DISPLAY", label: "ESP32-S3 Kijelző", icon: "🖥️" },
-  { value: "ESP32_S3_MULTI",   label: "ESP32-S3 Multi",  icon: "🎛️" },
-  { value: "VIRTUAL",        label: "Virtuális (WP)",   icon: "📱" },
+  { value:"ESP32_S3",         label:"ESP32-S3-N16R8",    icon:"🔧" },
+  { value:"ESP32_WROOM",      label:"ESP32-WROOM-32",    icon:"🔧" },
+  { value:"ESP32_S3_DISPLAY", label:"ESP32-S3 Kijelző",  icon:"🖥️" },
+  { value:"ESP32_S3_MULTI",   label:"ESP32-S3 Multi",    icon:"🎛️" },
+  { value:"VIRTUAL",          label:"Virtuális (WP)",    icon:"📱" },
 ];
-
-const HW_MODEL_BADGE: Record<string, { bg: string; color: string; border: string }> = {
+const HW_MODEL_BADGE: Record<string,{bg:string;color:string;border:string}> = {
   ESP32_S3:         { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe" },
   ESP32_WROOM:      { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe" },
   ESP32_S3_DISPLAY: { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0" },
   ESP32_S3_MULTI:   { bg:"#fffbeb", color:"#d97706", border:"#fde68a" },
   VIRTUAL:          { bg:"#f8fafc", color:"#64748b", border:"#e2e8f0" },
 };
-
-const OTA_STATUS_BADGE: Record<OtaStatus, { bg: string; color: string; border: string; label: string; icon: string }> = {
-  UP_TO_DATE:  { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", label:"Naprakész",    icon:"✅" },
+const OTA_STATUS_BADGE: Record<OtaStatus,{bg:string;color:string;border:string;label:string;icon:string}> = {
+  UP_TO_DATE:  { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", label:"Naprakész",     icon:"✅" },
   PENDING:     { bg:"#fffbeb", color:"#d97706", border:"#fde68a", label:"Frissítés vár", icon:"⏳" },
   DOWNLOADING: { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", label:"Letöltés…",    icon:"⬇️" },
   INSTALLING:  { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", label:"Telepítés…",   icon:"🔧" },
-  FAILED:      { bg:"#fef2f2", color:"#dc2626", border:"#fecaca", label:"Sikertelen",   icon:"❌" },
-  ROLLBACK:    { bg:"#fff7ed", color:"#c2410c", border:"#fed7aa", label:"Visszagörgetés", icon:"↩️" },
+  FAILED:      { bg:"#fef2f2", color:"#dc2626", border:"#fecaca", label:"Sikertelen",    icon:"❌" },
+  ROLLBACK:    { bg:"#fff7ed", color:"#c2410c", border:"#fed7aa", label:"Visszagörgetés",icon:"↩️" },
 };
 
 const DEVICE_CLASS_OPTIONS = [
@@ -176,7 +173,8 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
         </div>
         {children}
       </div>
-      {/* ── OTA Firmware modal ─────────────────────────────────────── */}
+
+      {/* ── OTA Firmware modal ───────────────────────────────────────────── */}
       {otaOpen && (
         <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
           <div className="dv-modal" style={{ maxWidth:640 }} onClick={e => e.stopPropagation()}>
@@ -188,20 +186,17 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
 
               {/* Feltöltés */}
               <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
-                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>
-                  ⬆️ Új firmware feltöltése
-                </div>
+                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>⬆️ Új firmware feltöltése</div>
                 <div className="dv-grid2" style={{ marginBottom:10 }}>
                   <div>
                     <label className="dv-label">Verzió *</label>
-                    <input className="dv-input" placeholder="pl. S3.5"
-                      value={uploadForm.version}
-                      onChange={e => setUploadForm(s => ({ ...s, version: e.target.value }))} />
+                    <input className="dv-input" placeholder="pl. S3.5" value={uploadForm.version}
+                      onChange={e => setUploadForm(s => ({ ...s, version:e.target.value }))} />
                   </div>
                   <div>
                     <label className="dv-label">Céleszköz</label>
                     <select className="dv-select" value={uploadForm.targetClass}
-                      onChange={e => setUploadForm(s => ({ ...s, targetClass: e.target.value }))}>
+                      onChange={e => setUploadForm(s => ({ ...s, targetClass:e.target.value }))}>
                       <option value="ALL">Minden eszköz (ALL)</option>
                       <option value="ESP32_S3">ESP32-S3-N16R8</option>
                       <option value="ESP32_WROOM">ESP32-WROOM-32</option>
@@ -214,13 +209,12 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
                 </div>
                 <div style={{ marginBottom:10 }}>
                   <label className="dv-label">Megjegyzés</label>
-                  <input className="dv-input" placeholder="Release notes…"
-                    value={uploadForm.notes}
-                    onChange={e => setUploadForm(s => ({ ...s, notes: e.target.value }))} />
+                  <input className="dv-input" placeholder="Release notes…" value={uploadForm.notes}
+                    onChange={e => setUploadForm(s => ({ ...s, notes:e.target.value }))} />
                 </div>
                 <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"var(--sl-text-2)", marginBottom:12, cursor:"pointer" }}>
                   <input type="checkbox" checked={uploadForm.mandatory}
-                    onChange={e => setUploadForm(s => ({ ...s, mandatory: e.target.checked }))}
+                    onChange={e => setUploadForm(s => ({ ...s, mandatory:e.target.checked }))}
                     style={{ accentColor:"#dc2626" }} />
                   <span>⚠️ Kötelező frissítés (eszközök azonnal frissítenek)</span>
                 </label>
@@ -239,39 +233,26 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
               {/* Verziólista */}
               <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
                 <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>
-                    📋 Elérhető verziók
-                  </div>
-                  <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">
-                    🔄
-                  </button>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>📋 Elérhető verziók</div>
+                  <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">🔄</button>
                 </div>
                 {releasesLoading ? (
                   <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ Betöltés…</div>
                 ) : releases.length === 0 ? (
                   <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>
-                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>
-                    Még nincs feltöltött firmware.
+                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>Még nincs feltöltött firmware.
                   </div>
                 ) : releases.map(r => (
                   <div key={r.id} className="dv-fw-item">
                     <div>
                       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                         <span className="dv-fw-version">{r.version}</span>
-                        {r.mandatory && (
-                          <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>
-                            ⚠️ Kötelező
-                          </span>
-                        )}
-                        {r.targetClass !== "ALL" && (
-                          <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>
-                            {r.targetClass}
-                          </span>
-                        )}
+                        {r.mandatory && <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>⚠️ Kötelező</span>}
+                        {r.targetClass !== "ALL" && <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>{r.targetClass}</span>}
                       </div>
                       <div className="dv-fw-meta">
-                        <span>💾 {(r.sizeBytes / 1024).toFixed(0)} KB</span>
-                        <span>🔐 {r.sha256.slice(0, 12)}…</span>
+                        <span>💾 {(r.sizeBytes/1024).toFixed(0)} KB</span>
+                        <span>🔐 {r.sha256.slice(0,12)}…</span>
                         <span>📅 {new Date(r.createdAt).toLocaleDateString("hu-HU")}</span>
                         <span>👤 {r.createdBy?.displayName ?? r.createdBy?.email ?? "?"}</span>
                         {r.notes && <span>📝 {r.notes}</span>}
@@ -280,9 +261,7 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
                     <div style={{ display:"flex", gap:6 }}>
                       <a href={r.fileUrl} download className="dv-btn dv-btn-ghost dv-btn-sm">⬇️</a>
                       <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
-                        onClick={() => void deleteRelease(r.id, r.version)}>
-                        🗑
-                      </button>
+                        onClick={() => void deleteRelease(r.id, r.version)}>🗑</button>
                     </div>
                   </div>
                 ))}
@@ -291,35 +270,24 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
               {/* Eszközök OTA státusza */}
               <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
                 <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>
-                    🔊 Eszközök frissítési állapota
-                  </div>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>🔊 Eszközök frissítési állapota</div>
                 </div>
                 {devices.filter(d => !d.isVirtualPlayer).map(d => {
-                  const status = ((d as any).otaStatus ?? "UP_TO_DATE") as OtaStatus;
-                  const b      = OTA_STATUS_BADGE[status] ?? OTA_STATUS_BADGE.UP_TO_DATE;
-                  const pct    = (d as any).otaProgress ?? 0;
-                  const ver    = (d as any).otaVersion ?? d.firmwareVersion;
+                  const s2  = (d.otaStatus ?? "UP_TO_DATE") as OtaStatus;
+                  const b2  = OTA_STATUS_BADGE[s2] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                  const ver = d.otaVersion ?? d.firmwareVersion;
                   return (
                     <div key={d.deviceId} style={{ padding:"10px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", gap:12 }}>
                       <span style={{ width:7, height:7, borderRadius:"50%", background:isDeviceOnline(d)?"#22c55e":"#94a3b8", flexShrink:0 }} />
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text)" }}>{d.name}</div>
                         <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
-                          FW: {d.firmwareVersion ?? "–"}
-                          {ver && ver !== d.firmwareVersion && ` → ${ver}`}
+                          FW: {d.firmwareVersion ?? "–"}{ver && ver !== d.firmwareVersion && ` → ${ver}`}
                         </div>
                       </div>
-                      <div style={{ textAlign:"right" }}>
-                        <span className="dv-badge" style={{ background:b.bg, color:b.color, borderColor:b.border, fontSize:11 }}>
-                          {b.icon} {b.label}
-                        </span>
-                        {(status === "DOWNLOADING" || status === "INSTALLING") && pct > 0 && (
-                          <div className="dv-ota-bar" style={{ marginLeft:"auto" }}>
-                            <div className="dv-ota-fill" style={{ width:`${pct}%` }} />
-                          </div>
-                        )}
-                      </div>
+                      <span className="dv-badge" style={{ background:b2.bg, color:b2.color, borderColor:b2.border, fontSize:11 }}>
+                        {b2.icon} {b2.label}
+                      </span>
                     </div>
                   );
                 })}
@@ -331,7 +299,6 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -355,15 +322,15 @@ export default function Devices() {
   const [activateError, setActivateError] = useState<string | null>(null);
   const [activateSuccess, setActivateSuccess] = useState<{ deviceKey: string; name: string } | null>(null);
 
-  // ── OTA state ──────────────────────────────────────────────────────────────
-  const [otaOpen,       setOtaOpen]       = useState(false);
-  const [releases,      setReleases]      = useState<FirmwareRelease[]>([]);
+  // ── OTA state ─────────────────────────────────────────────────────────────
+  const [otaOpen,         setOtaOpen]         = useState(false);
+  const [releases,        setReleases]        = useState<FirmwareRelease[]>([]);
   const [releasesLoading, setReleasesLoading] = useState(false);
-  const [uploadBusy,    setUploadBusy]    = useState(false);
-  const [uploadError,   setUploadError]   = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-  const [uploadForm,    setUploadForm]    = useState({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
-  const uploadFileRef   = useRef<HTMLInputElement>(null);
+  const [uploadBusy,      setUploadBusy]      = useState(false);
+  const [uploadError,     setUploadError]     = useState<string | null>(null);
+  const [uploadSuccess,   setUploadSuccess]   = useState<string | null>(null);
+  const [uploadForm,      setUploadForm]      = useState({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
+  const uploadFileRef = useRef<HTMLInputElement>(null);
 
   const healthTimer = useRef<number | null>(null);
   const pendingTimer = useRef<number | null>(null);
@@ -371,10 +338,8 @@ export default function Devices() {
   // ── OTA funkciók ──────────────────────────────────────────────────────────
   async function loadReleases() {
     setReleasesLoading(true);
-    try {
-      const r = await apiFetch<{ ok: boolean; releases: FirmwareRelease[] }>("/firmware/releases");
-      setReleases(r.releases ?? []);
-    } catch { setReleases([]); }
+    try { const r = await apiFetch<{ok:boolean;releases:FirmwareRelease[]}>("/firmware/releases"); setReleases(r.releases??[]); }
+    catch { setReleases([]); }
     finally { setReleasesLoading(false); }
   }
 
@@ -382,8 +347,7 @@ export default function Devices() {
     if (!uploadForm.version.trim()) { setUploadError("Verziószám kötelező!"); return; }
     setUploadBusy(true); setUploadError(null); setUploadSuccess(null);
     try {
-      const { state: authState } = { state: (window as any).__authState };
-      const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      const token    = sessionStorage.getItem("accessToken")    ?? localStorage.getItem("accessToken")    ?? "";
       const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
       const fd = new FormData();
       fd.append("file", file);
@@ -394,8 +358,8 @@ export default function Devices() {
       const res = await fetch(`${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/firmware/upload`, {
         method: "POST",
         headers: {
-          ...(token    ? { Authorization: `Bearer ${token}` }   : {}),
-          ...(tenantId ? { "x-tenant-id": tenantId }           : {}),
+          ...(token    ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { "x-tenant-id": tenantId }         : {}),
         },
         body: fd,
       });
@@ -404,16 +368,14 @@ export default function Devices() {
       setUploadSuccess(`✅ ${data.release.version} sikeresen feltöltve`);
       setUploadForm({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
       void loadReleases();
-    } catch (e: any) { setUploadError(e?.message ?? "Feltöltés sikertelen"); }
+    } catch (e:any) { setUploadError(e?.message ?? "Feltöltés sikertelen"); }
     finally { setUploadBusy(false); }
   }
 
   async function deleteRelease(id: string, version: string) {
     if (!window.confirm(`Törlöd a ${version} verziót?`)) return;
-    try {
-      await apiFetch(`/firmware/releases/${id}`, { method: "DELETE" });
-      void loadReleases();
-    } catch (e: any) { setUploadError(e?.message ?? "Törlés sikertelen"); }
+    try { await apiFetch(`/firmware/releases/${id}`, { method:"DELETE" }); void loadReleases(); }
+    catch (e:any) { setUploadError(e?.message ?? "Törlés sikertelen"); }
   }
 
   async function loadDevices() {
@@ -555,12 +517,12 @@ export default function Devices() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={canWrite?8:7} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
+                <tr><td colSpan={canWrite?9:8} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
                   <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>Betöltés…</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={canWrite?8:7}>
+                <tr><td colSpan={canWrite?9:8}>
                   <div className="dv-empty">
                     <div className="dv-empty-icon">🔇</div>
                     <div className="dv-empty-txt">Nincs megjeleníthető eszköz</div>
@@ -600,6 +562,22 @@ export default function Devices() {
                     </td>
                     <td style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
                     <td style={{ fontSize:12 }}>{d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
+                    <td style={{ fontSize:12 }}>
+                      {d.otaStatus && d.otaStatus !== "UP_TO_DATE" ? (() => {
+                        const os = d.otaStatus as OtaStatus;
+                        const ob = OTA_STATUS_BADGE[os] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                        return (
+                          <div>
+                            <span className="dv-badge" style={{ background:ob.bg, color:ob.color, borderColor:ob.border, fontSize:11 }}>
+                              {ob.icon} {ob.label}
+                            </span>
+                            {(os==="DOWNLOADING"||os==="INSTALLING") && (d.otaProgress??0)>0 && (
+                              <div className="dv-ota-bar"><div className="dv-ota-fill" style={{width:`${d.otaProgress}%`}}/></div>
+                            )}
+                          </div>
+                        );
+                      })() : <span style={{color:"var(--sl-muted)",fontSize:11}}>—</span>}
+                    </td>
                     <td style={{ fontSize:12 }}>
                       {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined ? `${d.secondsSinceLastSeen}mp` : "—"}
                     </td>
