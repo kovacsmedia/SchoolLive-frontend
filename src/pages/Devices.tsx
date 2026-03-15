@@ -9,22 +9,49 @@ type DeviceItem = {
   deviceId: string; name: string; deviceClass: DeviceClass;
   isOnline: boolean; ipAddress: string | null; firmwareVersion: string | null;
   secondsSinceLastSeen: number | null; isVirtualPlayer?: boolean;
+  hwModel?: string | null;
+  otaStatus?: string; otaProgress?: number; otaVersion?: string | null;
 };
 type HealthResponse = { ok: boolean; devices: DeviceItem[] };
-
-// Eszköz valóban online-e? secondsSinceLastSeen alapján (60mp küszöb)
-function isDeviceOnline(d: DeviceItem): boolean {
-  if (d.secondsSinceLastSeen === null || d.secondsSinceLastSeen === undefined) return d.isOnline;
-  return d.secondsSinceLastSeen < 60;
-}
-type DeviceGroup = { id: string; name: string; deviceIds: string[]; createdAt: string };
-
 type PendingDevice  = { id: string; mac: string; ipAddress: string | null; firmwareVersion: string | null; lastSeenAt: string };
 type PendingResponse = { ok: boolean; pending: PendingDevice[] };
-type PendingWebPlayer = { id: string; mac: string; clientId: string | null; userId: string | null; ipAddress: string | null; userAgent: string | null; firstSeenAt: string; lastSeenAt: string };
-type PendingWebResponse = { ok: boolean; pendingWeb: PendingWebPlayer[] };
 type TenantItem     = { id: string; name: string };
 type TenantsResponse = { ok: boolean; tenants: TenantItem[] };
+
+// ── OTA típusok ──────────────────────────────────────────────────────────────
+type OtaStatus = "UP_TO_DATE" | "PENDING" | "DOWNLOADING" | "INSTALLING" | "FAILED" | "ROLLBACK";
+type FirmwareRelease = {
+  id: string; version: string; filename: string; fileUrl: string;
+  sizeBytes: number; sha256: string; notes: string | null;
+  mandatory: boolean; targetClass: string; createdAt: string;
+  createdBy: { email: string; displayName: string | null };
+};
+
+// Hardver modellek
+const HW_MODEL_OPTIONS = [
+  { value: "ESP32_S3",       label: "ESP32-S3-N16R8",   icon: "🔧" },
+  { value: "ESP32_WROOM",    label: "ESP32-WROOM-32",   icon: "🔧" },
+  { value: "ESP32_S3_DISPLAY", label: "ESP32-S3 Kijelző", icon: "🖥️" },
+  { value: "ESP32_S3_MULTI",   label: "ESP32-S3 Multi",  icon: "🎛️" },
+  { value: "VIRTUAL",        label: "Virtuális (WP)",   icon: "📱" },
+];
+
+const HW_MODEL_BADGE: Record<string, { bg: string; color: string; border: string }> = {
+  ESP32_S3:         { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe" },
+  ESP32_WROOM:      { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe" },
+  ESP32_S3_DISPLAY: { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0" },
+  ESP32_S3_MULTI:   { bg:"#fffbeb", color:"#d97706", border:"#fde68a" },
+  VIRTUAL:          { bg:"#f8fafc", color:"#64748b", border:"#e2e8f0" },
+};
+
+const OTA_STATUS_BADGE: Record<OtaStatus, { bg: string; color: string; border: string; label: string; icon: string }> = {
+  UP_TO_DATE:  { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", label:"Naprakész",    icon:"✅" },
+  PENDING:     { bg:"#fffbeb", color:"#d97706", border:"#fde68a", label:"Frissítés vár", icon:"⏳" },
+  DOWNLOADING: { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", label:"Letöltés…",    icon:"⬇️" },
+  INSTALLING:  { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", label:"Telepítés…",   icon:"🔧" },
+  FAILED:      { bg:"#fef2f2", color:"#dc2626", border:"#fecaca", label:"Sikertelen",   icon:"❌" },
+  ROLLBACK:    { bg:"#fff7ed", color:"#c2410c", border:"#fed7aa", label:"Visszagörgetés", icon:"↩️" },
+};
 
 const DEVICE_CLASS_OPTIONS = [
   { value:"SPEAKER", label:"🔊 Hangszóró", description:"Csak hanglejátszás" },
@@ -125,20 +152,18 @@ const CSS = `
   .dv-empty-icon{font-size:44px;margin-bottom:12px}
   .dv-empty-txt{font-size:14px;font-family:'Nunito',sans-serif;font-weight:700;color:var(--sl-text-2)}
   .dv-key-box{background:var(--sl-bg);border:1px solid var(--sl-border);border-radius:9px;padding:6px 10px;font-family:monospace;font-size:12px;color:var(--sl-text);word-break:break-all}
-  .dv-wp-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:800;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-family:'Nunito',sans-serif}
-  .dv-wp-section{background:linear-gradient(135deg,#f0fdf4,#eff6ff);border:1.5px solid #bbf7d0;border-radius:13px;padding:13px 16px;margin-bottom:8px}
-  .dv-wp-section-title{font-size:12px;font-weight:800;color:#15803d;font-family:'Nunito',sans-serif;margin-bottom:8px;display:flex;align-items:center;gap:6px}
   @keyframes dvFade{from{opacity:0}to{opacity:1}}
   @keyframes dvSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+  /* OTA */
+  .dv-ota-bar{height:5px;background:var(--sl-border);border-radius:99px;overflow:hidden;margin-top:4px;width:80px}
+  .dv-ota-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#6366f1);border-radius:99px;transition:width 0.4s}
+  .dv-fw-item{padding:12px 16px;border-bottom:1px solid var(--sl-border);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  .dv-fw-item:last-child{border-bottom:none}
+  .dv-fw-version{font-size:15px;font-weight:900;color:var(--sl-text);font-family:monospace}
+  .dv-fw-meta{font-size:11.5px;color:var(--sl-muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+  .dv-upload-zone{margin:14px;border:2px dashed var(--sl-border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--sl-bg)}
+  .dv-upload-zone:hover{border-color:#3b82f6;background:#eff6ff}
   @media(max-width:600px){.dv-grid2{grid-template-columns:1fr}.dv-search{width:100%}}
-  /* Csoportok panel */
-  .dv-group-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-  .dv-group-item{background:var(--sl-bg);border:1.5px solid var(--sl-border);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .dv-group-name{font-size:14px;font-weight:800;color:var(--sl-text);flex:1;min-width:0}
-  .dv-device-check-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;padding:8px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg);margin-top:8px}
-  .dv-device-check-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;cursor:pointer;transition:background 0.12s}
-  .dv-device-check-item:hover{background:var(--sl-border)}
-  .dv-device-check-item input[type=checkbox]{accent-color:#3b82f6;width:15px;height:15px;cursor:pointer;flex-shrink:0}
 `;
 
 function Modal({ title, icon, children, onClose }: { title:string; icon:string; children:React.ReactNode; onClose:()=>void }) {
@@ -151,6 +176,162 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
         </div>
         {children}
       </div>
+      {/* ── OTA Firmware modal ─────────────────────────────────────── */}
+      {otaOpen && (
+        <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
+          <div className="dv-modal" style={{ maxWidth:640 }} onClick={e => e.stopPropagation()}>
+            <div className="dv-modal-hdr">
+              <div className="dv-modal-title">📦 Firmware OTA kezelő</div>
+              <button className="dv-close" onClick={() => setOtaOpen(false)}>✕</button>
+            </div>
+            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"75vh", display:"flex", flexDirection:"column", gap:16 }}>
+
+              {/* Feltöltés */}
+              <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
+                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>
+                  ⬆️ Új firmware feltöltése
+                </div>
+                <div className="dv-grid2" style={{ marginBottom:10 }}>
+                  <div>
+                    <label className="dv-label">Verzió *</label>
+                    <input className="dv-input" placeholder="pl. S3.5"
+                      value={uploadForm.version}
+                      onChange={e => setUploadForm(s => ({ ...s, version: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="dv-label">Céleszköz</label>
+                    <select className="dv-select" value={uploadForm.targetClass}
+                      onChange={e => setUploadForm(s => ({ ...s, targetClass: e.target.value }))}>
+                      <option value="ALL">Minden eszköz (ALL)</option>
+                      <option value="ESP32_S3">ESP32-S3-N16R8</option>
+                      <option value="ESP32_WROOM">ESP32-WROOM-32</option>
+                      <option value="ESP32_S3_DISPLAY">ESP32-S3 Kijelző</option>
+                      <option value="ESP32_S3_MULTI">ESP32-S3 Multi</option>
+                      <option value="SPEAKER">Összes hangszóró (SPEAKER)</option>
+                      <option value="DISPLAY">Összes kijelző (DISPLAY)</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <label className="dv-label">Megjegyzés</label>
+                  <input className="dv-input" placeholder="Release notes…"
+                    value={uploadForm.notes}
+                    onChange={e => setUploadForm(s => ({ ...s, notes: e.target.value }))} />
+                </div>
+                <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"var(--sl-text-2)", marginBottom:12, cursor:"pointer" }}>
+                  <input type="checkbox" checked={uploadForm.mandatory}
+                    onChange={e => setUploadForm(s => ({ ...s, mandatory: e.target.checked }))}
+                    style={{ accentColor:"#dc2626" }} />
+                  <span>⚠️ Kötelező frissítés (eszközök azonnal frissítenek)</span>
+                </label>
+                <input ref={uploadFileRef} type="file" accept=".bin" style={{ display:"none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirmware(f); e.target.value = ""; }} />
+                <div className="dv-upload-zone" onClick={() => !uploadBusy && uploadFileRef.current?.click()}>
+                  <div style={{ fontSize:28, marginBottom:6 }}>{uploadBusy ? "⏳" : "📁"}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text-2)" }}>
+                    {uploadBusy ? "Feltöltés folyamatban…" : "Kattints a .bin fájl kiválasztásához"}
+                  </div>
+                </div>
+                {uploadError   && <div className="dv-alert dv-alert-error"   style={{marginTop:8}}><span>⚠️</span>{uploadError}</div>}
+                {uploadSuccess && <div className="dv-alert dv-alert-success" style={{marginTop:8}}><span>✅</span>{uploadSuccess}</div>}
+              </div>
+
+              {/* Verziólista */}
+              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>
+                    📋 Elérhető verziók
+                  </div>
+                  <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">
+                    🔄
+                  </button>
+                </div>
+                {releasesLoading ? (
+                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ Betöltés…</div>
+                ) : releases.length === 0 ? (
+                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>
+                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>
+                    Még nincs feltöltött firmware.
+                  </div>
+                ) : releases.map(r => (
+                  <div key={r.id} className="dv-fw-item">
+                    <div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        <span className="dv-fw-version">{r.version}</span>
+                        {r.mandatory && (
+                          <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>
+                            ⚠️ Kötelező
+                          </span>
+                        )}
+                        {r.targetClass !== "ALL" && (
+                          <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>
+                            {r.targetClass}
+                          </span>
+                        )}
+                      </div>
+                      <div className="dv-fw-meta">
+                        <span>💾 {(r.sizeBytes / 1024).toFixed(0)} KB</span>
+                        <span>🔐 {r.sha256.slice(0, 12)}…</span>
+                        <span>📅 {new Date(r.createdAt).toLocaleDateString("hu-HU")}</span>
+                        <span>👤 {r.createdBy?.displayName ?? r.createdBy?.email ?? "?"}</span>
+                        {r.notes && <span>📝 {r.notes}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", gap:6 }}>
+                      <a href={r.fileUrl} download className="dv-btn dv-btn-ghost dv-btn-sm">⬇️</a>
+                      <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
+                        onClick={() => void deleteRelease(r.id, r.version)}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Eszközök OTA státusza */}
+              <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)" }}>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>
+                    🔊 Eszközök frissítési állapota
+                  </div>
+                </div>
+                {devices.filter(d => !d.isVirtualPlayer).map(d => {
+                  const status = ((d as any).otaStatus ?? "UP_TO_DATE") as OtaStatus;
+                  const b      = OTA_STATUS_BADGE[status] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                  const pct    = (d as any).otaProgress ?? 0;
+                  const ver    = (d as any).otaVersion ?? d.firmwareVersion;
+                  return (
+                    <div key={d.deviceId} style={{ padding:"10px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{ width:7, height:7, borderRadius:"50%", background:isDeviceOnline(d)?"#22c55e":"#94a3b8", flexShrink:0 }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text)" }}>{d.name}</div>
+                        <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
+                          FW: {d.firmwareVersion ?? "–"}
+                          {ver && ver !== d.firmwareVersion && ` → ${ver}`}
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"right" }}>
+                        <span className="dv-badge" style={{ background:b.bg, color:b.color, borderColor:b.border, fontSize:11 }}>
+                          {b.icon} {b.label}
+                        </span>
+                        {(status === "DOWNLOADING" || status === "INSTALLING") && pct > 0 && (
+                          <div className="dv-ota-bar" style={{ marginLeft:"auto" }}>
+                            <div className="dv-ota-fill" style={{ width:`${pct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {devices.filter(d => !d.isVirtualPlayer).length === 0 && (
+                  <div style={{ padding:20, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>Nincs fizikai eszköz</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -174,59 +355,65 @@ export default function Devices() {
   const [activateError, setActivateError] = useState<string | null>(null);
   const [activateSuccess, setActivateSuccess] = useState<{ deviceKey: string; name: string } | null>(null);
 
-  const [pendingWeb, setPendingWeb] = useState<PendingWebPlayer[]>([]);
-  const [wpActivateForm, setWpActivateForm] = useState<{ pendingId: string; name: string } | null>(null);
-  const [wpActivateBusy, setWpActivateBusy] = useState(false);
-  const [wpActivateError, setWpActivateError] = useState<string | null>(null);
+  // ── OTA state ──────────────────────────────────────────────────────────────
+  const [otaOpen,       setOtaOpen]       = useState(false);
+  const [releases,      setReleases]      = useState<FirmwareRelease[]>([]);
+  const [releasesLoading, setReleasesLoading] = useState(false);
+  const [uploadBusy,    setUploadBusy]    = useState(false);
+  const [uploadError,   setUploadError]   = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadForm,    setUploadForm]    = useState({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
+  const uploadFileRef   = useRef<HTMLInputElement>(null);
+
   const healthTimer = useRef<number | null>(null);
   const pendingTimer = useRef<number | null>(null);
 
-  // ── Csoportok ─────────────────────────────────────────────────────────────
-  const [groupsOpen,   setGroupsOpen]   = useState(false);
-  const [groups,       setGroups]       = useState<DeviceGroup[]>([]);
-  const [groupsLoading,setGroupsLoading]= useState(false);
-  const [groupsBusy,   setGroupsBusy]   = useState(false);
-  const [groupsError,  setGroupsError]  = useState<string|null>(null);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [editGroup,    setEditGroup]    = useState<DeviceGroup|null>(null);
-  const [editGroupName,setEditGroupName]= useState("");
+  // ── OTA funkciók ──────────────────────────────────────────────────────────
+  async function loadReleases() {
+    setReleasesLoading(true);
+    try {
+      const r = await apiFetch<{ ok: boolean; releases: FirmwareRelease[] }>("/firmware/releases");
+      setReleases(r.releases ?? []);
+    } catch { setReleases([]); }
+    finally { setReleasesLoading(false); }
+  }
 
-  async function loadGroups() {
-    setGroupsLoading(true);
-    try { const r = await apiFetch<{ok:boolean;groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); }
-    catch { setGroupsError("Csoportok betöltése sikertelen"); }
-    finally { setGroupsLoading(false); }
-  }
-  async function createGroup() {
-    if (!newGroupName.trim()) return;
-    setGroupsBusy(true); setGroupsError(null);
+  async function uploadFirmware(file: File) {
+    if (!uploadForm.version.trim()) { setUploadError("Verziószám kötelező!"); return; }
+    setUploadBusy(true); setUploadError(null); setUploadSuccess(null);
     try {
-      await apiFetch("/admin/devices/groups", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: newGroupName.trim() }) });
-      setNewGroupName(""); await loadGroups();
-    } catch (e:any) { setGroupsError(e?.message??"Létrehozás sikertelen"); }
-    finally { setGroupsBusy(false); }
+      const { state: authState } = { state: (window as any).__authState };
+      const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("version", uploadForm.version.trim());
+      if (uploadForm.notes.trim()) fd.append("notes", uploadForm.notes.trim());
+      fd.append("mandatory", String(uploadForm.mandatory));
+      fd.append("targetClass", uploadForm.targetClass);
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? "https://api.schoollive.hu"}/firmware/upload`, {
+        method: "POST",
+        headers: {
+          ...(token    ? { Authorization: `Bearer ${token}` }   : {}),
+          ...(tenantId ? { "x-tenant-id": tenantId }           : {}),
+        },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Feltöltés sikertelen");
+      setUploadSuccess(`✅ ${data.release.version} sikeresen feltöltve`);
+      setUploadForm({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
+      void loadReleases();
+    } catch (e: any) { setUploadError(e?.message ?? "Feltöltés sikertelen"); }
+    finally { setUploadBusy(false); }
   }
-  async function saveGroupMembers(g: DeviceGroup, deviceIds: string[]) {
-    setGroupsBusy(true); setGroupsError(null);
+
+  async function deleteRelease(id: string, version: string) {
+    if (!window.confirm(`Törlöd a ${version} verziót?`)) return;
     try {
-      await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ deviceIds }) });
-      await loadGroups(); setEditGroup(null);
-    } catch (e:any) { setGroupsError(e?.message??"Mentés sikertelen"); }
-    finally { setGroupsBusy(false); }
-  }
-  async function renameGroup(g: DeviceGroup, name: string) {
-    if (!name.trim() || name === g.name) { setEditGroup(null); return; }
-    setGroupsBusy(true);
-    try {
-      await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: name.trim() }) });
-      await loadGroups(); setEditGroup(null);
-    } catch (e:any) { setGroupsError(e?.message??"Átnevezés sikertelen"); }
-    finally { setGroupsBusy(false); }
-  }
-  async function deleteGroup(id: string) {
-    if (!window.confirm("Törlöd ezt a csoportot?")) return;
-    try { await apiFetch(`/admin/devices/groups/${id}`, { method:"DELETE" }); await loadGroups(); }
-    catch { setGroupsError("Törlés sikertelen"); }
+      await apiFetch(`/firmware/releases/${id}`, { method: "DELETE" });
+      void loadReleases();
+    } catch (e: any) { setUploadError(e?.message ?? "Törlés sikertelen"); }
   }
 
   async function loadDevices() {
@@ -253,28 +440,8 @@ export default function Devices() {
     } catch { setTenants([]); }
   }
 
-  async function loadPendingWeb() {
-    try {
-      const data = await apiFetch<PendingWebResponse>("/admin/devices/pending-web");
-      setPendingWeb(Array.isArray(data.pendingWeb) ? data.pendingWeb : []);
-    } catch { setPendingWeb([]); }
-  }
-  async function submitWpActivate() {
-    if (!wpActivateForm) return;
-    if (!wpActivateForm.name.trim()) { setWpActivateError("Az eszköznév megadása kötelező."); return; }
-    setWpActivateError(null); setWpActivateBusy(true);
-    try {
-      await apiFetch(`/admin/devices/activate-web/${wpActivateForm.pendingId}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: wpActivateForm.name.trim() }),
-      });
-      setWpActivateForm(null); void loadDevices(); void loadPendingWeb();
-    } catch (e) { setWpActivateError(safeErrorMessage(e)); }
-    finally { setWpActivateBusy(false); }
-  }
   useEffect(() => {
     void loadDevices();
-    void loadPendingWeb();
     healthTimer.current = window.setInterval(loadDevices, 10_000);
     if (canWrite) void loadTenants();
     return () => {
@@ -327,7 +494,7 @@ export default function Devices() {
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
     if (!n) return devices;
-    return devices.filter(d => [d.name,d.deviceClass,d.ipAddress,d.firmwareVersion].join(" ").toLowerCase().includes(n));
+    return devices.filter(d => [d.name,d.deviceClass,d.ipAddress,d.firmwareVersion,d.hwModel].join(" ").toLowerCase().includes(n));
   }, [q, devices]);
 
   return (
@@ -347,9 +514,12 @@ export default function Devices() {
               ＋ Új eszköz
             </button>
           )}
-          <button className="dv-btn dv-btn-ghost" type="button" onClick={() => { setGroupsOpen(true); void loadGroups(); }}>
-            👥 Csoportok
-          </button>
+          {isSuperAdmin && (
+            <button className="dv-btn dv-btn-ghost" type="button"
+              onClick={() => { setOtaOpen(true); void loadReleases(); }}>
+              📦 Firmware OTA
+            </button>
+          )}
           <button className="dv-btn dv-btn-ghost" onClick={() => void loadDevices()} disabled={loading} type="button">
             🔄 Frissítés
           </button>
@@ -379,18 +549,18 @@ export default function Devices() {
           <table className="dv-table">
             <thead>
               <tr>
-                <th>Eszköznév</th><th>Típus</th><th>Státusz</th><th>IP cím</th><th>Firmware</th><th>Utolsó aktivitás</th>
+                <th>Eszköznév</th><th>Típus</th><th>HW modell</th><th>Státusz</th><th>IP cím</th><th>Firmware</th><th>OTA</th><th>Utolsó aktivitás</th>
                 {canWrite && <th style={{ textAlign:"right" }}>Műveletek</th>}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={canWrite?7:6} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
+                <tr><td colSpan={canWrite?8:7} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
                   <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>Betöltés…</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={canWrite?7:6}>
+                <tr><td colSpan={canWrite?8:7}>
                   <div className="dv-empty">
                     <div className="dv-empty-icon">🔇</div>
                     <div className="dv-empty-txt">Nincs megjeleníthető eszköz</div>
@@ -408,30 +578,30 @@ export default function Devices() {
                         {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : "Multi"}
                       </span>
                     </td>
+                    <td style={{ fontSize:12 }}>
+                      {d.hwModel ? (() => {
+                        const hw  = HW_MODEL_OPTIONS.find(h => h.value === d.hwModel);
+                        const bdg = HW_MODEL_BADGE[d.hwModel ?? ""] ?? { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
+                        return (
+                          <span className="dv-badge" style={{ background:bdg.bg, color:bdg.color, borderColor:bdg.border, fontSize:11 }}>
+                            {hw?.icon ?? "🔧"} {hw?.label ?? d.hwModel}
+                          </span>
+                        );
+                      })() : <span style={{ color:"var(--sl-muted)" }}>—</span>}
+                    </td>
                     <td>
-                      <span className="dv-badge" style={isDeviceOnline(d)
+                      <span className="dv-badge" style={d.isOnline
                         ? { background:"#f0fdf4", color:"#15803d", borderColor:"#bbf7d0" }
                         : { background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)" }
                       }>
-                        <span style={{ width:7,height:7,borderRadius:"50%",background:isDeviceOnline(d)?"#22c55e":"#94a3b8",display:"inline-block" }} />
-                        {isDeviceOnline(d) ? "Online" : "Offline"}
+                        <span style={{ width:7,height:7,borderRadius:"50%",background:d.isOnline?"#22c55e":"#94a3b8",display:"inline-block" }} />
+                        {d.isOnline ? "Online" : "Offline"}
                       </span>
                     </td>
                     <td style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
+                    <td style={{ fontSize:12 }}>{d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
                     <td style={{ fontSize:12 }}>
-                      {d.isVirtualPlayer
-                        ? <span className="dv-wp-badge">📱 WP</span>
-                        : (d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>)
-                      }
-                    </td>
-                    <td style={{ fontSize:12 }}>
-                      {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined
-                        ? d.secondsSinceLastSeen < 60
-                          ? `${d.secondsSinceLastSeen}mp`
-                          : d.secondsSinceLastSeen < 3600
-                            ? `${Math.floor(d.secondsSinceLastSeen/60)}p ${d.secondsSinceLastSeen%60}mp`
-                            : `${Math.floor(d.secondsSinceLastSeen/3600)}ó`
-                        : "—"}
+                      {d.secondsSinceLastSeen !== null && d.secondsSinceLastSeen !== undefined ? `${d.secondsSinceLastSeen}mp` : "—"}
                     </td>
                     {canWrite && (
                       <td style={{ textAlign:"right" }}>
@@ -457,28 +627,6 @@ export default function Devices() {
       {pendingOpen && (
         <Modal title="Aktiválásra váró eszközök" icon="📡" onClose={closePending}>
           <div className="dv-modal-body">
-            {/* WebPlayer szekció */}
-            {pendingWeb.length > 0 && (
-              <div className="dv-wp-section">
-                <div className="dv-wp-section-title">📱 Virtuális lejátszók (WebPlayer)</div>
-                {pendingWeb.map(wp => (
-                  <button key={wp.id} className="dv-pending-item" type="button"
-                    style={{ border:"1.5px solid #bbf7d0", background:"#f0fdf4" }}
-                    onClick={() => { setWpActivateForm({ pendingId: wp.id, name: "" }); setWpActivateError(null); closePending(); }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                      <span className="dv-pending-mac" style={{ color:"#15803d" }}>
-                        📱 WP-{wp.clientId?.slice(0,8).toUpperCase() ?? "?"}
-                      </span>
-                      <span style={{ fontSize:11, color:"var(--sl-muted)" }}>Utoljára: {formatDateTime(wp.lastSeenAt)}</span>
-                    </div>
-                    <div className="dv-pending-meta">
-                      {wp.ipAddress && <span>📍 {wp.ipAddress}</span>}
-                      {wp.userAgent && <span style={{ maxWidth:300, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>🌐 {wp.userAgent.slice(0,60)}…</span>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="dv-alert dv-alert-warn" style={{ fontSize:13 }}>
               <span>💡</span>
               Az alábbi eszközök provisioning módban várják az aktiválást. Kattints egyre az aktiváláshoz.
@@ -606,143 +754,6 @@ export default function Devices() {
             </button>
           </div>
         </Modal>
-      )}
-
-      {/* WP Activate modal */}
-      {wpActivateForm && (
-        <Modal title="Virtuális lejátszó aktiválása" icon="📱" onClose={() => setWpActivateForm(null)}>
-          <div className="dv-modal-body">
-            <div className="dv-alert" style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#15803d", fontSize:13 }}>
-              <span>📱</span>
-              Egy WebPlayer eszközt aktiválsz. A PLAYER felhasználó böngészője virtuális hangszóró/kijelzőként fog működni.
-            </div>
-            <div>
-              <label className="dv-label">Eszköznév *</label>
-              <input className="dv-input" placeholder="pl. Portás tablet, Ebédlő kijelző"
-                value={wpActivateForm.name}
-                onChange={e => setWpActivateForm(s => s ? { ...s, name: e.target.value } : s)} />
-            </div>
-            {wpActivateError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{wpActivateError}</div>}
-          </div>
-          <div className="dv-modal-footer">
-            <button className="dv-btn dv-btn-ghost" onClick={() => setWpActivateForm(null)} disabled={wpActivateBusy} type="button">Mégse</button>
-            <button className="dv-btn dv-btn-primary" onClick={() => void submitWpActivate()} disabled={wpActivateBusy} type="button">
-              {wpActivateBusy ? "⏳ Aktiválás…" : "📱 Aktivál"}
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ── Csoportok modal ─────────────────────────────────────────── */}
-      {groupsOpen && (
-        <div className="dv-overlay" onClick={() => setGroupsOpen(false)}>
-          <div className="dv-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
-            <div className="dv-modal-hdr">
-              <div className="dv-modal-title">👥 Eszköz csoportok</div>
-              <button className="dv-close" onClick={() => setGroupsOpen(false)}>✕</button>
-            </div>
-            <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"70vh" }}>
-              {groupsError && <div className="dv-alert dv-alert-error" style={{marginBottom:12}}><span>⚠️</span>{groupsError}</div>}
-
-              {/* Új csoport */}
-              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-                <input
-                  className="dv-input" style={{ flex:1 }}
-                  placeholder="Új csoport neve…"
-                  value={newGroupName}
-                  onChange={e => setNewGroupName(e.target.value)}
-                  onKeyDown={e => e.key==="Enter" && void createGroup()}
-                />
-                <button className="dv-btn dv-btn-primary" onClick={() => void createGroup()} disabled={groupsBusy||!newGroupName.trim()} type="button">
-                  ＋ Létrehoz
-                </button>
-              </div>
-
-              {/* Csoport lista */}
-              {groupsLoading ? (
-                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)" }}>⏳ Betöltés…</div>
-              ) : groups.length === 0 ? (
-                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)", fontSize:13 }}>Még nincs csoport. Hozz létre egyet!</div>
-              ) : (
-                <div className="dv-group-list">
-                  {groups.map(g => (
-                    <div key={g.id} className="dv-group-item">
-                      {editGroup?.id === g.id ? (
-                        <>
-                          <input
-                            className="dv-input" style={{ flex:1 }}
-                            value={editGroupName}
-                            onChange={e => setEditGroupName(e.target.value)}
-                            onKeyDown={e => e.key==="Enter" && void renameGroup(g, editGroupName)}
-                            autoFocus
-                          />
-                          <button className="dv-btn dv-btn-primary dv-btn-sm" onClick={() => void renameGroup(g, editGroupName)} disabled={groupsBusy} type="button">Ment</button>
-                          <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => setEditGroup(null)} type="button">Mégse</button>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ flex:1 }}>
-                            <div className="dv-group-name">👥 {g.name}</div>
-                            <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
-                              {g.deviceIds.length === 0 ? "Nincs tag" : `${g.deviceIds.length} eszköz`}
-                              {g.deviceIds.length > 0 && ": " + devices.filter(d => g.deviceIds.includes(d.deviceId)).map(d => d.name).join(", ")}
-                            </div>
-                          </div>
-                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                            onClick={() => {
-                              setEditGroup({...g, _editMembers: true} as any);
-                              setEditGroupName(g.name);
-                            }}>
-                            ✏️ Tagok
-                          </button>
-                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                            onClick={() => { setEditGroup(g); setEditGroupName(g.name); }}>
-                            📝 Átnevez
-                          </button>
-                          <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
-                            onClick={() => void deleteGroup(g.id)}>
-                            🗑
-                          </button>
-                        </>
-                      )}
-                      {/* Tag szerkesztő – eszközök jelölőnégyzetekkel */}
-                      {(editGroup as any)?._editMembers && editGroup?.id === g.id && (
-                        <div style={{ width:"100%", marginTop:8 }}>
-                          <div style={{ fontSize:11, fontWeight:800, color:"var(--sl-muted)", marginBottom:4 }}>TAGOK KIVÁLASZTÁSA</div>
-                          <div className="dv-device-check-list">
-                            {devices.length === 0 && <div style={{ fontSize:12, color:"var(--sl-muted)", padding:6 }}>Nincs eszköz</div>}
-                            {devices.map(d => {
-                              const isMember = editGroup.deviceIds.includes(d.deviceId);
-                              return (
-                                <label key={d.deviceId} className="dv-device-check-item">
-                                  <input type="checkbox" checked={isMember} onChange={() => {
-                                    const ids = isMember
-                                      ? editGroup.deviceIds.filter(id => id !== d.deviceId)
-                                      : [...editGroup.deviceIds, d.deviceId];
-                                    setEditGroup({ ...editGroup, deviceIds: ids });
-                                  }} />
-                                  <span className={isDeviceOnline(d) ? "dv-dot-on" : "dv-dot-off"} style={{ width:7, height:7, borderRadius:"50%", background: isDeviceOnline(d) ? "#22c55e" : "#94a3b8", flexShrink:0 }} />
-                                  <span style={{ fontSize:13, fontWeight:600 }}>{d.name}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                            <button className="dv-btn dv-btn-primary dv-btn-sm" disabled={groupsBusy} type="button"
-                              onClick={() => void saveGroupMembers(g, editGroup.deviceIds)}>
-                              {groupsBusy ? "Mentés…" : "💾 Mentés"}
-                            </button>
-                            <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button" onClick={() => setEditGroup(null)}>Mégse</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
