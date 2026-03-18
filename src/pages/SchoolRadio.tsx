@@ -314,7 +314,7 @@ export default function SchoolRadio() {
   useEffect(() => {
     const now = new Date();
     const playing = schedules.find(s => {
-      if (s.status === "CANCELLED") return false;
+      if (s.status === "CANCELLED" || s.status === "PENDING") return false;
       const start = new Date(s.dispatchedAt ?? s.scheduledAt);
       const dur = s.radioFile.durationSec;
       if (!dur) return false;
@@ -641,7 +641,11 @@ export default function SchoolRadio() {
             onClick={async () => {
               if (!window.confirm("Leállítod az összes lejátszót?")) return;
               setStopBusy(true);
-              try { await apiFetch("/radio/stop-all",{method:"POST"}); setNowPlaying(null); }
+              try {
+                await apiFetch("/radio/stop-all",{method:"POST"});
+                setNowPlaying(null);
+                await loadAll();  // CANCELLED státusz megjelenik, ütközés feloldódik
+              }
               catch(e:any){ alert("Hiba: "+(e?.message??"ismeretlen")); }
               finally { setStopBusy(false); }
             }}>
@@ -659,6 +663,9 @@ export default function SchoolRadio() {
       )}
 
       <div className="sr-layout">
+
+        {/* ═══ BAL PANEL ═══ */}
+        <div className="sr-layout">
 
         {/* ═══ BAL PANEL ═══ */}
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -700,7 +707,13 @@ export default function SchoolRadio() {
                   </div>
                   <div className="sr-file-actions" onClick={e=>e.stopPropagation()}>
                     <button className="sr-btn sr-btn-primary sr-btn-sm" title="Ütemezés"
-                      onClick={()=>{setFormFileId(f.id);setFormOpen(true);}} type="button">📅</button>
+                      onClick={()=>{
+                    const n=new Date();
+                    setFormFileId(f.id);
+                    setFormDate(n.toISOString().slice(0,10));
+                    setFormTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
+                    setFormOpen(true);
+                  }} type="button">📅</button>
                     <button className="sr-btn sr-btn-danger sr-btn-sm" title="Törlés"
                       onClick={()=>void deleteFile(f)} type="button">🗑</button>
                   </div>
@@ -714,6 +727,187 @@ export default function SchoolRadio() {
               </div>
             ))}
           </div>
+
+
+          {/* Korábbi lejátszások */}
+          <div className="sr-panel">
+            <div className="sr-panel-hdr">
+              <div className="sr-panel-title">🕐 Korábbi lejátszások</div>
+              <span style={{fontSize:12,color:"var(--sl-muted)"}}>utolsó 30</span>
+            </div>
+            {pastSchedules.length === 0 ? (
+              <div className="sr-empty">
+                <div className="sr-empty-icon">🕐</div>
+                <div style={{fontSize:13,fontWeight:700}}>Még nem volt lejátszás</div>
+              </div>
+            ) : pastSchedules.map(s => {
+              const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.PENDING;
+              const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
+              const targetLabel = s.targetType==="ALL"?"📡 Összes":s.targetType==="DEVICE"?"🔊 Egyedi":"👥 Csoport";
+              return (
+                <div key={s.id} className="sr-sched-item sr-sched-past">
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span className="sr-sched-time" style={{color:"var(--sl-muted)",fontSize:13}}>{fmtDateTimeFull(s.scheduledAt)}</span>
+                      {endTime && <span className="sr-sched-end">→ {endTime}</span>}
+                      <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"44"}}>{badge.label}</span>
+                    </div>
+                    <div className="sr-sched-file" title={s.radioFile.originalName}>
+                      🎵 {s.radioFile.originalName}
+                      {s.radioFile.durationSec && <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>}
+                    </div>
+                    <div className="sr-sched-target">{targetLabel}</div>
+                  </div>
+                  <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" title="Újraütemezés"
+                    onClick={()=>{
+                    const n=new Date();
+                    setFormFileId(s.radioFileId);
+                    setFormDate(n.toISOString().slice(0,10));
+                    setFormTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
+                    setFormOpen(true);
+                  }}>
+                    🔁 Újra
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        </div>
+
+        {/* ═══ JOBB PANEL: Ütemezések + Playlist ═══ */}
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+          {/* Ütemezés form */}
+          {formOpen && (
+            <div className="sr-panel">
+              <div className="sr-panel-hdr">
+                <div className="sr-panel-title">📅 Új ütemezés</div>
+                <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                  onClick={()=>{setFormOpen(false);setFormError(null);}}>✕</button>
+              </div>
+              <div className="sr-form">
+                {formError && <div className="sr-alert sr-alert-error"><span>⚠️</span>{formError}</div>}
+                <div>
+                  <label className="sr-label">Hangfájl</label>
+                  <select className="sr-select" value={formFileId} onChange={e=>setFormFileId(e.target.value)}>
+                    <option value="">Válassz hangfájlt…</option>
+                    {files.map(f => <option key={f.id} value={f.id}>{f.originalName} ({fmtDuration(f.durationSec)})</option>)}
+                  </select>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div>
+                    <label className="sr-label">Dátum</label>
+                    <input type="date" className="sr-input" value={formDate}
+                      min={new Date().toISOString().slice(0,10)} onChange={e=>setFormDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="sr-label">Kezdési idő</label>
+                    <input type="time" className="sr-input" value={formTime} onChange={e=>setFormTime(e.target.value)} />
+                  </div>
+                </div>
+                {formDate && formTime && previewFile && (
+                  <div className="sr-time-preview">
+                    <span>⏰</span>
+                    <div>
+                      <div style={{fontWeight:800}}>{formDate} {formTime}{previewEnd&&<span style={{color:"#475569"}}> → {previewEnd}</span>}</div>
+                      <div style={{fontSize:11,color:"#475569",marginTop:2}}>Hossz: {fmtDuration(previewFile.durationSec)}</div>
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div className="sr-label">Lejátszó eszközök</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                    {(["ALL","DEVICE","GROUP"] as const).map(t => (
+                      <div key={t} className={`sr-chip${formTarget===t?" active":""}`}
+                        onClick={()=>{setFormTarget(t);setFormTargetId("");}}>
+                        {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
+                      </div>
+                    ))}
+                  </div>
+                  {formTarget==="DEVICE" && (
+                    <div className="sr-device-list">
+                      {devices.length===0
+                        ? <div style={{fontSize:13,color:"var(--sl-muted)",padding:8}}>Nincs elérhető eszköz</div>
+                        : devices.map(d => (
+                          <div key={d.id} className={`sr-device-item${formTargetId===d.id?" sel":""}`}
+                            onClick={()=>setFormTargetId(formTargetId===d.id?"":d.id)}>
+                            <span className={d.online?"sr-dot-on":"sr-dot-off"} />
+                            <span style={{fontSize:13.5,fontWeight:600}}>{d.name}</span>
+                            <span style={{fontSize:11,color:"var(--sl-muted)",marginLeft:"auto"}}>{d.deviceClass}</span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                  {formTarget==="GROUP" && (
+                    <select className="sr-select" value={formTargetId} onChange={e=>setFormTargetId(e.target.value)}>
+                      <option value="">Válassz csoportot…</option>
+                      {groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                    </select>
+                  )}
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                  <button className="sr-btn sr-btn-ghost" type="button"
+                    onClick={()=>{setFormOpen(false);setFormError(null);}} disabled={formBusy}>Mégse</button>
+                  <button className="sr-btn sr-btn-primary" type="button"
+                    onClick={()=>void submitSchedule()} disabled={formBusy}>
+                    {formBusy?"⏳ Mentés…":"📅 Ütemezés hozzáadása"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+          {/* Közelgő lejátszások */}
+          <div className="sr-panel">
+            <div className="sr-panel-hdr">
+              <div className="sr-panel-title">⏰ Közelgő lejátszások</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"var(--sl-muted)"}}>{upcomingSchedules.length} aktív</span>
+                <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
+                  onClick={()=>{
+                  const n=new Date();
+                  setFormDate(n.toISOString().slice(0,10));
+                  setFormTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
+                  setFormOpen(true);
+                }}>
+                  ＋ Új ütemezés
+                </button>
+              </div>
+            </div>
+
+            {upcomingSchedules.length === 0 ? (
+              <div className="sr-empty">
+                <div className="sr-empty-icon">⏰</div>
+                <div style={{fontSize:13,fontWeight:700}}>Nincs közelgő lejátszás</div>
+              </div>
+            ) : upcomingSchedules.map(s => {
+              const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
+              const targetLabel = s.targetType==="ALL"?"📡 Összes":s.targetType==="DEVICE"?"🔊 Egyedi":"👥 Csoport";
+              const isWarn = checkTeachingHourOverlap(new Date(s.scheduledAt), s.radioFile.durationSec, mainBells);
+              return (
+                <div key={s.id} className="sr-sched-item">
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span className="sr-sched-time">{fmtDateTimeFull(s.scheduledAt)}</span>
+                      {endTime && <span className="sr-sched-end">→ {endTime}</span>}
+                      {isWarn && <span className="sr-lesson-warn">⚠️ Tanítási óra</span>}
+                    </div>
+                    <div className="sr-sched-file" title={s.radioFile.originalName}>
+                      🎵 {s.radioFile.originalName}
+                      {s.radioFile.durationSec && <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>}
+                    </div>
+                    <div className="sr-sched-target">{targetLabel}</div>
+                  </div>
+                  <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
+                    onClick={()=>void deleteSchedule(s.id)}>🗑</button>
+                </div>
+              );
+            })}
+          </div>
+
 
           {/* ═══ Playlist összeállító ═══ */}
           <div className="sr-panel">
@@ -920,7 +1114,13 @@ export default function SchoolRadio() {
                   <a href={plBuiltUrl} download={plBuiltName+".mp3"} className="sr-btn sr-btn-ghost sr-btn-sm">⬇ Letöltés</a>
                   {plBuiltFileId && (
                     <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
-                      onClick={()=>{setFormFileId(plBuiltFileId);setFormOpen(true);}}>
+                      onClick={()=>{
+                      const n=new Date();
+                      setFormFileId(plBuiltFileId);
+                      setFormDate(n.toISOString().slice(0,10));
+                      setFormTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`);
+                      setFormOpen(true);
+                    }}>
                       📅 Ütemezés
                     </button>
                   )}
@@ -933,170 +1133,7 @@ export default function SchoolRadio() {
             )}
           </div>
 
-          {/* Ütemezés form */}
-          {formOpen && (
-            <div className="sr-panel">
-              <div className="sr-panel-hdr">
-                <div className="sr-panel-title">📅 Új ütemezés</div>
-                <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                  onClick={()=>{setFormOpen(false);setFormError(null);}}>✕</button>
-              </div>
-              <div className="sr-form">
-                {formError && <div className="sr-alert sr-alert-error"><span>⚠️</span>{formError}</div>}
-                <div>
-                  <label className="sr-label">Hangfájl</label>
-                  <select className="sr-select" value={formFileId} onChange={e=>setFormFileId(e.target.value)}>
-                    <option value="">Válassz hangfájlt…</option>
-                    {files.map(f => <option key={f.id} value={f.id}>{f.originalName} ({fmtDuration(f.durationSec)})</option>)}
-                  </select>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <div>
-                    <label className="sr-label">Dátum</label>
-                    <input type="date" className="sr-input" value={formDate}
-                      min={new Date().toISOString().slice(0,10)} onChange={e=>setFormDate(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="sr-label">Kezdési idő</label>
-                    <input type="time" className="sr-input" value={formTime} onChange={e=>setFormTime(e.target.value)} />
-                  </div>
-                </div>
-                {formDate && formTime && previewFile && (
-                  <div className="sr-time-preview">
-                    <span>⏰</span>
-                    <div>
-                      <div style={{fontWeight:800}}>{formDate} {formTime}{previewEnd&&<span style={{color:"#475569"}}> → {previewEnd}</span>}</div>
-                      <div style={{fontSize:11,color:"#475569",marginTop:2}}>Hossz: {fmtDuration(previewFile.durationSec)}</div>
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <div className="sr-label">Lejátszó eszközök</div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-                    {(["ALL","DEVICE","GROUP"] as const).map(t => (
-                      <div key={t} className={`sr-chip${formTarget===t?" active":""}`}
-                        onClick={()=>{setFormTarget(t);setFormTargetId("");}}>
-                        {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
-                      </div>
-                    ))}
-                  </div>
-                  {formTarget==="DEVICE" && (
-                    <div className="sr-device-list">
-                      {devices.length===0
-                        ? <div style={{fontSize:13,color:"var(--sl-muted)",padding:8}}>Nincs elérhető eszköz</div>
-                        : devices.map(d => (
-                          <div key={d.id} className={`sr-device-item${formTargetId===d.id?" sel":""}`}
-                            onClick={()=>setFormTargetId(formTargetId===d.id?"":d.id)}>
-                            <span className={d.online?"sr-dot-on":"sr-dot-off"} />
-                            <span style={{fontSize:13.5,fontWeight:600}}>{d.name}</span>
-                            <span style={{fontSize:11,color:"var(--sl-muted)",marginLeft:"auto"}}>{d.deviceClass}</span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                  {formTarget==="GROUP" && (
-                    <select className="sr-select" value={formTargetId} onChange={e=>setFormTargetId(e.target.value)}>
-                      <option value="">Válassz csoportot…</option>
-                      {groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  )}
-                </div>
-                <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                  <button className="sr-btn sr-btn-ghost" type="button"
-                    onClick={()=>{setFormOpen(false);setFormError(null);}} disabled={formBusy}>Mégse</button>
-                  <button className="sr-btn sr-btn-primary" type="button"
-                    onClick={()=>void submitSchedule()} disabled={formBusy}>
-                    {formBusy?"⏳ Mentés…":"📅 Ütemezés hozzáadása"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* ═══ JOBB PANEL: Ütemezések ═══ */}
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-          {/* Közelgő lejátszások */}
-          <div className="sr-panel">
-            <div className="sr-panel-hdr">
-              <div className="sr-panel-title">⏰ Közelgő lejátszások</div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"var(--sl-muted)"}}>{upcomingSchedules.length} aktív</span>
-                <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
-                  onClick={()=>{setFormOpen(true);setFormDate(new Date().toISOString().slice(0,10));}}>
-                  ＋ Új ütemezés
-                </button>
-              </div>
-            </div>
-
-            {upcomingSchedules.length === 0 ? (
-              <div className="sr-empty">
-                <div className="sr-empty-icon">⏰</div>
-                <div style={{fontSize:13,fontWeight:700}}>Nincs közelgő lejátszás</div>
-              </div>
-            ) : upcomingSchedules.map(s => {
-              const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
-              const targetLabel = s.targetType==="ALL"?"📡 Összes":s.targetType==="DEVICE"?"🔊 Egyedi":"👥 Csoport";
-              const isWarn = checkTeachingHourOverlap(new Date(s.scheduledAt), s.radioFile.durationSec, mainBells);
-              return (
-                <div key={s.id} className="sr-sched-item">
-                  <div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span className="sr-sched-time">{fmtDateTimeFull(s.scheduledAt)}</span>
-                      {endTime && <span className="sr-sched-end">→ {endTime}</span>}
-                      {isWarn && <span className="sr-lesson-warn">⚠️ Tanítási óra</span>}
-                    </div>
-                    <div className="sr-sched-file" title={s.radioFile.originalName}>
-                      🎵 {s.radioFile.originalName}
-                      {s.radioFile.durationSec && <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>}
-                    </div>
-                    <div className="sr-sched-target">{targetLabel}</div>
-                  </div>
-                  <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
-                    onClick={()=>void deleteSchedule(s.id)}>🗑</button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Korábbi lejátszások */}
-          <div className="sr-panel">
-            <div className="sr-panel-hdr">
-              <div className="sr-panel-title">🕐 Korábbi lejátszások</div>
-              <span style={{fontSize:12,color:"var(--sl-muted)"}}>utolsó 30</span>
-            </div>
-            {pastSchedules.length === 0 ? (
-              <div className="sr-empty">
-                <div className="sr-empty-icon">🕐</div>
-                <div style={{fontSize:13,fontWeight:700}}>Még nem volt lejátszás</div>
-              </div>
-            ) : pastSchedules.map(s => {
-              const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.PENDING;
-              const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
-              const targetLabel = s.targetType==="ALL"?"📡 Összes":s.targetType==="DEVICE"?"🔊 Egyedi":"👥 Csoport";
-              return (
-                <div key={s.id} className="sr-sched-item sr-sched-past">
-                  <div>
-                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <span className="sr-sched-time" style={{color:"var(--sl-muted)",fontSize:13}}>{fmtDateTimeFull(s.scheduledAt)}</span>
-                      {endTime && <span className="sr-sched-end">→ {endTime}</span>}
-                      <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"44"}}>{badge.label}</span>
-                    </div>
-                    <div className="sr-sched-file" title={s.radioFile.originalName}>
-                      🎵 {s.radioFile.originalName}
-                      {s.radioFile.durationSec && <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>}
-                    </div>
-                    <div className="sr-sched-target">{targetLabel}</div>
-                  </div>
-                  <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" title="Újraütemezés"
-                    onClick={()=>{setFormFileId(s.radioFileId);setFormOpen(true);}}>
-                    🔁 Újra
-                  </button>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>
