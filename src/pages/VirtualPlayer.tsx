@@ -390,14 +390,24 @@ export default function VirtualPlayer() {
   const radioStateRef  = useRef<RadioState | null>(null);
 
   // ── SyncCast – WebSocket + időszinkron ────────────────────────────────────
-  const wsRef              = useRef<WebSocket | null>(null);
-  const wsReconnectRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsRef               = useRef<WebSocket | null>(null);
+  const wsReconnectRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const serverTimeOffsetRef = useRef<number>(0);   // ms: szerveridő - böngészőidő
+
+  // JAVÍTÁS: pendingPreparesRef action/url/text/title mezőkkel bővítve.
+  // Ezek szükségesek az overlay megjelenítéséhez a PLAY fázisban,
+  // mivel a PLAY üzenet csak commandId-t és playAt-ot tartalmaz.
   const pendingPreparesRef  = useRef<Map<string, {
     audio:       HTMLAudioElement;
     audioBuffer: AudioBuffer | null;  // pre-decoded – PLAY-kor azonnal ütemez
     startedAt:   number;
+    // SyncCast PREPARE metaadatok – overlay rekonstruáláshoz
+    action:      string;
+    url?:        string;
+    text?:       string;
+    title?:      string;
   }>>(new Map());
+
   // Az aktuális aktív üzenet action típusa – ref hogy closure-okból mindig friss legyen
   const activeMsgActionRef = useRef<string>("");
   // Offline csengetés deduplikáció
@@ -721,6 +731,18 @@ export default function VirtualPlayer() {
       const soundFile = cmd.url.split("/").pop() ?? "";
       if (bellBuffers.has(soundFile)) {
         const bufferMs = Date.now() - startedAt;
+        // JAVÍTÁS: metaadatok mentése BELL esetén is (overlay megjelenítéshez)
+        const audio = new Audio();
+        audio.src = cmd.url;
+        pendingPreparesRef.current.set(cmd.commandId, {
+          audio,
+          audioBuffer: null,
+          startedAt,
+          action: cmd.action,
+          url:    cmd.url,
+          text:   cmd.text,
+          title:  cmd.title,
+        });
         wsRef.current?.send(JSON.stringify({
           type: "READY_ACK", commandId: cmd.commandId,
           deviceId: clientId, readyAt: new Date().toISOString(), bufferMs,
@@ -733,7 +755,19 @@ export default function VirtualPlayer() {
     audio.preload = "auto";
     audio.volume  = volumeRef.current / 10;
     audio.src     = cmd.url;
-    pendingPreparesRef.current.set(cmd.commandId, { audio, audioBuffer: null, startedAt });
+
+    // JAVÍTÁS: metaadatokat is eltároljuk, hogy a PLAY fázisban
+    // rekonstruálni tudjuk az overlay payloadot anélkül, hogy
+    // a pendingPreparesRef bejegyzést már töröltük volna.
+    pendingPreparesRef.current.set(cmd.commandId, {
+      audio,
+      audioBuffer: null,
+      startedAt,
+      action: cmd.action,
+      url:    cmd.url,
+      text:   cmd.text,
+      title:  cmd.title,
+    });
 
     const deadline  = new Date(cmd.prepareDeadline).getTime();
     const timeoutMs = Math.max(100, deadline - Date.now() - 200);
@@ -852,20 +886,58 @@ export default function VirtualPlayer() {
         }
 
         if (msg.phase === "PLAY") {
-          handlePlay(msg as PlayCmd);
-          // A PLAY után a handleCommand-ot is kell hívni az overlay-hez
-          // A pending prepare alapján rekonstruáljuk a payloadot
-          const prepare = pendingPreparesRef.current.get(msg.commandId);
+          const playCmd = msg as PlayCmd;
+
+          // ── JAVÍTÁS: pendingPreparesRef olvasása ELŐBB, mint handlePlay ──────
+          // handlePlay() törli a pendingPrepares bejegyzést (AudioContext path),
+          // ezért a prepare metaadatokat ki kell nyerni MIELŐTT meghívjuk.
+          // A korábbi kódban ez fordítva volt → prepare mindig null lett.
+          const prepare    = pendingPreparesRef.current.get(playCmd.commandId);
+          const serverNow  = Date.now() + serverTimeOffsetRef.current;
+          const delayMs    = Math.max(0, new Date(playCmd.playAt).getTime() - serverNow);
+
+          // 1. Audio lejátszás ütemezése (ez törölheti a pendingPrepares bejegyzést)
+          handlePlay(playCmd);
+
+          // 2. Overlay megjelenítése pontosan playAt-kor
           if (prepare) {
-            // overlay és state kezelés – szintetikus command
-            const syntheticCmd = {
-              id: msg.commandId,
-              payload: { action: "BELL", url: prepare.audio.src } as CommandPayload,
+            const overlayPayload: CommandPayload = {
+              action: prepare.action as CommandPayload["action"],
+              url:    prepare.url,
+              text:   prepare.text,
+              title:  prepare.title ?? (
+                prepare.action === "TTS"      ? "Üzenet"      :
+                prepare.action === "PLAY_URL" ? "Iskolarádió" : undefined
+              ),
+              // Rádió forrás jelzése az overlay helyes megjelenítéséhez
+              source: prepare.action === "PLAY_URL" ? "RADIO" : undefined,
             };
-            // Delay-t a handlePlay már beállította, itt csak az overlay-t kezeljük
-            const serverNow = Date.now() + serverTimeOffsetRef.current;
-            const delayMs   = Math.max(0, new Date(msg.playAt).getTime() - serverNow);
-            setTimeout(() => void handleCommand(syntheticCmd), delayMs);
+
+            const showOverlay = () => {
+              if (prepare.action === "TTS") {
+                const readingMs = prepare.text ? calcReadingMs(prepare.text) : 0;
+                showMsg(overlayPayload, readingMs);
+                // TTS esetén rádió szüneteltetése (ha játszik)
+                const mainAudio = audioRef.current;
+                if (mainAudio && radioStateRef.current?.isPlaying && !mainAudio.paused) {
+                  radioStateRef.current.currentTime = mainAudio.currentTime;
+                  mainAudio.pause();
+                }
+              } else if (prepare.action === "PLAY_URL" && prepare.url) {
+                const isStream = !prepare.url.match(/\.(mp3|wav|ogg|aac|m4a)(\?|$)/i);
+                radioStateRef.current = {
+                  url: prepare.url, currentTime: 0, isStream, isPlaying: true,
+                };
+                showMsg(overlayPayload);
+              }
+              // BELL esetén nincs overlay – a playBell saját sávot mutat
+            };
+
+            if (delayMs > 50) {
+              setTimeout(showOverlay, delayMs);
+            } else {
+              showOverlay();
+            }
           }
           return;
         }
@@ -889,7 +961,7 @@ export default function VirtualPlayer() {
       console.warn("[VP-SYNC] WS hiba:", e);
       ws.close();
     };
-  }, [syncClock, handlePrepare, handlePlay, handleCommand]);
+  }, [syncClock, handlePrepare, handlePlay, handleCommand, showMsg]);
 
 
   // ── Offline csengetés ticker (10 mp-enként fut) ───────────────────────────
@@ -962,8 +1034,6 @@ export default function VirtualPlayer() {
   }, [fetchBells]);
 
   // ── PLAYER automatikus újrabejelentkezés (token lejárat esetén) ────────────
-  // A PLAYER fiók jelszava a token-ben tárolt email-ből visszafejthető,
-  // de ezt nem tároljuk – helyette a localStorage-ban mentett hitelesítő adatokat használjuk.
   const reloginPlayer = useCallback(async () => {
     try {
       const storedCreds = localStorage.getItem("vpCredentials");
