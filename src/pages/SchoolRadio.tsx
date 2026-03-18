@@ -853,11 +853,10 @@ export default function SchoolRadio() {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
-          {/* Közelgő lejátszások */}
+        {/* Közelgő lejátszások */}
           <div className="sr-panel">
             <div className="sr-panel-hdr">
               <div className="sr-panel-title">⏰ Közelgő lejátszások</div>
@@ -904,7 +903,6 @@ export default function SchoolRadio() {
               );
             })}
           </div>
-
 
           {/* ═══ Playlist összeállító ═══ */}
           <div className="sr-panel">
