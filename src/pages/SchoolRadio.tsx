@@ -665,9 +665,6 @@ export default function SchoolRadio() {
       <div className="sr-layout">
 
         {/* ═══ BAL PANEL ═══ */}
-        <div className="sr-layout">
-
-        {/* ═══ BAL PANEL ═══ */}
         <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
           {/* Hangfájl könyvtár */}
@@ -1134,7 +1131,6 @@ export default function SchoolRadio() {
           </div>
 
 
-        </div>
       </div>
     </div>
   );
