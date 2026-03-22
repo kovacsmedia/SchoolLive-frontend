@@ -406,11 +406,11 @@ export default function Devices() {
     } catch { setTenants([]); }
   }
 
+  // Inicializálás
   useEffect(() => {
     void loadDevices();
     void loadPendingWeb();
     void loadPendingNative();
-    healthTimer.current = window.setInterval(loadDevices, 10_000);
     if (canWrite) void loadTenants();
     return () => {
       if (healthTimer.current)  window.clearInterval(healthTimer.current);
@@ -418,6 +418,17 @@ export default function Devices() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Gyors polling ha aktív OTA van (2s), egyébként 10s
+  useEffect(() => {
+    const hasActiveOta = devices.some(d =>
+      d.otaStatus === "DOWNLOADING" || d.otaStatus === "INSTALLING" || d.otaStatus === "PENDING"
+    );
+    const interval = hasActiveOta ? 2000 : 10000;
+    if (healthTimer.current) window.clearInterval(healthTimer.current);
+    healthTimer.current = window.setInterval(loadDevices, interval);
+    return () => { if (healthTimer.current) window.clearInterval(healthTimer.current); };
+  }, [devices]);
 
   function openPending() {
     setPendingOpen(true);
@@ -581,9 +592,13 @@ export default function Devices() {
                           <div>
                             <span className="dv-badge" style={{ background:ob.bg, color:ob.color, borderColor:ob.border, fontSize:11 }}>
                               {ob.icon} {ob.label}
+                              {(os==="DOWNLOADING"||os==="INSTALLING") && (d.otaProgress??0)>0 &&
+                                ` ${d.otaProgress}%`}
                             </span>
-                            {(os==="DOWNLOADING"||os==="INSTALLING") && (d.otaProgress??0)>0 && (
-                              <div className="dv-ota-bar"><div className="dv-ota-fill" style={{width:`${d.otaProgress}%`}}/></div>
+                            {(os==="DOWNLOADING"||os==="INSTALLING") && (
+                              <div className="dv-ota-bar" style={{width:120,marginTop:4}}>
+                                <div className="dv-ota-fill" style={{width:`${d.otaProgress??0}%`}}/>
+                              </div>
                             )}
                           </div>
                         );
