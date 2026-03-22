@@ -28,6 +28,17 @@ function backendToUi(role:BackendRole):UiRole {
   if (role==="TENANT_ADMIN") return "ADMIN"; if (role==="ORG_ADMIN") return "EDITOR"; if (role==="PLAYER") return "PLAYER"; return "CONTRIBUTOR";
 }
 
+// Bejelentkezett felhasználó szerepköre a JWT-ből
+function getMyRole(): BackendRole {
+  try {
+    const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+    if (!token) return "";
+    const b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const decoded = JSON.parse(atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "=")));
+    return decoded.role ?? "";
+  } catch { return ""; }
+}
+
 const ROLE_COLORS:Record<string,{bg:string;color:string;border:string}> = {
   SUPER_ADMIN: {bg:"#f5f3ff",color:"#7c3aed",border:"#ddd6fe"},
   TENANT_ADMIN:{bg:"#eff6ff",color:"#1d4ed8",border:"#bfdbfe"},
@@ -53,6 +64,8 @@ const CSS = `
   .us-btn-ghost:hover:not(:disabled){background:var(--sl-border)}
   .us-btn-danger{background:#fff5f5;border:1.5px solid #fecaca;color:#dc2626}
   .us-btn-danger:hover:not(:disabled){background:#fee2e2}
+  .us-btn-danger-solid{background:#dc2626;border:1.5px solid #dc2626;color:#fff}
+  .us-btn-danger-solid:hover:not(:disabled){background:#b91c1c;border-color:#b91c1c}
   .us-btn-sm{padding:5px 11px;font-size:12px;border-radius:8px}
   .us-card{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(59,130,246,0.07)}
   .us-table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -106,14 +119,17 @@ export default function Users() {
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
   const [q, setQ]             = useState("");
-  const [isCreateOpen, setIsCreateOpen]   = useState(false);
-  const [isEditOpen, setIsEditOpen]       = useState(false);
+  const [isCreateOpen, setIsCreateOpen]     = useState(false);
+  const [isEditOpen, setIsEditOpen]         = useState(false);
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [userMessages,    setUserMessages]    = useState<UserMessage[]>([]);
   const [userMsgLoading,  setUserMsgLoading]  = useState(false);
   const [selectedUser, setSelectedUser]   = useState<UserDto|null>(null);
   const [form, setForm] = useState<UserFormState>({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
-  const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete">(null);
+  const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete"|"deactivate">(null);
+
+  const myRole = getMyRole();
+  const canDelete = myRole === "SUPER_ADMIN" || myRole === "TENANT_ADMIN";
 
   async function openMessages(user: UserDto) {
     setSelectedUser(user);
@@ -146,6 +162,7 @@ export default function Users() {
   function openEdit(u:UserDto) {
     setSelectedUser(u); setForm({ email:u.email??"",displayName:u.displayName??"",uiRole:backendToUi(u.role),password:"",isActive:typeof u.isActive==="boolean"?u.isActive:true }); setIsEditOpen(true);
   }
+
   async function submitCreate() {
     setError(null);
     if (!form.email.trim()) { setError("E-mail megadása kötelező."); return; }
@@ -159,6 +176,7 @@ export default function Users() {
     } catch (e) { setError("Nem sikerült létrehozni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
+
   async function submitUpdate() {
     if (!selectedUser) return; setError(null);
     if (!form.email.trim()) { setError("E-mail kötelező."); return; }
@@ -172,14 +190,32 @@ export default function Users() {
     } catch (e) { setError("Nem sikerült módosítani. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
+
+  // Deaktiválás – isActive = false
   async function doDeactivate(u:UserDto) {
-    if (!window.confirm(`Biztos deaktiválod? (${u.email})`)) return;
-    setError(null); setBusyAction("delete");
+    if (!window.confirm(`Biztosan deaktiválod ezt a felhasználót?\n${u.email}\n\nA fiók megmarad, de a felhasználó nem tud bejelentkezni.`)) return;
+    setError(null); setBusyAction("deactivate");
     try {
-      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{method:"DELETE"});
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{
+        method:"PATCH",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ isActive: false }),
+      });
       if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
+    finally { setBusyAction(null); }
+  }
+
+  // Törlés – végleges
+  async function doDelete(u:UserDto) {
+    if (!window.confirm(`⚠️ VÉGLEGES TÖRLÉS ⚠️\n\nBiztosan törlöd ezt a felhasználót?\n${u.email}\n\nEz a művelet nem visszavonható!`)) return;
+    setError(null); setBusyAction("delete");
+    try {
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{ method:"DELETE" });
+      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      await loadUsers();
+    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
@@ -265,6 +301,14 @@ export default function Users() {
               {filtered.map(u => {
                 const rc = ROLE_COLORS[u.role] || { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
                 const active = typeof u.isActive==="boolean" ? u.isActive : true;
+                const isSelf = (() => {
+                  try {
+                    const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+                    const b64 = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+                    const decoded = JSON.parse(atob(b64.padEnd(b64.length + (4 - b64.length % 4) % 4, "=")));
+                    return decoded.sub === u.id;
+                  } catch { return false; }
+                })();
                 return (
                   <tr key={u.id}>
                     <td><strong style={{ fontWeight:700, fontSize:13.5 }}>{u.email}</strong></td>
@@ -283,7 +327,28 @@ export default function Users() {
                       <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openMessages(u)} type="button">📧</button>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
-                        <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
+                        {canDelete && !isSelf && active && (
+                          <button
+                            className="us-btn us-btn-danger us-btn-sm"
+                            onClick={() => void doDeactivate(u)}
+                            disabled={busyAction==="deactivate"}
+                            title="Deaktiválja a fiókot (megmarad, de nem tud bejelentkezni)"
+                            type="button"
+                          >
+                            ⏸ Deaktivál
+                          </button>
+                        )}
+                        {canDelete && !isSelf && (
+                          <button
+                            className="us-btn us-btn-danger-solid us-btn-sm"
+                            onClick={() => void doDelete(u)}
+                            disabled={busyAction==="delete"}
+                            title="Végleges törlés"
+                            type="button"
+                          >
+                            🗑 Töröl
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
