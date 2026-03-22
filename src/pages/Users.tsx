@@ -207,12 +207,12 @@ export default function Users() {
     finally { setBusyAction(null); }
   }
 
-  // Törlés – végleges
+  // Törlés – végleges (hard delete)
   async function doDelete(u:UserDto) {
     if (!window.confirm(`⚠️ VÉGLEGES TÖRLÉS ⚠️\n\nBiztosan törlöd ezt a felhasználót?\n${u.email}\n\nEz a művelet nem visszavonható!`)) return;
     setError(null); setBusyAction("delete");
     try {
-      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{ method:"DELETE" });
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}?permanent=true`,{ method:"DELETE" });
       if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
