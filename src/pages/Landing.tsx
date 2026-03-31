@@ -24,7 +24,7 @@ export default function Landing() {
     e.preventDefault();
     setSending(true); setSendError(null);
     try {
-      const resp = await fetch("/contact", {
+        const resp = await fetch("https://api.schoollive.hu/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
