@@ -37,12 +37,14 @@ function fmtDate(d: Date): string {
   return d.toLocaleDateString("hu-HU", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 }
 function nextBellLabel(bells: BellEntry[]): string | null {
-  const now  = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
+  const now    = new Date();
+  // Másodpercalapú összehasonlítás – percalapúnál a 12:45:00-kor
+  // eltűnik a 12:45-ös csengő mielőtt a ticker (5s) még lejátszotta volna
+  const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
   const next = bells
-    .map(b => ({ ...b, totalMin: b.hour * 60 + b.minute }))
-    .filter(b => b.totalMin > mins)
-    .sort((a, b) => a.totalMin - b.totalMin)[0];
+    .map(b => ({ ...b, bellSec: b.hour * 3600 + b.minute * 60 }))
+    .filter(b => b.bellSec >= nowSec - 10)  // 10mp tolerancia a ticker késéshez
+    .sort((a, b) => a.bellSec - b.bellSec)[0];
   if (!next) return null;
   return `${String(next.hour).padStart(2,"0")}:${String(next.minute).padStart(2,"0")}`;
 }
