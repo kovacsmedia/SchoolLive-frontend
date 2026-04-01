@@ -52,6 +52,11 @@ function excerpt(text:string|null,n=60) {
   if (!text) return "–";
   return text.length > n ? text.slice(0,n)+"…" : text;
 }
+function messageExcerpt(m: MessageItem): string {
+  if (!m.text && m.fileUrl && m.fileUrl.includes("/rec_")) return "🎙️ Hangüzenet";
+  if (!m.text) return "–";
+  return excerpt(m.text);
+}
 const VOICE_LABELS:Record<string,string> = { anna:"Anna (női)", berta:"Berta (női)", imre:"Imre (férfi)" };
 const API_BASE = (import.meta as any).env?.VITE_API_BASE ?? "https://api.schoollive.hu";
 
@@ -487,9 +492,7 @@ export default function Messages() {
               {canDelete ? (
                 <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelect(m.id)} style={{width:15,height:15,cursor:"pointer",flexShrink:0}} />
               ) : <span />}
-              <div className="ms-msg-excerpt">
-                {m.type === "RECORDING" ? "🎙️ Hangfelvétel" : excerpt(m.text)}
-              </div>
+              <div className="ms-msg-excerpt">{messageExcerpt(m)}</div>
               <div className="ms-msg-meta">{m.createdBy.displayName||m.createdBy.email}</div>
               <div className="ms-msg-time">
                 {m.playedAt ? formatDate(m.playedAt) : m.scheduledAt ? `⏰ ${formatDate(m.scheduledAt)}` : formatDate(m.createdAt)}
