@@ -28,7 +28,6 @@ function backendToUi(role:BackendRole):UiRole {
   if (role==="TENANT_ADMIN") return "ADMIN"; if (role==="ORG_ADMIN") return "EDITOR"; if (role==="PLAYER") return "PLAYER"; return "CONTRIBUTOR";
 }
 
-// Bejelentkezett felhasználó szerepköre a JWT-ből
 function getMyRole(): BackendRole {
   try {
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
@@ -114,6 +113,77 @@ function Modal({ title, icon, onClose, children }: { title:string; icon:string; 
 
 type UserFormState = { email:string; displayName:string; uiRole:UiRole; password:string; isActive:boolean };
 
+// ── UserForm kiemelve a Users komponensből ────────────────────────────────────
+// FONTOS: ha belül lenne definiálva, minden state változáskor
+// unmount+remount történne és elveszne a fókusz!
+function UserForm({ form, setForm, isEdit }: {
+  form: UserFormState;
+  setForm: React.Dispatch<React.SetStateAction<UserFormState>>;
+  isEdit: boolean;
+}) {
+  return (
+    <>
+      <div className="us-grid2">
+        <div>
+          <label className="us-label">E-mail cím *</label>
+          <input
+            className="us-input"
+            type="email"
+            value={form.email}
+            onChange={e => setForm(s => ({ ...s, email: e.target.value }))}
+            placeholder="pl. tanar@iskola.hu"
+          />
+        </div>
+        <div>
+          <label className="us-label">Megjelenített név</label>
+          <input
+            className="us-input"
+            value={form.displayName}
+            onChange={e => setForm(s => ({ ...s, displayName: e.target.value }))}
+            placeholder="pl. Kiss Péter"
+          />
+          <div className="us-hint">Opcionális</div>
+        </div>
+      </div>
+      <div className="us-grid2">
+        <div>
+          <label className="us-label">Szerepkör</label>
+          <select
+            className="us-select"
+            value={form.uiRole}
+            onChange={e => setForm(s => ({ ...s, uiRole: e.target.value as UiRole }))}
+          >
+            {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
+          </select>
+          <div className="us-hint">{UI_ROLE_OPTIONS.find(r => r.uiRole === form.uiRole)?.description}</div>
+        </div>
+        <div>
+          <label className="us-label">Státusz</label>
+          <label className="us-check-row" style={{ marginTop: 10 }}>
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={e => setForm(s => ({ ...s, isActive: e.target.checked }))}
+            />
+            Aktív felhasználó
+          </label>
+        </div>
+      </div>
+      <div>
+        <label className="us-label">Jelszó</label>
+        <input
+          type="password"
+          className="us-input"
+          value={form.password}
+          onChange={e => setForm(s => ({ ...s, password: e.target.value }))}
+          placeholder="Minimum 6 karakter"
+        />
+        <div className="us-hint">{isEdit ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
+      </div>
+    </>
+  );
+}
+
 export default function Users() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
@@ -157,10 +227,14 @@ export default function Users() {
   }, [q, users]);
 
   function openCreate() {
-    setSelectedUser(null); setForm({ email:"",displayName:"",uiRole:"CONTRIBUTOR",password:"",isActive:true }); setIsCreateOpen(true);
+    setSelectedUser(null);
+    setForm({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
+    setIsCreateOpen(true);
   }
   function openEdit(u:UserDto) {
-    setSelectedUser(u); setForm({ email:u.email??"",displayName:u.displayName??"",uiRole:backendToUi(u.role),password:"",isActive:typeof u.isActive==="boolean"?u.isActive:true }); setIsEditOpen(true);
+    setSelectedUser(u);
+    setForm({ email:u.email??"", displayName:u.displayName??"", uiRole:backendToUi(u.role), password:"", isActive:typeof u.isActive==="boolean"?u.isActive:true });
+    setIsEditOpen(true);
   }
 
   async function submitCreate() {
@@ -191,23 +265,17 @@ export default function Users() {
     finally { setBusyAction(null); }
   }
 
-  // Deaktiválás – isActive = false
   async function doDeactivate(u:UserDto) {
     if (!window.confirm(`Biztosan deaktiválod ezt a felhasználót?\n${u.email}\n\nA fiók megmarad, de a felhasználó nem tud bejelentkezni.`)) return;
     setError(null); setBusyAction("deactivate");
     try {
-      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{
-        method:"PATCH",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ isActive: false }),
-      });
+      const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ isActive: false }) });
       if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
       await loadUsers();
     } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
-  // Törlés – végleges (hard delete)
   async function doDelete(u:UserDto) {
     if (!window.confirm(`⚠️ VÉGLEGES TÖRLÉS ⚠️\n\nBiztosan törlöd ezt a felhasználót?\n${u.email}\n\nEz a művelet nem visszavonható!`)) return;
     setError(null); setBusyAction("delete");
@@ -217,45 +285,6 @@ export default function Users() {
       await loadUsers();
     } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
     finally { setBusyAction(null); }
-  }
-
-  function UserForm() {
-    return (
-      <>
-        <div className="us-grid2">
-          <div>
-            <label className="us-label">E-mail cím *</label>
-            <input className="us-input" type="email" value={form.email} onChange={e => setForm(s=>({...s,email:e.target.value}))} placeholder="pl. tanar@iskola.hu" />
-          </div>
-          <div>
-            <label className="us-label">Megjelenített név</label>
-            <input className="us-input" value={form.displayName} onChange={e => setForm(s=>({...s,displayName:e.target.value}))} placeholder="pl. Kiss Péter" />
-            <div className="us-hint">Opcionális</div>
-          </div>
-        </div>
-        <div className="us-grid2">
-          <div>
-            <label className="us-label">Szerepkör</label>
-            <select className="us-select" value={form.uiRole} onChange={e => setForm(s=>({...s,uiRole:e.target.value as UiRole}))}>
-              {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
-            </select>
-            <div className="us-hint">{UI_ROLE_OPTIONS.find(r=>r.uiRole===form.uiRole)?.description}</div>
-          </div>
-          <div>
-            <label className="us-label">Státusz</label>
-            <label className="us-check-row" style={{ marginTop:10 }}>
-              <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
-              Aktív felhasználó
-            </label>
-          </div>
-        </div>
-        <div>
-          <label className="us-label">Jelszó</label>
-          <input type="password" className="us-input" value={form.password} onChange={e => setForm(s=>({...s,password:e.target.value}))} placeholder="Minimum 6 karakter" />
-          <div className="us-hint">{isEditOpen ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
-        </div>
-      </>
-    );
   }
 
   return (
@@ -328,24 +357,12 @@ export default function Users() {
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openMessages(u)} type="button">📧</button>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
                         {canDelete && !isSelf && active && (
-                          <button
-                            className="us-btn us-btn-danger us-btn-sm"
-                            onClick={() => void doDeactivate(u)}
-                            disabled={busyAction==="deactivate"}
-                            title="Deaktiválja a fiókot (megmarad, de nem tud bejelentkezni)"
-                            type="button"
-                          >
+                          <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="deactivate"} type="button">
                             ⏸ Deaktivál
                           </button>
                         )}
                         {canDelete && !isSelf && (
-                          <button
-                            className="us-btn us-btn-danger-solid us-btn-sm"
-                            onClick={() => void doDelete(u)}
-                            disabled={busyAction==="delete"}
-                            title="Végleges törlés"
-                            type="button"
-                          >
+                          <button className="us-btn us-btn-danger-solid us-btn-sm" onClick={() => void doDelete(u)} disabled={busyAction==="delete"} type="button">
                             🗑 Töröl
                           </button>
                         )}
@@ -362,7 +379,9 @@ export default function Users() {
       {/* Create modal */}
       {isCreateOpen && (
         <Modal title="Új felhasználó" icon="👤" onClose={() => setIsCreateOpen(false)}>
-          <div className="us-modal-body"><UserForm /></div>
+          <div className="us-modal-body">
+            <UserForm form={form} setForm={setForm} isEdit={false} />
+          </div>
           <div className="us-modal-footer">
             <button className="us-btn us-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
             <button className="us-btn us-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
@@ -376,7 +395,7 @@ export default function Users() {
       {isEditOpen && selectedUser && (
         <Modal title={`Szerkesztés: ${selectedUser.email}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
           <div className="us-modal-body">
-            <UserForm />
+            <UserForm form={form} setForm={setForm} isEdit={true} />
             <div className="us-meta-row">
               <span>Létrehozva: {formatDT(selectedUser.createdAt)}</span>
               <span>Utolsó belépés: {formatDT(selectedUser.lastLoginAt)}</span>
