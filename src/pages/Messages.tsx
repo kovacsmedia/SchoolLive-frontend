@@ -366,7 +366,8 @@ export default function Messages() {
       if (scheduledAt) formData.append("scheduledAt", scheduledAt);
 
       const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
-      const tenantId = sessionStorage.getItem("tenantId") ?? localStorage.getItem("tenantId") ?? "";
+      // "activeTenantId" – ugyanaz a kulcs mint BellSchedule/Devices/SchoolRadio oldalakon
+      const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
 
       const resp = await fetch(`${API_BASE}/messages/audio`, {
         method: "POST",
