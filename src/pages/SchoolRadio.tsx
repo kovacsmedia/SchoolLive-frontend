@@ -1,5 +1,6 @@
 // src/pages/SchoolRadio.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
+import { stripAccents } from "../lib/text";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -63,23 +64,25 @@ type NetRadio = {
 // érdemes ellenőrizni; alstreameket (műfaj-specifikus csatornákat) a UI-n
 // keresztül lehet hozzáadni mindegyik adóhoz. A felhasználó az egész listát
 // bővítheti / törölheti / visszaállíthatja az alapértelmezettre.
+// Az UI ékezet-mentesen tárolja és jeleníti meg a rádióneveket
+// (lásd `stripAccents`), ezért a seed is ékezet nélküli.
 const NET_RADIOS_INITIAL: NetRadio[] = [
-  { id: "oxygen-music",   name: "Oxygen Music",     genre: "pop / dance",       streams: [{ label: "Főadás", url: "https://onair.oxygenmusic.hu/oxygenmusic.mp3" }] },
-  { id: "radio-1",        name: "Rádió 1",          genre: "kereskedelmi pop",  streams: [{ label: "Főadás", url: "https://stream.radio1.hu/radio1.mp3" }] },
-  { id: "retro-radio",    name: "Retro Rádió",      genre: "retro",             streams: [{ label: "Főadás", url: "https://icast.connectmedia.hu/5201/retroradio.mp3" }] },
-  { id: "petofi-radio",   name: "Petőfi Rádió",     genre: "közszolgálati pop", streams: [{ label: "Főadás", url: "https://icast.connectmedia.hu/4736/mr2.mp3" }] },
-  { id: "laza-radio",     name: "Laza Rádió",       genre: "soft pop / chill",  streams: [{ label: "Főadás", url: "" }] },
-  { id: "megadance",      name: "Megadance Rádió",  genre: "dance / EDM",       streams: [{ label: "Főadás", url: "" }] },
-  { id: "radio-sunrise",  name: "Radio Sunrise",    genre: "chill / lounge",    streams: [{ label: "Főadás", url: "" }] },
-  { id: "juventus-radio", name: "Juventus Rádió",   genre: "kereskedelmi pop",  streams: [{ label: "Főadás", url: "" }] },
-  { id: "radio-gaga",     name: "Rádió GaGa",       genre: "magyar zene",       streams: [{ label: "Főadás", url: "" }] },
-  { id: "radio-88",       name: "Rádió 88",         genre: "kereskedelmi",      streams: [{ label: "Főadás", url: "" }] },
-  { id: "poptarisznya",   name: "Poptarisznya",     genre: "retro / oldies",    streams: [{ label: "Főadás", url: "" }] },
-  { id: "sunshine-radio", name: "Sunshine Rádió",   genre: "pop / chart",       streams: [{ label: "Főadás", url: "" }] },
-  { id: "roxy-radio",     name: "Roxy Rádió",       genre: "rock",              streams: [{ label: "Főadás", url: "" }] },
-  { id: "mix-radio",      name: "Mix Rádió",        genre: "vegyes / pop",      streams: [{ label: "Főadás", url: "" }] },
-  { id: "csukas-mese",    name: "Csukás Meserádió", genre: "gyermek / mese",    streams: [{ label: "Főadás", url: "" }] },
-  { id: "rohely-radio",   name: "Röhely Rádió",     genre: "humor / talk",      streams: [{ label: "Főadás", url: "" }] },
+  { id: "oxygen-music",   name: "Oxygen Music",     genre: "pop / dance",       streams: [{ label: "Foadas", url: "https://onair.oxygenmusic.hu/oxygenmusic.mp3" }] },
+  { id: "radio-1",        name: "Radio 1",          genre: "kereskedelmi pop",  streams: [{ label: "Foadas", url: "https://stream.radio1.hu/radio1.mp3" }] },
+  { id: "retro-radio",    name: "Retro Radio",      genre: "retro",             streams: [{ label: "Foadas", url: "https://icast.connectmedia.hu/5201/retroradio.mp3" }] },
+  { id: "petofi-radio",   name: "Petofi Radio",     genre: "kozszolgalati pop", streams: [{ label: "Foadas", url: "https://icast.connectmedia.hu/4736/mr2.mp3" }] },
+  { id: "laza-radio",     name: "Laza Radio",       genre: "soft pop / chill",  streams: [{ label: "Foadas", url: "" }] },
+  { id: "megadance",      name: "Megadance Radio",  genre: "dance / EDM",       streams: [{ label: "Foadas", url: "" }] },
+  { id: "radio-sunrise",  name: "Radio Sunrise",    genre: "chill / lounge",    streams: [{ label: "Foadas", url: "" }] },
+  { id: "juventus-radio", name: "Juventus Radio",   genre: "kereskedelmi pop",  streams: [{ label: "Foadas", url: "" }] },
+  { id: "radio-gaga",     name: "Radio GaGa",       genre: "magyar zene",       streams: [{ label: "Foadas", url: "" }] },
+  { id: "radio-88",       name: "Radio 88",         genre: "kereskedelmi",      streams: [{ label: "Foadas", url: "" }] },
+  { id: "poptarisznya",   name: "Poptarisznya",     genre: "retro / oldies",    streams: [{ label: "Foadas", url: "" }] },
+  { id: "sunshine-radio", name: "Sunshine Radio",   genre: "pop / chart",       streams: [{ label: "Foadas", url: "" }] },
+  { id: "roxy-radio",     name: "Roxy Radio",       genre: "rock",              streams: [{ label: "Foadas", url: "" }] },
+  { id: "mix-radio",      name: "Mix Radio",        genre: "vegyes / pop",      streams: [{ label: "Foadas", url: "" }] },
+  { id: "csukas-mese",    name: "Csukas Meseradio", genre: "gyermek / mese",    streams: [{ label: "Foadas", url: "" }] },
+  { id: "rohely-radio",   name: "Rohely Radio",     genre: "humor / talk",      streams: [{ label: "Foadas", url: "" }] },
 ];
 
 // localStorage helper – a user-szerkesztett lista perzisztens
@@ -90,11 +93,21 @@ function loadNetRadiosFromLS(): NetRadio[] {
     if (!raw) return NET_RADIOS_INITIAL;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return NET_RADIOS_INITIAL;
-    // Egyszerű forma-ellenőrzés
-    return parsed.filter((r: any) =>
-      r && typeof r.id === "string" && typeof r.name === "string"
-      && Array.isArray(r.streams) && r.streams.length > 0
-    );
+    // Forma-ellenőrzés + ékezet-mentesítés betöltéskor (a régebbi tárolt
+    // adatokban még lehetnek ékezetes nevek/label-ek).
+    return parsed
+      .filter((r: any) =>
+        r && typeof r.id === "string" && typeof r.name === "string"
+        && Array.isArray(r.streams) && r.streams.length > 0)
+      .map((r: any) => ({
+        id:      r.id,
+        name:    stripAccents(String(r.name)),
+        genre:   stripAccents(String(r.genre ?? "")),
+        streams: r.streams.map((s: any) => ({
+          label: stripAccents(String(s.label ?? "")),
+          url:   String(s.url ?? ""),
+        })),
+      }));
   } catch { return NET_RADIOS_INITIAL; }
 }
 function saveNetRadiosToLS(list: NetRadio[]): void {
@@ -2246,7 +2259,7 @@ export default function SchoolRadio() {
                     style={{ flex: 1 }}
                     placeholder="Összeállítás neve (pl. Szünet – dec. 5.)"
                     value={plName}
-                    onChange={(e) => setPlName(e.target.value)}
+                    onChange={(e) => setPlName(stripAccents(e.target.value))}
                   />
                   <button className="sr-btn sr-btn-primary" type="button" disabled={plBusy} onClick={buildPlaylist}>
                     {plBusy ? "⏳ Épül…" : "🔨 Összeállít"}
@@ -2320,14 +2333,14 @@ export default function SchoolRadio() {
                 <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Név</div>
                 <input className="sr-input" style={{width:"100%"}}
                   value={stationForm.name}
-                  onChange={e => setStationForm(s => s ? { ...s, name: e.target.value } : s)}
-                  placeholder="pl. Rádió 88" autoFocus />
+                  onChange={e => setStationForm(s => s ? { ...s, name: stripAccents(e.target.value) } : s)}
+                  placeholder="pl. Radio 88 (ékezetek nélkül)" autoFocus />
               </div>
               <div>
                 <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Műfaj</div>
                 <input className="sr-input" style={{width:"100%"}}
                   value={stationForm.genre}
-                  onChange={e => setStationForm(s => s ? { ...s, genre: e.target.value } : s)}
+                  onChange={e => setStationForm(s => s ? { ...s, genre: stripAccents(e.target.value) } : s)}
                   placeholder="pl. rock, retro, jazz" />
               </div>
               <div>
@@ -2342,10 +2355,10 @@ export default function SchoolRadio() {
                   {stationForm.streams.map((s, idx) => (
                     <div key={idx} className="sr-stream-row">
                       <input className="sr-input"
-                        placeholder="Label (pl. Főadás, Rock, Jazz)"
+                        placeholder="Label (pl. Foadas, Rock, Jazz)"
                         value={s.label}
                         onChange={e => setStationForm(f => f ? {
-                          ...f, streams: f.streams.map((x,i) => i===idx ? { ...x, label: e.target.value } : x),
+                          ...f, streams: f.streams.map((x,i) => i===idx ? { ...x, label: stripAccents(e.target.value) } : x),
                         } : f)} />
                       <input className="sr-input"
                         placeholder="https://stream.example.com/live.mp3"

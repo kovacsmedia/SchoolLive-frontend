@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch, apiPost } from "../lib/api";
+import { stripAccents } from "../lib/text";
 import { useAuth } from "../auth/AuthContext";
 
 type MessageItem = {
@@ -661,7 +662,7 @@ export default function Messages() {
               <div>
                 <label className="ms-label">📁 Mentés sablonként</label>
                 <div className="ms-row">
-                  <input className="ms-input" style={{flex:1,minWidth:130}} placeholder="Sablon neve…" value={templateName} onChange={e => setTemplateName(e.target.value)} />
+                  <input className="ms-input" style={{flex:1,minWidth:130}} placeholder="Sablon neve (ekezetek nelkul)…" value={templateName} onChange={e => setTemplateName(stripAccents(e.target.value))} />
                   <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={saveTemplate} disabled={savingTemplate}>{savingTemplate?"Mentés…":"💾 Mentés"}</button>
                 </div>
                 {templateMsg && <div style={{fontSize:12,marginTop:5,color:templateMsg.includes("mentve")?"#15803d":"#dc2626"}}>{templateMsg}</div>}
