@@ -1147,6 +1147,32 @@ export default function SchoolRadio() {
     }
   }
 
+  // ── Azonnali lejátszás a form-ról (▶ Azonnali gomb) ───────────────────────
+  // A formFileId-t és formTarget-et használja, és az endpoint /radio/files/:id/play-now.
+  // Időt nem kér, közvetlenül indít. A pastSchedules "🔁 Újra" gombja is ezen
+  // a formon nyitja meg a célt, és innen indíthatod azonnal vagy időzítve.
+  async function submitImmediateFromForm() {
+    setFormError(null);
+    if (!formFileId) { setFormError("Válassz hangfájlt!"); return; }
+    if (formTarget !== "ALL" && !formTargetId) {
+      setFormError("Válassz célt!"); return;
+    }
+    const file = files.find(f => f.id === formFileId);
+    if (!file) { setFormError("A fájl már nem létezik."); return; }
+    setFormBusy(true);
+    try {
+      await playFileNow(file);
+      // form zárás – sikeresen elment
+      setFormOpen(false);
+      setFormFileId("");
+      setFormError(null);
+    } catch (e: any) {
+      setFormError(e?.message ?? "Azonnali lejátszás sikertelen");
+    } finally {
+      setFormBusy(false);
+    }
+  }
+
   // ── Playlist builder – YT info lekérés ───────────────────────────────────
   async function fetchYtInfo(url: string): Promise<{ title: string; durationSec: number } | null> {
     try {
@@ -2041,6 +2067,17 @@ export default function SchoolRadio() {
                     disabled={formBusy}
                   >
                     Mégse
+                  </button>
+
+                  {/* ▶ Azonnali – a fájl rögtön szól, dátum/idő nem kell */}
+                  <button
+                    className="sr-btn sr-btn-primary"
+                    type="button"
+                    onClick={() => void submitImmediateFromForm()}
+                    disabled={formBusy || !formFileId}
+                    title="A fájl rögtön szól, dátum/idő nem kell"
+                    style={{background:"linear-gradient(135deg,#16a34a,#15803d)"}}>
+                    {formBusy ? "⏳…" : "▶ Azonnali"}
                   </button>
 
                   <button

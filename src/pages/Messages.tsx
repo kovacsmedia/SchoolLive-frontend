@@ -293,6 +293,67 @@ export default function Messages() {
   }
 
   // ── Replay (újra-bemondatás) ──────────────────────────────────────────────
+  // Két "üzemmód":
+  //  1) replayQuick(id): a régi viselkedés – ALL target, azonnal
+  //  2) Replay modal: célzás + ütemezés (next_bell / custom / immediate)
+  type ReplayForm = {
+    messageId:   string;
+    messageName: string;
+    targetType:  "ALL" | "DEVICE" | "GROUP";
+    targetId:    string;
+    schedule:    "immediate" | "next_bell" | "custom";
+    customTime:  string;
+  };
+  const [replayForm, setReplayForm] = useState<ReplayForm | null>(null);
+  const [replayBusy, setReplayBusy] = useState(false);
+
+  function openReplayModal(m: MessageItem) {
+    if (!m.fileUrl) { setSendError("Az üzenetnek nincs eltárolt fájlja."); return; }
+    setReplayForm({
+      messageId:   m.id,
+      messageName: messageExcerpt(m),
+      targetType:  (m.targetType as any) ?? "ALL",
+      targetId:    m.targetId ?? "",
+      schedule:    "immediate",
+      customTime:  "",
+    });
+  }
+
+  async function submitReplay() {
+    if (!replayForm) return;
+    if (replayForm.targetType !== "ALL" && !replayForm.targetId) {
+      setSendError("Válassz célt!"); return;
+    }
+    // Időpont számítása (mint a TTS composer-ben)
+    let scheduledAt: string | null = null;
+    if (replayForm.schedule === "next_bell") {
+      const nb = getNextBreakTime(bells);
+      if (!nb) { setSendError("Ma már nincs több szünet."); return; }
+      scheduledAt = nb.toISOString();
+    } else if (replayForm.schedule === "custom") {
+      if (!replayForm.customTime) { setSendError("Add meg az időpontot!"); return; }
+      const today = new Date().toISOString().slice(0, 10);
+      const dt = new Date(`${today}T${replayForm.customTime}:00`);
+      if (dt <= new Date()) { setSendError("A megadott időpont már elmúlt!"); return; }
+      scheduledAt = dt.toISOString();
+    }
+    setReplayBusy(true);
+    setSendError(null); setSendSuccess(false);
+    try {
+      const body: any = { targetType: replayForm.targetType };
+      if (replayForm.targetType !== "ALL") body.targetId = replayForm.targetId;
+      if (scheduledAt) body.scheduledAt = scheduledAt;
+      await apiPost(`/messages/${replayForm.messageId}/replay`, body);
+      setSendSuccess(true);
+      setReplayForm(null);
+      await loadMessages(page);
+    } catch (e:any) {
+      setSendError(e?.message ?? "Újrabemondatás sikertelen");
+    } finally {
+      setReplayBusy(false);
+    }
+  }
+
   async function replayMessage(id: string) {
     if (replayingId) return;
     setReplayingId(id);
@@ -783,10 +844,10 @@ export default function Messages() {
                       </div>
                       <button
                         className="ms-btn ms-btn-primary ms-btn-sm"
-                        onClick={() => void replayMessage(m.id)}
-                        disabled={!m.fileUrl || !!replayingId}
-                        title={m.fileUrl ? "Újra bemondatás (a tárolt fájl, már tartalmazza a dingdong-ot)" : "Nincs eltárolt fájl"}>
-                        {replayingId === m.id ? "⏳ Küldés…" : "🔁 Újra"}
+                        onClick={() => openReplayModal(m)}
+                        disabled={!m.fileUrl}
+                        title={m.fileUrl ? "Újra bemondatás (cél + időzítés választható)" : "Nincs eltárolt fájl"}>
+                        🔁 Újra
                       </button>
                       <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => setDetailMsg(m)}>Részletek</button>
                       {canDelete && (
@@ -832,6 +893,101 @@ export default function Messages() {
             </div>
             <div className="ms-modal-footer">
               <button className="ms-btn ms-btn-ghost" onClick={() => setDetailMsg(null)}>Bezárás</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Replay modal ─ újra-bemondás célzással és időzítéssel ─────────── */}
+      {replayForm && (
+        <div className="ms-overlay" onClick={() => !replayBusy && setReplayForm(null)}>
+          <div className="ms-modal" onClick={e => e.stopPropagation()}>
+            <div className="ms-modal-hdr">
+              <div className="ms-modal-title">🔁 Üzenet újra-bemondatása</div>
+              <button className="ms-close" onClick={() => !replayBusy && setReplayForm(null)}>✕</button>
+            </div>
+            <div className="ms-modal-body">
+              <div style={{fontSize:13,color:"var(--sl-muted)",background:"var(--sl-bg)",border:"1px solid var(--sl-border)",borderRadius:9,padding:"8px 12px"}}>
+                <strong style={{color:"var(--sl-text)"}}>{replayForm.messageName}</strong>
+                <div style={{fontSize:11,marginTop:3}}>A tárolt hangfájl megy ki – a dingdong nem kerül rá újra.</div>
+              </div>
+
+              {/* Cél */}
+              <div>
+                <div className="ms-label">🎯 Lejátszó eszközök</div>
+                <div className="ms-row" style={{marginBottom:10}}>
+                  {(["ALL","DEVICE","GROUP"] as const).map(t => (
+                    <div key={t}
+                      className={"ms-chip"+(replayForm.targetType===t?" active":"")}
+                      onClick={() => setReplayForm(s => s ? { ...s, targetType: t, targetId: "" } : s)}>
+                      {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
+                    </div>
+                  ))}
+                </div>
+                {replayForm.targetType==="DEVICE" && (
+                  <div className="ms-device-list">
+                    {devices.length===0 && <div style={{fontSize:13,color:"var(--sl-muted)",padding:8}}>Nincs elérhető eszköz</div>}
+                    {devices.map(d => (
+                      <div key={d.id||d.name}
+                        className={"ms-device-item"+(replayForm.targetId===d.id&&d.id!==""?" selected":"")}
+                        onClick={() => setReplayForm(s => s ? { ...s, targetId: s.targetId===d.id?"":d.id } : s)}>
+                        <span className={d.online?"ms-dot-on":"ms-dot-off"} />
+                        <span style={{fontSize:13.5,fontWeight:600}}>{d.name}</span>
+                        <span style={{fontSize:11,color:"var(--sl-muted)",marginLeft:"auto"}}>{d.deviceClass}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {replayForm.targetType==="GROUP" && (
+                  <select className="ms-select"
+                    value={replayForm.targetId}
+                    onChange={e => setReplayForm(s => s ? { ...s, targetId: e.target.value } : s)}>
+                    <option value="">Válassz csoportot…</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                )}
+              </div>
+
+              {/* Ütemezés */}
+              <div>
+                <div className="ms-label">⏰ Lejátszás időpontja</div>
+                <div className="ms-row">
+                  {(["immediate","next_bell","custom"] as const).map(s => (
+                    <div key={s}
+                      className={"ms-chip"+(replayForm.schedule===s?" active":"")}
+                      onClick={() => setReplayForm(p => p ? { ...p, schedule: s } : p)}>
+                      {s==="immediate"?"⚡ Azonnal":s==="next_bell"?"🔔 Köv. szünet":"🕐 Időpont"}
+                    </div>
+                  ))}
+                </div>
+                {replayForm.schedule==="next_bell" && (() => {
+                  const nb = getNextBreakTime(bells);
+                  return (
+                    <div style={{fontSize:12,marginTop:8,padding:"7px 11px",borderRadius:9,background:nb?"#f0fdf4":"#fef2f2",color:nb?"#15803d":"#dc2626",border:"1px solid",borderColor:nb?"#bbf7d0":"#fecaca"}}>
+                      {nb ? `⏱ Következő szünet: ${nb.toLocaleTimeString("hu-HU",{hour:"2-digit",minute:"2-digit"})}` : "⚠️ Ma már nincs több szünet."}
+                    </div>
+                  );
+                })()}
+                {replayForm.schedule==="custom" && (
+                  <div style={{marginTop:10}}>
+                    <input type="time" className="ms-input" style={{width:"auto"}}
+                      value={replayForm.customTime}
+                      onChange={e => setReplayForm(s => s ? { ...s, customTime: e.target.value } : s)} />
+                  </div>
+                )}
+              </div>
+
+              {sendError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{sendError}</div>}
+            </div>
+            <div className="ms-modal-footer">
+              <button className="ms-btn ms-btn-ghost"
+                onClick={() => setReplayForm(null)}
+                disabled={replayBusy}>Mégse</button>
+              <button className="ms-btn ms-btn-primary"
+                onClick={() => void submitReplay()}
+                disabled={replayBusy}>
+                {replayBusy ? "⏳ Küldés…" : replayForm.schedule === "immediate" ? "▶ Azonnali" : "📅 Ütemezés"}
+              </button>
             </div>
           </div>
         </div>
