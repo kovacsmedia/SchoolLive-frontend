@@ -85,33 +85,67 @@ const NET_RADIOS_INITIAL: NetRadio[] = [
   { id: "rohely-radio",   name: "Rohely Radio",     genre: "humor / talk",      streams: [{ label: "Foadas", url: "" }] },
 ];
 
-// localStorage helper – a user-szerkesztett lista perzisztens
-const LS_KEY_NETRADIOS = "sl-netradios";
+// localStorage perzisztencia tenant-szétválasztva. A kulcs:
+//   sl-netradios:<tenantId>     – egy tenant felhasználóinak listája
+//   sl-netradios                – fallback a régi (pre-tenant) adatoknak
+// A getTenantId() a session-/localStorage activeTenantId-ből olvas.
+const LS_KEY_NETRADIOS_BASE = "sl-netradios";
+function getActiveTenantId(): string {
+  try {
+    return sessionStorage.getItem("activeTenantId")
+      ?? localStorage.getItem("activeTenantId")
+      ?? "";
+  } catch { return ""; }
+}
+function lsKeyForTenant(tenantId?: string): string {
+  const t = tenantId ?? getActiveTenantId();
+  return t ? `${LS_KEY_NETRADIOS_BASE}:${t}` : LS_KEY_NETRADIOS_BASE;
+}
+
+function normalizeNetRadios(arr: any): NetRadio[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter((r: any) =>
+      r && typeof r.id === "string" && typeof r.name === "string"
+      && Array.isArray(r.streams) && r.streams.length > 0)
+    .map((r: any) => ({
+      id:      r.id,
+      name:    stripAccents(String(r.name)),
+      genre:   stripAccents(String(r.genre ?? "")),
+      streams: r.streams.map((s: any) => ({
+        label: stripAccents(String(s.label ?? "")),
+        url:   String(s.url ?? ""),
+      })),
+    }));
+}
+
 function loadNetRadiosFromLS(): NetRadio[] {
   try {
-    const raw = window.localStorage.getItem(LS_KEY_NETRADIOS);
-    if (!raw) return NET_RADIOS_INITIAL;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return NET_RADIOS_INITIAL;
-    // Forma-ellenőrzés + ékezet-mentesítés betöltéskor (a régebbi tárolt
-    // adatokban még lehetnek ékezetes nevek/label-ek).
-    return parsed
-      .filter((r: any) =>
-        r && typeof r.id === "string" && typeof r.name === "string"
-        && Array.isArray(r.streams) && r.streams.length > 0)
-      .map((r: any) => ({
-        id:      r.id,
-        name:    stripAccents(String(r.name)),
-        genre:   stripAccents(String(r.genre ?? "")),
-        streams: r.streams.map((s: any) => ({
-          label: stripAccents(String(s.label ?? "")),
-          url:   String(s.url ?? ""),
-        })),
-      }));
-  } catch { return NET_RADIOS_INITIAL; }
+    const tKey = lsKeyForTenant();
+    // 1) Tenant-specifikus kulcs
+    const raw = window.localStorage.getItem(tKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const list = normalizeNetRadios(parsed);
+      if (list.length > 0) return list;
+    }
+    // 2) Legacy "sl-netradios" (pre-tenant) – ha van, migráljuk a tenant-kulcsra
+    if (tKey !== LS_KEY_NETRADIOS_BASE) {
+      const legacy = window.localStorage.getItem(LS_KEY_NETRADIOS_BASE);
+      if (legacy) {
+        const list = normalizeNetRadios(JSON.parse(legacy));
+        if (list.length > 0) {
+          try { window.localStorage.setItem(tKey, JSON.stringify(list)); } catch {}
+          return list;
+        }
+      }
+    }
+  } catch { /* fall through */ }
+  return NET_RADIOS_INITIAL;
 }
+
 function saveNetRadiosToLS(list: NetRadio[]): void {
-  try { window.localStorage.setItem(LS_KEY_NETRADIOS, JSON.stringify(list)); } catch {}
+  try { window.localStorage.setItem(lsKeyForTenant(), JSON.stringify(list)); } catch {}
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -347,21 +381,40 @@ const CSS = `
   .sr-stream-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center}
   .sr-stream-row .sr-input{height:34px}
 
-  /* ── Play gomb állapot-vizualizáció a netrádió-listában ───────────────── */
-  .sr-radio-row .sr-play-connecting{
+  /* ── Play gomb állapot-vizualizáció ─ közös a netrádió és a könyvtár fájl-
+     során is. Disabled-on a !important felülírja a globális opacity-t. */
+  .sr-play-connecting{
     background:#16a34a !important;color:#fff !important;border-color:transparent !important;
-    animation:sr-blink-green 0.7s ease-in-out infinite;
+    animation:sr-blink-green 0.7s ease-in-out infinite;opacity:1 !important;
   }
-  .sr-radio-row .sr-play-playing{
+  .sr-play-playing{
     background:linear-gradient(135deg,#16a34a,#15803d) !important;color:#fff !important;
-    border-color:transparent !important;box-shadow:0 2px 8px rgba(22,163,74,0.35);
+    border-color:transparent !important;box-shadow:0 2px 8px rgba(22,163,74,0.35);opacity:1 !important;
   }
-  .sr-radio-row .sr-play-error{
+  .sr-play-error{
     background:linear-gradient(135deg,#dc2626,#b91c1c) !important;color:#fff !important;
-    border-color:transparent !important;animation:sr-blink-red 0.5s ease-in-out 4;
+    border-color:transparent !important;animation:sr-blink-red 0.5s ease-in-out 4;opacity:1 !important;
   }
   @keyframes sr-blink-green{0%,100%{opacity:1}50%{opacity:0.45}}
   @keyframes sr-blink-red{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  /* "🔨 Összeállít" gomb amíg a backend build fut – pulzáló háttér,
+     hogy a felhasználó lássa, hogy aktív (a backend yt-dlp + ffmpeg
+     pipeline-ja akár 30+ másodperc is lehet). A disabled állapotot
+     a !important override-olja a globális .sr-btn:disabled-on. */
+  .sr-build-busy{
+    background:linear-gradient(135deg,#3b82f6,#8b5cf6,#3b82f6) !important;
+    background-size:200% 100% !important;
+    opacity:1 !important;
+    color:#fff !important;
+    animation:sr-build-pulse 1.6s ease-in-out infinite;
+    cursor:wait !important;
+  }
+  @keyframes sr-build-pulse{
+    0%   {background-position:0% 50%;  box-shadow:0 0 0 0 rgba(99,102,241,0.55);}
+    50%  {background-position:100% 50%;box-shadow:0 0 0 8px rgba(99,102,241,0);}
+    100% {background-position:0% 50%;  box-shadow:0 0 0 0 rgba(99,102,241,0);}
+  }
 
   /* ── Stream-volume slider a fejlécben (a RÁDIÓ STOP mellett) ──────────── */
   .sr-stream-vol{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-surface);min-width:170px}
@@ -388,6 +441,8 @@ const CSS = `
 
 export default function SchoolRadio() {
   const { state } = useAuth();
+  const role = state.status === "authed" ? ((state.user as any)?.role ?? "") : "";
+  const canSetTenantDefault = role === "TENANT_ADMIN" || role === "SUPER_ADMIN";
 
   // ── Alap állapot ──────────────────────────────────────────────────────────
   const [files, setFiles] = useState<RadioFile[]>([]);
@@ -509,8 +564,11 @@ export default function SchoolRadio() {
   // Lista perzisztálása minden módosításra
   useEffect(() => { saveNetRadiosToLS(netRadios); }, [netRadios]);
 
-  // ── Új: per-fájl azonnali lejátszás (gomb a könyvtár során) ────────────────
-  const [playNowBusyId, setPlayNowBusyId] = useState<string|null>(null);
+  // ── Új: per-fájl azonnali lejátszás státusza (ugyanaz a vizualizáció,
+  // mint a netrádió listán: connecting=zöld villogás, playing=folyamatos
+  // zöld, error=piros 3 sec-ig). Egyszerre csak egy fájl szólhat.
+  const [fileStatus, setFileStatus] =
+    useState<Record<string, "connecting"|"playing"|"error">>({});
 
   // ── Új: playlist builder "hangfelvétel" tab ────────────────────────────────
   const [recRadioState, setRecRadioState]       = useState<"idle"|"recording"|"recorded">("idle");
@@ -589,8 +647,11 @@ export default function SchoolRadio() {
   // jelenlegi cél/group state-jét használjuk (formTarget / formTargetId);
   // ha nincs aktív választás, az "ALL" megy.
   async function playFileNow(file: RadioFile) {
-    if (playNowBusyId) return;
-    setPlayNowBusyId(file.id);
+    // Másik fájl/rádió épp connecting-ben? Ne hagyjuk félbe.
+    if (Object.values(fileStatus).some(s => s === "connecting")) return;
+    // Új lejátszás → minden korábbi állomány- és stream-státusz reset
+    setFileStatus({ [file.id]: "connecting" });
+    setStreamStatus({});
     setError(null);
     try {
       const body: any = { targetType: formTarget, streamVolume };
@@ -600,14 +661,21 @@ export default function SchoolRadio() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
-      // Header now-playing visszajelzés (a backend schedules listája csak
-      // periodikusan refreshelődik, ezért lokálisan jelezzük azonnal).
+      // Sikeres indítás: zöld + now-playing label
+      setFileStatus({ [file.id]: "playing" });
       setManualNowPlaying({ name: file.originalName, source: "file" });
       await loadAll();
     } catch (e:any) {
+      // 3 sec-ig piros, aztán reset (mint a stream-nél)
+      setFileStatus({ [file.id]: "error" });
       setError(e?.message ?? "Azonnali lejátszás sikertelen");
-    } finally {
-      setPlayNowBusyId(null);
+      window.setTimeout(() => {
+        setFileStatus(prev => {
+          if (prev[file.id] !== "error") return prev;
+          const { [file.id]: _, ...rest } = prev;
+          return rest;
+        });
+      }, 3000);
     }
   }
 
@@ -709,6 +777,90 @@ export default function SchoolRadio() {
     setNetRadios(NET_RADIOS_INITIAL);
     setStreamPick({});
   }
+
+  // ── Export / Import / Tenant default ─────────────────────────────────────
+  // Export: a current netradios listából egy .json fájl letöltése.
+  function exportNetRadios() {
+    try {
+      const data = JSON.stringify(netRadios, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      const ts   = new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-");
+      a.download = `schoollive-netradios-${ts}.json`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (e:any) {
+      alert("Lementés sikertelen: " + (e?.message ?? "ismeretlen"));
+    }
+  }
+
+  // Import: file picker, json parse, normalize, replace
+  const importInputRef = useRef<HTMLInputElement|null>(null);
+  function importNetRadios(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "[]"));
+        const list = normalizeNetRadios(parsed);
+        if (list.length === 0) { alert("A fájl üres vagy érvénytelen formátum."); return; }
+        if (!window.confirm(`Visszatöltöd a listát? Az aktuális (${netRadios.length} állomás) felülíródik. Új lista: ${list.length} állomás.`)) return;
+        setNetRadios(list); setStreamPick({});
+      } catch (e:any) {
+        alert("Olvasási hiba: " + (e?.message ?? "ismeretlen"));
+      } finally {
+        if (importInputRef.current) importInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // "Alapértelmezetté tesz" – csak TENANT_ADMIN / SUPER_ADMIN. A current
+  // listát menti a backendre, és új felhasználók (új böngészők) ezt fogják
+  // betölteni, ha még nincs lokális szerkesztett adatuk.
+  const [defaultBusy, setDefaultBusy] = useState(false);
+  async function setAsTenantDefault() {
+    if (!window.confirm(`Beállítod a jelenlegi listát az intézmény alapértelmezettjének? Minden új felhasználó / új böngésző ezt fogja látni először (${netRadios.length} állomás).`)) return;
+    setDefaultBusy(true);
+    try {
+      await apiFetch("/tenants/me/netradio-presets", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ presets: netRadios }),
+      });
+      alert("Alapértelmezett lista elmentve.");
+    } catch (e:any) {
+      alert("Mentés sikertelen: " + (e?.message ?? "ismeretlen"));
+    } finally {
+      setDefaultBusy(false);
+    }
+  }
+
+  // Kezdeti tenant-default betöltés: ha a localStorage üres, megpróbáljuk
+  // a backend-ről. Csak first-mount-on fut, és csak ha még a hardcoded
+  // initial seedet látnánk.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tKey = lsKeyForTenant();
+        // Ha van local-szerkesztett, ne nyúljunk hozzá
+        if (window.localStorage.getItem(tKey)) return;
+        const r = await apiFetch<{ ok:boolean; presets: any }>("/tenants/me/netradio-presets");
+        if (cancelled) return;
+        if (r?.presets) {
+          const list = normalizeNetRadios(r.presets);
+          if (list.length > 0) {
+            setNetRadios(list);
+            saveNetRadiosToLS(list);   // attól, hogy a backend válasza érkezett, az LS-be is mentjük
+          }
+        }
+      } catch { /* csendes – fallback az initial seed marad */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Playlist builder: hangfelvétel ─────────────────────────────────────────
   function stopRecRadioCleanup() {
@@ -1340,6 +1492,7 @@ export default function SchoolRadio() {
               setNowPlaying(null);
               setManualNowPlaying(null);
               setStreamStatus({});
+              setFileStatus({});
               try {
                 await apiFetch("/radio/stop-all", { method: "POST" });
                 await loadAll();
@@ -1524,11 +1677,38 @@ export default function SchoolRadio() {
                   })}
                 </div>
 
-                {/* Footer: új / restore */}
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
+                {/* Footer: új / mentés / visszatöltés / default / restore */}
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                   <button type="button" className="sr-btn sr-btn-primary sr-btn-sm" onClick={openNewStation}>
                     ＋ Új állomás
                   </button>
+                  <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={exportNetRadios}
+                    title="A jelenlegi listát .json fájlba menti">
+                    📥 Lementés (.json)
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    style={{display:"none"}}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) importNetRadios(f);
+                    }} />
+                  <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                    onClick={() => importInputRef.current?.click()}
+                    title="Korábban exportált .json fájl visszatöltése">
+                    📤 Visszatöltés
+                  </button>
+                  {canSetTenantDefault && (
+                    <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                      onClick={() => void setAsTenantDefault()}
+                      disabled={defaultBusy}
+                      title="Az intézmény minden új felhasználója ezt a listát látja először">
+                      {defaultBusy ? "⏳ Mentés…" : "⭐ Alapértelmezetté tesz"}
+                    </button>
+                  )}
+                  <div style={{flex:1}} />
                   <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={restoreDefaultStations}
                     title="A lista visszaáll az induló 16 állomásra (a saját bejegyzések elvesznek)">
                     🔄 Visszaállítás alapra
@@ -1537,7 +1717,7 @@ export default function SchoolRadio() {
 
                 <div style={{fontSize:11,color:"var(--sl-muted)"}}>
                   💡 Az alstream URL-eket a myonlineradio.hu-n érdemes ellenőrizni.
-                  A lista a böngészőben tárolódik (per-eszköz).
+                  A lista a böngészőben tárolódik (intézményenként és eszközönként){canSetTenantDefault ? " – az ⭐ gombbal az egész intézmény alapértelmezetté teheted." : "."}
                 </div>
               </div>
             )}
@@ -1585,6 +1765,43 @@ export default function SchoolRadio() {
               </div>
             )}
 
+            {/* Cél választó a könyvtárban – a ▶ Azonnali és az ütemezés
+                ugyanezt a formTarget/formTargetId state-et használja, így a
+                kiválasztás közös. A user explicit látja, hova fog menni a
+                lejátszás. */}
+            <div style={{padding:"10px 16px 12px",borderBottom:"1px solid var(--sl-border)",background:"var(--sl-bg)"}}>
+              <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 Cél (azonnali ▶ és ütemezett 📅 is)</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                {(["ALL","DEVICE","GROUP"] as const).map(t => (
+                  <button key={t} type="button"
+                    className={`sr-btn ${formTarget===t?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
+                    onClick={() => { setFormTarget(t); setFormTargetId(""); }}>
+                    {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
+                  </button>
+                ))}
+                {formTarget==="DEVICE" && (
+                  <select className="sr-select" style={{flex:1,minWidth:140}}
+                    value={formTargetId}
+                    onChange={e => setFormTargetId(e.target.value)}>
+                    <option value="">— Eszköz —</option>
+                    {devices.map(d => (
+                      <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
+                    ))}
+                  </select>
+                )}
+                {formTarget==="GROUP" && (
+                  <select className="sr-select" style={{flex:1,minWidth:140}}
+                    value={formTargetId}
+                    onChange={e => setFormTargetId(e.target.value)}>
+                    <option value="">— Csoport —</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
             {files.length === 0 && !loading ? (
               <div className="sr-empty">
                 <div className="sr-empty-icon">🎵</div>
@@ -1611,15 +1828,34 @@ export default function SchoolRadio() {
                     </div>
 
                     <div className="sr-file-actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="sr-btn sr-btn-primary sr-btn-sm"
-                        title="Azonnali lejátszás (az aktuálisan kiválasztott célon)"
-                        onClick={() => void playFileNow(f)}
-                        disabled={playNowBusyId === f.id}
-                        type="button"
-                      >
-                        {playNowBusyId === f.id ? "⏳" : "▶"}
-                      </button>
+                      {(() => {
+                        // A ▶ gomb státusz-vizualizációja egyezik a netrádió
+                        // listán használt logikával (lásd .sr-play-* CSS).
+                        const fst = fileStatus[f.id];
+                        const cls =
+                          fst === "connecting" ? " sr-play-connecting" :
+                          fst === "playing"    ? " sr-play-playing" :
+                          fst === "error"      ? " sr-play-error" : "";
+                        const lbl =
+                          fst === "connecting" ? "⏳" :
+                          fst === "error"      ? "✕" : "▶";
+                        const title =
+                          fst === "connecting" ? "Lejátszás indítása folyamatban..." :
+                          fst === "playing"    ? "Most szól – újraindításhoz nyomd meg" :
+                          fst === "error"      ? "A lejátszás nem sikerült" :
+                          "Azonnali lejátszás (az aktuálisan kiválasztott célon)";
+                        return (
+                          <button
+                            className={`sr-btn sr-btn-primary sr-btn-sm${cls}`}
+                            title={title}
+                            onClick={() => void playFileNow(f)}
+                            disabled={fst === "connecting"}
+                            type="button"
+                          >
+                            {lbl}
+                          </button>
+                        );
+                      })()}
                       <button
                         className="sr-btn sr-btn-ghost sr-btn-sm"
                         title="Ütemezés"
@@ -2261,8 +2497,12 @@ export default function SchoolRadio() {
                     value={plName}
                     onChange={(e) => setPlName(stripAccents(e.target.value))}
                   />
-                  <button className="sr-btn sr-btn-primary" type="button" disabled={plBusy} onClick={buildPlaylist}>
-                    {plBusy ? "⏳ Épül…" : "🔨 Összeállít"}
+                  <button
+                    className={`sr-btn sr-btn-primary${plBusy ? " sr-build-busy" : ""}`}
+                    type="button"
+                    disabled={plBusy}
+                    onClick={buildPlaylist}>
+                    {plBusy ? "⏳ Készül…" : "🔨 Összeállít"}
                   </button>
                 </div>
               </>
