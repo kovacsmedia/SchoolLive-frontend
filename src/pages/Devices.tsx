@@ -11,7 +11,41 @@ type DeviceItem = {
   secondsSinceLastSeen: number | null; isVirtualPlayer?: boolean; isNativePlayer?: boolean;
   hwModel?: string | null;
   otaStatus?: string; otaProgress?: number; otaVersion?: string | null;
+  // Hangerő-állapot (a backend Device táblából, 0..10).
+  // null-safe: a régi rekordok lehet, hogy nem küldenek vissza volume-ot.
+  volume?: number | null;
+  muted?: boolean | null;
+  orgUnitId?: string | null;
 };
+
+// ── Globális volume-szabályozó perzisztencia (localStorage) ─────────────────
+// A "Némítás" és "Max hangerő" globális toggle bekapcsoláskor lementi az
+// addigi per-device volume értékeket, és kikapcsoláskor visszaállítja őket.
+// Page reload után is fent kell maradnia, hogy a user ne veszítse el az
+// "alapérték" tudást, miközben a globális override aktív.
+const LS_KEY_SAVED_VOLS  = "sl-devices-saved-volumes";
+const LS_KEY_GLOBAL_MUTE = "sl-devices-global-mute";
+const LS_KEY_GLOBAL_MAX  = "sl-devices-global-maxvol";
+
+function lsReadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch { return fallback; }
+}
+function lsWriteJson(key: string, val: unknown): void {
+  try { window.localStorage.setItem(key, JSON.stringify(val)); } catch { /* ignore */ }
+}
+function lsBool(key: string): boolean {
+  try { return window.localStorage.getItem(key) === "1"; } catch { return false; }
+}
+function lsSetBool(key: string, v: boolean): void {
+  try {
+    if (v) window.localStorage.setItem(key, "1");
+    else   window.localStorage.removeItem(key);
+  } catch { /* ignore */ }
+}
 type HealthResponse = { ok: boolean; devices: DeviceItem[] };
 
 function isDeviceOnline(d: DeviceItem): boolean {
@@ -157,6 +191,24 @@ const CSS = `
   .dv-empty-icon{font-size:44px;margin-bottom:12px}
   .dv-empty-txt{font-size:14px;font-family:'Nunito',sans-serif;font-weight:700;color:var(--sl-text-2)}
   .dv-key-box{background:var(--sl-bg);border:1px solid var(--sl-border);border-radius:9px;padding:6px 10px;font-family:monospace;font-size:12px;color:var(--sl-text);word-break:break-all}
+
+  /* ── Hangerő-szabályzó (per-device slider) ──────────────────────────────── */
+  .dv-vol-row{display:flex;align-items:center;gap:8px;min-width:160px}
+  .dv-vol-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:linear-gradient(90deg,#3b82f6 var(--vol),#e2e8f0 var(--vol));outline:none;cursor:pointer}
+  .dv-vol-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+  .dv-vol-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+  .dv-vol-slider:disabled{opacity:0.55;cursor:not-allowed}
+  .dv-vol-val{font-family:monospace;font-size:12px;font-weight:800;color:var(--sl-text-2);min-width:28px;text-align:right;letter-spacing:0.4px}
+  .dv-vol-val.muted{color:#dc2626}
+  .dv-vol-val.maxed{color:#15803d}
+
+  /* ── Globális hangerő-toggle gombok (header) ────────────────────────────── */
+  .dv-gbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:11px;border:1.5px solid var(--sl-border);font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:'Nunito',sans-serif;background:var(--sl-bg);color:var(--sl-text-2)}
+  .dv-gbtn:hover:not(:disabled){background:var(--sl-border)}
+  .dv-gbtn:disabled{opacity:0.55;cursor:not-allowed}
+  .dv-gbtn.on{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(99,102,241,0.28)}
+  .dv-gbtn.on.mute{background:linear-gradient(135deg,#dc2626,#b91c1c);box-shadow:0 3px 10px rgba(220,38,38,0.28)}
+  .dv-gbtn.on.max{background:linear-gradient(135deg,#15803d,#166534);box-shadow:0 3px 10px rgba(21,128,61,0.28)}
   .dv-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.7px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
   @keyframes dvFade{from{opacity:0}to{opacity:1}}
   @keyframes dvSlide{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -247,6 +299,147 @@ export default function Devices() {
 
   const healthTimer  = useRef<number | null>(null);
   const pendingTimer = useRef<number | null>(null);
+
+  // ── Hangerő ───────────────────────────────────────────────────────────────
+  // Globális Némítás / Max hangerő toggle-ek. Bekapcsoláskor a saved map-be
+  // elmentjük az addigi per-device volume értékeket; kikapcsoláskor visszaadjuk.
+  const [globalMute, setGlobalMute] = useState<boolean>(() => lsBool(LS_KEY_GLOBAL_MUTE));
+  const [globalMax,  setGlobalMax]  = useState<boolean>(() => lsBool(LS_KEY_GLOBAL_MAX));
+  // Aktív parancs-küldés gátoltatja a button-okat amíg a request fut.
+  const [volBusy, setVolBusy] = useState<boolean>(false);
+  // A slider lokális (debounce) értéke, így nem küldünk minden pixelre HTTP-t.
+  const volTimers = useRef<Record<string, number>>({});
+
+  // ── Eszköz-szerkesztés (Edit modal) ──────────────────────────────────────
+  type EditForm = { deviceId: string; name: string; deviceClass: DeviceClass; hwModel: string };
+  const [editDevice, setEditDevice]   = useState<EditForm | null>(null);
+  const [editBusy,   setEditBusy]     = useState(false);
+  const [editError,  setEditError]    = useState<string | null>(null);
+
+  // ── Hangerő-küldés helper ─────────────────────────────────────────────────
+  // Egy lépésben: PATCH /admin/devices/:id (Device.volume update) + queue-ba
+  // SET_VOLUME parancs (a kliens polling-on át veszi). Az optimistic local
+  // state update a felhasználói érzetért gyors marad; a következő health
+  // refresh úgyis megerősíti.
+  async function sendVolume(deviceId: string, vol: number, opts?: { silent?: boolean }): Promise<void> {
+    const clamped = Math.max(0, Math.min(10, Math.round(vol)));
+    try {
+      // Backend Device.volume mező frissítése
+      await apiFetch(`/admin/devices/${deviceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ volume: clamped }),
+      });
+      // Parancs a kliens (ESP / Linux / Windows / Android) számára
+      await apiFetch(`/devices/${deviceId}/command`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: { action: "SET_VOLUME", volume: clamped } }),
+      });
+      // Optimistic UI: a táblában is friss érték legyen, ne várja a beacont
+      setDevices(prev => prev.map(p => p.deviceId === deviceId ? { ...p, volume: clamped } : p));
+    } catch (e) {
+      if (!opts?.silent) setError(safeErrorMessage(e));
+    }
+  }
+
+  // Slider mozgáskor debouncel-t küldés (300ms). A slider értéke azonnal UI-on,
+  // de a HTTP csak akkor megy, ha a user megáll.
+  function handleVolumeSlider(deviceId: string, vol: number): void {
+    setDevices(prev => prev.map(p => p.deviceId === deviceId ? { ...p, volume: vol } : p));
+    const prevTimer = volTimers.current[deviceId];
+    if (prevTimer) window.clearTimeout(prevTimer);
+    volTimers.current[deviceId] = window.setTimeout(() => {
+      void sendVolume(deviceId, vol);
+      delete volTimers.current[deviceId];
+    }, 300);
+  }
+
+  // ── Globális Némítás toggle ───────────────────────────────────────────────
+  async function toggleGlobalMute(): Promise<void> {
+    if (volBusy) return;
+    setVolBusy(true);
+    try {
+      if (!globalMute) {
+        // BE: elmentem a current per-device volume-okat, és minden device 0
+        const map: Record<string, number> = lsReadJson(LS_KEY_SAVED_VOLS, {});
+        for (const d of devices) {
+          map[d.deviceId] = typeof d.volume === "number" ? d.volume : 5;
+        }
+        lsWriteJson(LS_KEY_SAVED_VOLS, map);
+        lsSetBool(LS_KEY_GLOBAL_MUTE, true);
+        setGlobalMute(true);
+        // Max-vol kölcsönösen kizárja, kikapcsoljuk ha aktív
+        if (globalMax) { lsSetBool(LS_KEY_GLOBAL_MAX, false); setGlobalMax(false); }
+        await Promise.all(devices.map(d => sendVolume(d.deviceId, 0, { silent: true })));
+      } else {
+        // KI: visszaállítjuk az elmentett értékeket
+        const map: Record<string, number> = lsReadJson(LS_KEY_SAVED_VOLS, {});
+        lsSetBool(LS_KEY_GLOBAL_MUTE, false);
+        setGlobalMute(false);
+        await Promise.all(devices.map(d => sendVolume(d.deviceId, map[d.deviceId] ?? 5, { silent: true })));
+      }
+    } finally {
+      setVolBusy(false);
+    }
+  }
+
+  // ── Globális Max-hangerő toggle ───────────────────────────────────────────
+  async function toggleGlobalMax(): Promise<void> {
+    if (volBusy) return;
+    setVolBusy(true);
+    try {
+      if (!globalMax) {
+        // BE: saved map (ha a mute is aktív volt, akkor a saved már megvan;
+        // ha nem, most mentjük el) + minden device 10
+        const map: Record<string, number> = lsReadJson(LS_KEY_SAVED_VOLS, {});
+        for (const d of devices) {
+          if (map[d.deviceId] === undefined) {
+            map[d.deviceId] = typeof d.volume === "number" ? d.volume : 5;
+          }
+        }
+        lsWriteJson(LS_KEY_SAVED_VOLS, map);
+        lsSetBool(LS_KEY_GLOBAL_MAX, true);
+        setGlobalMax(true);
+        if (globalMute) { lsSetBool(LS_KEY_GLOBAL_MUTE, false); setGlobalMute(false); }
+        await Promise.all(devices.map(d => sendVolume(d.deviceId, 10, { silent: true })));
+      } else {
+        // KI: visszaállítjuk az elmentett értékeket
+        const map: Record<string, number> = lsReadJson(LS_KEY_SAVED_VOLS, {});
+        lsSetBool(LS_KEY_GLOBAL_MAX, false);
+        setGlobalMax(false);
+        await Promise.all(devices.map(d => sendVolume(d.deviceId, map[d.deviceId] ?? 5, { silent: true })));
+      }
+    } finally {
+      setVolBusy(false);
+    }
+  }
+
+  // ── Eszköz-szerkesztés mentés ────────────────────────────────────────────
+  async function submitEditDevice(): Promise<void> {
+    if (!editDevice) return;
+    if (!editDevice.name.trim()) { setEditError("Az eszköznév nem lehet üres."); return; }
+    setEditError(null);
+    setEditBusy(true);
+    try {
+      await apiFetch(`/admin/devices/${editDevice.deviceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name:    editDevice.name.trim(),
+          // a deviceClass-t a PATCH-route jelenleg nem fogadja – a hwModel-t igen.
+          // Ha később bekerül, ide is jöhet.
+          hwModel: editDevice.hwModel || undefined,
+        }),
+      });
+      setEditDevice(null);
+      void loadDevices();
+    } catch (e) {
+      setEditError(safeErrorMessage(e));
+    } finally {
+      setEditBusy(false);
+    }
+  }
 
   // ── OTA ────────────────────────────────────────────────────────────────────
   async function loadReleases() {
@@ -494,6 +687,31 @@ export default function Devices() {
         </div>
         <div className="dv-actions">
           <input className="dv-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
+          {/* Globális hangerő-vezérlők – csak ha van írási jog és van eszköz */}
+          {canWrite && devices.length > 0 && (
+            <>
+              <button
+                type="button"
+                className={`dv-gbtn${globalMute ? " on mute" : ""}`}
+                onClick={() => void toggleGlobalMute()}
+                disabled={volBusy}
+                title={globalMute
+                  ? "Némítás KI – visszaállnak az egyedi hangerők"
+                  : "Némítás BE – minden eszköz hangereje 0 lesz"}>
+                {globalMute ? "🔇 Némítás BE" : "🔈 Némítás"}
+              </button>
+              <button
+                type="button"
+                className={`dv-gbtn${globalMax ? " on max" : ""}`}
+                onClick={() => void toggleGlobalMax()}
+                disabled={volBusy}
+                title={globalMax
+                  ? "Max hangerő KI – visszaállnak az egyedi hangerők"
+                  : "Max hangerő BE – minden eszköz hangereje 10 lesz"}>
+                {globalMax ? "📢 Max BE" : "📣 Max"}
+              </button>
+            </>
+          )}
           {canWrite && (
             <button className="dv-btn dv-btn-primary" onClick={openPending} type="button">＋ Új eszköz</button>
           )}
@@ -533,18 +751,18 @@ export default function Devices() {
           <table className="dv-table">
             <thead>
               <tr>
-                <th>Eszköznév</th><th>Típus</th><th>HW modell</th><th>Státusz</th><th>IP cím</th><th>Firmware</th><th>OTA</th><th>Utolsó aktivitás</th>
+                <th>Eszköznév</th><th>Típus</th><th>HW modell</th><th>Státusz</th><th>IP cím</th><th>Firmware</th><th>OTA</th><th>Hangerő</th><th>Utolsó aktivitás</th>
                 {canWrite && <th style={{ textAlign:"right" }}>Műveletek</th>}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={canWrite?9:8} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
+                <tr><td colSpan={canWrite?10:9} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
                   <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>Betöltés…</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={canWrite?9:8}>
+                <tr><td colSpan={canWrite?10:9}>
                   <div className="dv-empty">
                     <div className="dv-empty-icon">🔇</div>
                     <div className="dv-empty-txt">Nincs megjeleníthető eszköz</div>
@@ -604,6 +822,37 @@ export default function Devices() {
                         );
                       })() : <span style={{color:"var(--sl-muted)",fontSize:11}}>—</span>}
                     </td>
+                    <td>
+                      {/* Per-device hangerő-szabályzó (0..10).
+                          Globális Némítás/Max BE állapotban a slider letiltott
+                          – ott a globális toggle viszi az értéket. */}
+                      {(() => {
+                        const vol = typeof d.volume === "number" ? d.volume : 5;
+                        const globallyOverridden = globalMute || globalMax;
+                        const cls = vol === 0 ? "muted" : vol === 10 ? "maxed" : "";
+                        return (
+                          <div className="dv-vol-row">
+                            <input
+                              type="range"
+                              min={0} max={10} step={1}
+                              value={vol}
+                              disabled={!canWrite || globallyOverridden}
+                              className="dv-vol-slider"
+                              style={{ ["--vol" as any]: `${vol * 10}%` }}
+                              onChange={e => handleVolumeSlider(d.deviceId, Number(e.target.value))}
+                              title={
+                                globalMute ? "Globális némítás aktív" :
+                                globalMax  ? "Globális max hangerő aktív" :
+                                `Hangerő: ${vol}/10${vol === 0 ? " (némítva)" : ""}`
+                              }
+                            />
+                            <span className={`dv-vol-val ${cls}`}>
+                              {vol === 0 ? "🔇" : vol === 10 ? "📢" : vol}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td style={{ fontSize:12 }}>
                       {(() => {
                         const s = d.secondsSinceLastSeen;
@@ -632,6 +881,19 @@ export default function Devices() {
                               catch (e) { setError(safeErrorMessage(e)); }
                             }}>
                             🗑 Törlés
+                          </button>
+                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
+                            title="Eszköz tulajdonságai szerkesztése"
+                            onClick={() => {
+                              setEditError(null);
+                              setEditDevice({
+                                deviceId:    d.deviceId,
+                                name:        d.name,
+                                deviceClass: d.deviceClass,
+                                hwModel:     d.hwModel ?? "",
+                              });
+                            }}>
+                            ✏️ Szerkeszt
                           </button>
                         </div>
                       </td>
@@ -877,6 +1139,54 @@ export default function Devices() {
             <button className="dv-btn dv-btn-ghost" onClick={() => setNativeActivateForm(null)} disabled={nativeActivateBusy} type="button">Mégse</button>
             <button className="dv-btn dv-btn-primary" onClick={() => void submitNativeActivate()} disabled={nativeActivateBusy} type="button">
               {nativeActivateBusy ? "⏳ Aktiválás…" : "🖥️ Aktivál"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Eszköz szerkesztés modal ────────────────────────────────────────── */}
+      {editDevice && (
+        <Modal title="Eszköz szerkesztése" icon="✏️" onClose={() => setEditDevice(null)}>
+          <div className="dv-modal-body">
+            {editError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{editError}</div>}
+            <div>
+              <label className="dv-label">Eszköznév</label>
+              <input className="dv-input"
+                value={editDevice.name}
+                onChange={e => setEditDevice(s => s ? { ...s, name: e.target.value } : s)}
+                onKeyDown={e => e.key === "Enter" && void submitEditDevice()}
+                autoFocus />
+            </div>
+            <div>
+              <label className="dv-label">Típus</label>
+              <select className="dv-select" value={editDevice.deviceClass}
+                onChange={e => setEditDevice(s => s ? { ...s, deviceClass: e.target.value as DeviceClass } : s)}>
+                {DEVICE_CLASS_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label} – {o.description}</option>
+                ))}
+              </select>
+              <div style={{ fontSize: 11, color: "var(--sl-muted)", marginTop: 4 }}>
+                Megjegyzés: a típust a backend jelenleg csak újraprovisioning útján módosítja —
+                ez a mező későbbre tartogatott.
+              </div>
+            </div>
+            <div>
+              <label className="dv-label">Hardver modell</label>
+              <select className="dv-select" value={editDevice.hwModel}
+                onChange={e => setEditDevice(s => s ? { ...s, hwModel: e.target.value } : s)}>
+                <option value="">— Nincs beállítva —</option>
+                {HW_MODEL_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="dv-modal-footer">
+            <button className="dv-btn dv-btn-ghost" type="button"
+              onClick={() => setEditDevice(null)} disabled={editBusy}>Mégse</button>
+            <button className="dv-btn dv-btn-primary" type="button"
+              onClick={() => void submitEditDevice()} disabled={editBusy}>
+              {editBusy ? "⏳ Mentés…" : "💾 Mentés"}
             </button>
           </div>
         </Modal>
