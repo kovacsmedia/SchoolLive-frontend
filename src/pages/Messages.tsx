@@ -190,7 +190,8 @@ export default function Messages() {
   const introFileRef = useRef<HTMLInputElement|null>(null);
 
   // Replay state (loading per-id, hogy ne lehessen duplán nyomni)
-  const [replayingId, setReplayingId] = useState<string|null>(null);
+  // (a régi `replayingId` state törölve – az új replay modal a `replayBusy`
+  // állapotot használja).
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups]   = useState<DeviceGroup[]>([]);
@@ -354,20 +355,9 @@ export default function Messages() {
     }
   }
 
-  async function replayMessage(id: string) {
-    if (replayingId) return;
-    setReplayingId(id);
-    setSendError(null); setSendSuccess(false);
-    try {
-      await apiPost(`/messages/${id}/replay`, {});
-      setSendSuccess(true);
-      await loadMessages(page);
-    } catch (e:any) {
-      setSendError(e?.message ?? "Újrabemondatás sikertelen");
-    } finally {
-      setReplayingId(null);
-    }
-  }
+  // (régi gyors-replayMessage(id) függvény törölve – mostantól minden
+  // 🔁 Újra kattintás a `openReplayModal(m)`-on át megy, ami cél +
+  // időzítés választást is felajánl.)
 
   useEffect(() => {
     // A composer most a fő view → minden kezdő adat azonnal betöltődik.
