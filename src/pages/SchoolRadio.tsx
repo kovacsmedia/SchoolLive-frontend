@@ -334,6 +334,30 @@ const CSS = `
   .sr-stream-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center}
   .sr-stream-row .sr-input{height:34px}
 
+  /* ── Play gomb állapot-vizualizáció a netrádió-listában ───────────────── */
+  .sr-radio-row .sr-play-connecting{
+    background:#16a34a !important;color:#fff !important;border-color:transparent !important;
+    animation:sr-blink-green 0.7s ease-in-out infinite;
+  }
+  .sr-radio-row .sr-play-playing{
+    background:linear-gradient(135deg,#16a34a,#15803d) !important;color:#fff !important;
+    border-color:transparent !important;box-shadow:0 2px 8px rgba(22,163,74,0.35);
+  }
+  .sr-radio-row .sr-play-error{
+    background:linear-gradient(135deg,#dc2626,#b91c1c) !important;color:#fff !important;
+    border-color:transparent !important;animation:sr-blink-red 0.5s ease-in-out 4;
+  }
+  @keyframes sr-blink-green{0%,100%{opacity:1}50%{opacity:0.45}}
+  @keyframes sr-blink-red{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  /* ── Stream-volume slider a fejlécben (a RÁDIÓ STOP mellett) ──────────── */
+  .sr-stream-vol{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-surface);min-width:170px}
+  .sr-stream-vol-icon{font-size:14px;line-height:1;flex-shrink:0}
+  .sr-stream-vol-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:5px;background:linear-gradient(90deg,#3b82f6 var(--vol),#e2e8f0 var(--vol));outline:none;cursor:pointer}
+  .sr-stream-vol-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+  .sr-stream-vol-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+  .sr-stream-vol-val{font-family:monospace;font-size:12px;font-weight:800;color:var(--sl-text-2);min-width:18px;text-align:right;letter-spacing:0.3px}
+
   /* ── Új: Időzített lejátszások overlay (jövő/múlt elválasztó) ──────────── */
   .sr-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.42);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto;animation:sr-fade 0.15s ease}
   .sr-overlay-modal{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:22px;width:100%;max-width:780px;box-shadow:0 24px 64px rgba(0,0,0,0.18);animation:sr-slide 0.2s ease}
@@ -428,11 +452,36 @@ export default function SchoolRadio() {
   const [netRadios, setNetRadios] = useState<NetRadio[]>(() => loadNetRadiosFromLS());
   // Per-állomás: melyik stream van kiválasztva (label vagy index). Map<id, index>
   const [streamPick, setStreamPick] = useState<Record<string, number>>({});
-  // A "play" éppen melyik állomást indítja (busy state)
-  const [streamPlayingId, setStreamPlayingId] = useState<string|null>(null);
-  const [streamError,     setStreamError]     = useState<string|null>(null);
+  // Per-állomás státusz a ▶ gomb vizualizációjához:
+  //   "connecting" - épp indítjuk (zöld villogás)
+  //   "playing"    - sikerült indítani, fut (folyamatos zöld)
+  //   "error"      - hibás stream (piros, ~3 sec)
+  const [streamStatus, setStreamStatus] =
+    useState<Record<string, "connecting"|"playing"|"error">>({});
+  const [streamError,      setStreamError]      = useState<string|null>(null);
   const [streamTargetType, setStreamTargetType] = useState<"ALL"|"DEVICE"|"GROUP">("ALL");
   const [streamTargetId,   setStreamTargetId]   = useState("");
+
+  // ── Új: manuálisan elindított "most játszó" (a backend schedule-based
+  // nowPlaying mellett, netrádió + play-now eseteket lefedi). Mindkettő
+  // szerepelhet, az effective most-játszó: schedule > manual.
+  const [manualNowPlaying, setManualNowPlaying] =
+    useState<{ name: string; source: "stream"|"file" } | null>(null);
+
+  // ── Új: stream-volume slider (0..10) – csak a rádió/play-now stream-re hat,
+  // a csengetésre és üzenetekre NEM. A backend a játszás indításakor ffmpeg
+  // pre-gain filter-rel veszi át (volume=X/10).
+  const [streamVolume, setStreamVolume] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem("sl-stream-volume");
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (isFinite(n) && n >= 0 && n <= 10) return n;
+    } catch {}
+    return 8;
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("sl-stream-volume", String(streamVolume)); } catch {}
+  }, [streamVolume]);
   // Új állomás / szerkesztés modal
   type StationForm = {
     mode: "new" | "edit";
@@ -531,13 +580,16 @@ export default function SchoolRadio() {
     setPlayNowBusyId(file.id);
     setError(null);
     try {
-      const body: any = { targetType: formTarget };
+      const body: any = { targetType: formTarget, streamVolume };
       if (formTarget !== "ALL" && formTargetId) body.targetId = formTargetId;
       await apiFetch(`/radio/files/${file.id}/play-now`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
+      // Header now-playing visszajelzés (a backend schedules listája csak
+      // periodikusan refreshelődik, ezért lokálisan jelezzük azonnal).
+      setManualNowPlaying({ name: file.originalName, source: "file" });
       await loadAll();
     } catch (e:any) {
       setError(e?.message ?? "Azonnali lejátszás sikertelen");
@@ -564,12 +616,17 @@ export default function SchoolRadio() {
       setStreamError("Válassz egy célt (eszközt/csoportot).");
       return;
     }
-    setStreamPlayingId(station.id);
+    // Egyszerre csak egy állomás játszhat – előzőek státuszát töröljük,
+    // a kiválasztott állomásra "connecting" (zöld villog) state-et adunk.
+    setStreamStatus({ [station.id]: "connecting" });
+    const fullTitle =
+      `${station.name}${stream.label && stream.label !== "Főadás" ? " · " + stream.label : ""}`;
     try {
       const body: any = {
         url,
-        title:      `${station.name}${stream.label && stream.label !== "Főadás" ? " · " + stream.label : ""}`,
-        targetType: streamTargetType,
+        title:        fullTitle,
+        targetType:   streamTargetType,
+        streamVolume,                   // 0..10, a backend ffmpeg gain-be alakítja
       };
       if (streamTargetType !== "ALL") body.targetId = streamTargetId;
       await apiFetch("/radio/play-stream", {
@@ -577,10 +634,20 @@ export default function SchoolRadio() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
+      // Sikeres indítás: folyamatos zöld + now-playing label.
+      setStreamStatus({ [station.id]: "playing" });
+      setManualNowPlaying({ name: fullTitle, source: "stream" });
     } catch (e:any) {
+      // Pirosba villantjuk a gombot 3 másodpercig, majd resetelünk.
+      setStreamStatus({ [station.id]: "error" });
       setStreamError(e?.message ?? "Stream indítása sikertelen");
-    } finally {
-      setStreamPlayingId(null);
+      window.setTimeout(() => {
+        setStreamStatus(prev => {
+          if (prev[station.id] !== "error") return prev;
+          const { [station.id]: _, ...rest } = prev;
+          return rest;
+        });
+      }, 3000);
     }
   }
 
@@ -1214,23 +1281,24 @@ export default function SchoolRadio() {
 
         <div className="sr-hdr-right">
           {(() => {
-            const shortName = nowPlaying
-              ? nowPlaying.name.length > 16
-                ? nowPlaying.name.slice(0, 16) + "…"
-                : nowPlaying.name
+            // Effektív "most játszik" érték:
+            //  - elsődleges: schedule-based nowPlaying (radio scheduler állítja)
+            //  - fallback:   manualNowPlaying (azonnal indított fájl / netrádió)
+            const effective = nowPlaying
+              ? { name: nowPlaying.name, icon: "🎵" }
+              : manualNowPlaying
+              ? { name: manualNowPlaying.name, icon: manualNowPlaying.source === "stream" ? "📻" : "🎵" }
               : null;
-
+            const shortName = effective
+              ? effective.name.length > 22 ? effective.name.slice(0, 22) + "…" : effective.name
+              : null;
             return (
-              <div className={`sr-now-playing ${nowPlaying ? "sr-now-playing-active" : "sr-now-playing-idle"}`}>
+              <div className={`sr-now-playing ${effective ? "sr-now-playing-active" : "sr-now-playing-idle"}`}>
                 <span
-                  className={`sr-now-playing-dot ${
-                    nowPlaying ? "sr-now-playing-dot-active" : "sr-now-playing-dot-idle"
-                  }`}
+                  className={`sr-now-playing-dot ${effective ? "sr-now-playing-dot-active" : "sr-now-playing-dot-idle"}`}
                 />
-                {nowPlaying ? (
-                  <span>
-                    🎵 <strong>{shortName}</strong>
-                  </span>
+                {effective ? (
+                  <span>{effective.icon} <strong>{shortName}</strong></span>
                 ) : (
                   <span>Nem játszik semmi</span>
                 )}
@@ -1254,9 +1322,13 @@ export default function SchoolRadio() {
             onClick={async () => {
               if (!window.confirm("Leállítod az összes lejátszót?")) return;
               setStopBusy(true);
+              // Azonnali UI feedback – a header-state-eket nem várjuk be a
+              // backend válaszra, hogy a felhasználó rögtön lássa: STOP ment.
+              setNowPlaying(null);
+              setManualNowPlaying(null);
+              setStreamStatus({});
               try {
                 await apiFetch("/radio/stop-all", { method: "POST" });
-                setNowPlaying(null);
                 await loadAll();
               } catch (e: any) {
                 alert("Hiba: " + (e?.message ?? "ismeretlen"));
@@ -1267,6 +1339,22 @@ export default function SchoolRadio() {
           >
             🛑 {stopBusy ? "Leállítás…" : "RÁDIÓ STOP"}
           </button>
+
+          {/* Stream-volume slider – CSAK a rádió/play-now streamre hat.
+              A csengetésre és üzenetekre nincs hatása. A volume a backend
+              ffmpeg pre-gain filteren át érvényesül; új lejátszáskor él. */}
+          <div className="sr-stream-vol" title={`Stream hangerő: ${streamVolume}/10`}>
+            <span className="sr-stream-vol-icon">
+              {streamVolume === 0 ? "🔇" : streamVolume <= 3 ? "🔈" : streamVolume <= 7 ? "🔉" : "🔊"}
+            </span>
+            <input
+              type="range" min={0} max={10} step={1}
+              value={streamVolume}
+              onChange={e => setStreamVolume(Number(e.target.value))}
+              className="sr-stream-vol-slider"
+              style={{ ["--vol" as any]: `${streamVolume * 10}%` }} />
+            <span className="sr-stream-vol-val">{streamVolume}</span>
+          </div>
 
           <button
             className="sr-btn sr-btn-primary"
@@ -1367,7 +1455,14 @@ export default function SchoolRadio() {
                   ) : netRadios.map((r, i) => {
                     const pickIdx = streamPick[r.id] ?? 0;
                     const safeIdx = Math.min(pickIdx, r.streams.length - 1);
-                    const playing = streamPlayingId === r.id;
+                    const status  = streamStatus[r.id];
+                    const stateClass =
+                      status === "connecting" ? " sr-play-connecting" :
+                      status === "playing"    ? " sr-play-playing" :
+                      status === "error"      ? " sr-play-error" : "";
+                    const stateLabel =
+                      status === "connecting" ? "⏳" :
+                      status === "error"      ? "✕" : "▶";
                     return (
                       <div className="sr-radio-row" key={r.id}>
                         <div className="sr-radio-num">{String(i+1).padStart(2,"0")}.</div>
@@ -1388,11 +1483,16 @@ export default function SchoolRadio() {
                         </select>
                         <button
                           type="button"
-                          className="sr-btn sr-btn-primary sr-btn-sm"
+                          className={`sr-btn sr-btn-primary sr-btn-sm${stateClass}`}
                           onClick={() => void playStation(r)}
-                          disabled={playing || !r.streams[safeIdx]?.url}
-                          title="Azonnali adásba küldés">
-                          {playing ? "⏳" : "▶"}
+                          disabled={status === "connecting" || !r.streams[safeIdx]?.url}
+                          title={
+                            status === "connecting" ? "Stream megnyitása folyamatban..." :
+                            status === "playing"    ? "Szól – újraküldéshez nyomd meg" :
+                            status === "error"      ? "A stream nem nyitható meg" :
+                            "Azonnali adásba küldés"
+                          }>
+                          {stateLabel}
                         </button>
                         <div className="sr-radio-actions">
                           <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
