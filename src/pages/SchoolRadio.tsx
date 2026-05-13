@@ -50,24 +50,56 @@ type PlItem = {
   audioPreviewUrl?: string;
 };
 
-// Internetrádió preset – fixen kódolt magyar adók a frontenden.
-// Ha tenant-specifikus listára lesz szükség, ez egy backend lookup-ra
-// cserélhető, de V1-ben hardcoded.
-type NetRadio = { name: string; url: string; tag?: string };
-const NET_RADIOS: NetRadio[] = [
-  { name: "Kossuth Rádió",          url: "https://icast.connectmedia.hu/4738/mr1.mp3",    tag: "közszolgálati" },
-  { name: "Petőfi Rádió",           url: "https://icast.connectmedia.hu/4736/mr2.mp3",    tag: "közszolgálati" },
-  { name: "Bartók Rádió",           url: "https://icast.connectmedia.hu/4742/mr3.mp3",    tag: "klasszikus" },
-  { name: "Dankó Rádió",            url: "https://icast.connectmedia.hu/4748/mr4.mp3",    tag: "népzene" },
-  { name: "Nemzetiségi (Nemzetiségi Rádió)", url: "https://icast.connectmedia.hu/4754/mr5.mp3", tag: "nemzetiségi" },
-  { name: "Rádió 1",                url: "https://stream.radio1.hu/radio1.mp3",            tag: "kereskedelmi" },
-  { name: "Music FM",               url: "https://icast.connectmedia.hu/5202/musicfm.mp3", tag: "popular" },
-  { name: "Retro Rádió",            url: "https://icast.connectmedia.hu/5201/retroradio.mp3", tag: "retro" },
-  { name: "Best FM",                url: "https://icast.connectmedia.hu/5203/best_fm.mp3", tag: "kereskedelmi" },
-  { name: "Sláger FM",              url: "https://stream.slagerfm.hu/slagerfm.mp3",        tag: "magyar zene" },
-  { name: "Rádió Bonbon",           url: "https://icast.connectmedia.hu/5204/bonbon.mp3",  tag: "soft pop" },
-  { name: "Klubrádió",              url: "https://stream.klubradio.hu/klubradio_192.mp3",  tag: "talk/political" },
+// Internetrádió típusok – egy állomás több stream-mel (al-csatornákkal)
+type NetRadioStream = { label: string; url: string };
+type NetRadio = {
+  id:      string;
+  name:    string;
+  genre:   string;
+  streams: NetRadioStream[];   // legalább egy elem (Főadás)
+};
+
+// Initial seed – 16 magyar online rádió. A stream URL-eket a myonlineradio.hu-n
+// érdemes ellenőrizni; alstreameket (műfaj-specifikus csatornákat) a UI-n
+// keresztül lehet hozzáadni mindegyik adóhoz. A felhasználó az egész listát
+// bővítheti / törölheti / visszaállíthatja az alapértelmezettre.
+const NET_RADIOS_INITIAL: NetRadio[] = [
+  { id: "oxygen-music",   name: "Oxygen Music",     genre: "pop / dance",       streams: [{ label: "Főadás", url: "https://onair.oxygenmusic.hu/oxygenmusic.mp3" }] },
+  { id: "radio-1",        name: "Rádió 1",          genre: "kereskedelmi pop",  streams: [{ label: "Főadás", url: "https://stream.radio1.hu/radio1.mp3" }] },
+  { id: "retro-radio",    name: "Retro Rádió",      genre: "retro",             streams: [{ label: "Főadás", url: "https://icast.connectmedia.hu/5201/retroradio.mp3" }] },
+  { id: "petofi-radio",   name: "Petőfi Rádió",     genre: "közszolgálati pop", streams: [{ label: "Főadás", url: "https://icast.connectmedia.hu/4736/mr2.mp3" }] },
+  { id: "laza-radio",     name: "Laza Rádió",       genre: "soft pop / chill",  streams: [{ label: "Főadás", url: "" }] },
+  { id: "megadance",      name: "Megadance Rádió",  genre: "dance / EDM",       streams: [{ label: "Főadás", url: "" }] },
+  { id: "radio-sunrise",  name: "Radio Sunrise",    genre: "chill / lounge",    streams: [{ label: "Főadás", url: "" }] },
+  { id: "juventus-radio", name: "Juventus Rádió",   genre: "kereskedelmi pop",  streams: [{ label: "Főadás", url: "" }] },
+  { id: "radio-gaga",     name: "Rádió GaGa",       genre: "magyar zene",       streams: [{ label: "Főadás", url: "" }] },
+  { id: "radio-88",       name: "Rádió 88",         genre: "kereskedelmi",      streams: [{ label: "Főadás", url: "" }] },
+  { id: "poptarisznya",   name: "Poptarisznya",     genre: "retro / oldies",    streams: [{ label: "Főadás", url: "" }] },
+  { id: "sunshine-radio", name: "Sunshine Rádió",   genre: "pop / chart",       streams: [{ label: "Főadás", url: "" }] },
+  { id: "roxy-radio",     name: "Roxy Rádió",       genre: "rock",              streams: [{ label: "Főadás", url: "" }] },
+  { id: "mix-radio",      name: "Mix Rádió",        genre: "vegyes / pop",      streams: [{ label: "Főadás", url: "" }] },
+  { id: "csukas-mese",    name: "Csukás Meserádió", genre: "gyermek / mese",    streams: [{ label: "Főadás", url: "" }] },
+  { id: "rohely-radio",   name: "Röhely Rádió",     genre: "humor / talk",      streams: [{ label: "Főadás", url: "" }] },
 ];
+
+// localStorage helper – a user-szerkesztett lista perzisztens
+const LS_KEY_NETRADIOS = "sl-netradios";
+function loadNetRadiosFromLS(): NetRadio[] {
+  try {
+    const raw = window.localStorage.getItem(LS_KEY_NETRADIOS);
+    if (!raw) return NET_RADIOS_INITIAL;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return NET_RADIOS_INITIAL;
+    // Egyszerű forma-ellenőrzés
+    return parsed.filter((r: any) =>
+      r && typeof r.id === "string" && typeof r.name === "string"
+      && Array.isArray(r.streams) && r.streams.length > 0
+    );
+  } catch { return NET_RADIOS_INITIAL; }
+}
+function saveNetRadiosToLS(list: NetRadio[]): void {
+  try { window.localStorage.setItem(LS_KEY_NETRADIOS, JSON.stringify(list)); } catch {}
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 function fmtDuration(sec: number | null | undefined): string {
@@ -279,13 +311,28 @@ const CSS = `
   .sr-tab:hover{color:var(--sl-text-2);background:rgba(59,130,246,0.04)}
   .sr-tab.active{color:#1d4ed8;border-bottom-color:#3b82f6;background:var(--sl-surface)}
 
-  /* ── Új: internetrádió preset kártyák ─────────────────────────────────── */
-  .sr-netradio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:14px}
-  .sr-netradio-card{padding:12px 14px;border:1.5px solid var(--sl-border);border-radius:12px;background:var(--sl-bg);cursor:pointer;transition:all 0.15s;font-family:'Nunito',sans-serif}
-  .sr-netradio-card:hover{border-color:#bfdbfe;background:#f0f7ff}
-  .sr-netradio-card.active{background:linear-gradient(135deg,#eff6ff,#f5f3ff);border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,0.18)}
-  .sr-netradio-name{font-size:13.5px;font-weight:800;color:var(--sl-text)}
-  .sr-netradio-tag{font-size:11px;color:var(--sl-muted);margin-top:2px}
+  /* ── Új: internetrádió listanézet (görgethető táblázat) ───────────────── */
+  .sr-radio-list-wrap{max-height:380px;overflow-y:auto;border-top:1px solid var(--sl-border);border-bottom:1px solid var(--sl-border)}
+  .sr-radio-list-wrap::-webkit-scrollbar{width:8px}
+  .sr-radio-list-wrap::-webkit-scrollbar-thumb{background:var(--sl-border);border-radius:4px}
+  .sr-radio-row{display:grid;grid-template-columns:32px 1.4fr 1fr auto auto;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--sl-border);font-family:'Nunito',sans-serif;font-size:13px;color:var(--sl-text);transition:background 0.12s}
+  .sr-radio-row:last-child{border-bottom:none}
+  .sr-radio-row:hover{background:rgba(59,130,246,0.05)}
+  .sr-radio-num{font-size:11px;font-weight:800;color:var(--sl-muted);font-variant-numeric:tabular-nums;letter-spacing:0.3px}
+  .sr-radio-name{font-weight:800;color:var(--sl-text)}
+  .sr-radio-genre{font-size:12px;color:var(--sl-muted);font-weight:500}
+  .sr-radio-stream-pick{padding:5px 8px;border:1.5px solid var(--sl-border);border-radius:8px;background:var(--sl-surface);color:var(--sl-text);font-size:12.5px;font-family:inherit;min-width:120px;cursor:pointer}
+  .sr-radio-stream-pick:disabled{opacity:0.5;cursor:default}
+  .sr-radio-actions{display:flex;gap:5px}
+  .sr-radio-actions .sr-btn-sm{padding:4px 8px;font-size:12px}
+  @media(max-width:760px){
+    .sr-radio-row{grid-template-columns:28px 1fr auto;row-gap:6px}
+    .sr-radio-genre,.sr-radio-stream-pick{grid-column:2/-1}
+    .sr-radio-actions{grid-column:1/-1;justify-content:flex-end}
+  }
+  /* Új állomás / szerkesztés modal mezőlistája */
+  .sr-stream-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center}
+  .sr-stream-row .sr-input{height:34px}
 
   /* ── Új: Időzített lejátszások overlay (jövő/múlt elválasztó) ──────────── */
   .sr-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.42);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto;animation:sr-fade 0.15s ease}
@@ -377,15 +424,28 @@ export default function SchoolRadio() {
   // ── Új: bal alsó panel tabok – Hangfájl könyvtár / Internetrádió ───────────
   const [sourceTab, setSourceTab] = useState<"library" | "netradio">("library");
 
-  // ── Új: internetrádió kiválasztás + azonnali küldés ────────────────────────
-  const [streamSelectedUrl,  setStreamSelectedUrl]  = useState<string>("");
-  const [streamSelectedName, setStreamSelectedName] = useState<string>("");
-  const [streamCustomUrl,    setStreamCustomUrl]    = useState<string>("");
-  const [streamCustomName,   setStreamCustomName]   = useState<string>("");
-  const [streamBusy,         setStreamBusy]         = useState(false);
-  const [streamError,        setStreamError]        = useState<string|null>(null);
-  const [streamTargetType,   setStreamTargetType]   = useState<"ALL"|"DEVICE"|"GROUP">("ALL");
-  const [streamTargetId,     setStreamTargetId]     = useState("");
+  // ── Új: internetrádió listája + kiválasztott állomás/stream/target ─────────
+  const [netRadios, setNetRadios] = useState<NetRadio[]>(() => loadNetRadiosFromLS());
+  // Per-állomás: melyik stream van kiválasztva (label vagy index). Map<id, index>
+  const [streamPick, setStreamPick] = useState<Record<string, number>>({});
+  // A "play" éppen melyik állomást indítja (busy state)
+  const [streamPlayingId, setStreamPlayingId] = useState<string|null>(null);
+  const [streamError,     setStreamError]     = useState<string|null>(null);
+  const [streamTargetType, setStreamTargetType] = useState<"ALL"|"DEVICE"|"GROUP">("ALL");
+  const [streamTargetId,   setStreamTargetId]   = useState("");
+  // Új állomás / szerkesztés modal
+  type StationForm = {
+    mode: "new" | "edit";
+    id:    string;
+    name:  string;
+    genre: string;
+    streams: NetRadioStream[];
+  };
+  const [stationForm,  setStationForm]  = useState<StationForm|null>(null);
+  const [stationError, setStationError] = useState<string|null>(null);
+
+  // Lista perzisztálása minden módosításra
+  useEffect(() => { saveNetRadiosToLS(netRadios); }, [netRadios]);
 
   // ── Új: per-fájl azonnali lejátszás (gomb a könyvtár során) ────────────────
   const [playNowBusyId, setPlayNowBusyId] = useState<string|null>(null);
@@ -486,33 +546,88 @@ export default function SchoolRadio() {
     }
   }
 
-  // ── Internetrádió stream indítás ───────────────────────────────────────────
-  async function playStream() {
+  // ── Internetrádió: stream indítás egy állomás kiválasztott alstream-jével ──
+  async function playStation(station: NetRadio) {
     setStreamError(null);
-    const url   = streamSelectedUrl || streamCustomUrl.trim();
-    const title = streamSelectedName || streamCustomName.trim() || "Internetrádió";
-    if (!url) { setStreamError("Válassz vagy adj meg egy stream URL-t."); return; }
-    if (!/^https?:\/\//i.test(url)) { setStreamError("Érvénytelen URL (http/https kell)."); return; }
+    const idx = streamPick[station.id] ?? 0;
+    const stream = station.streams[idx];
+    const url = (stream?.url ?? "").trim();
+    if (!url) {
+      setStreamError(`A(z) "${station.name}" kiválasztott stream URL-je üres. Szerkeszd az állomást.`);
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      setStreamError("Érvénytelen URL (http/https kell).");
+      return;
+    }
     if (streamTargetType !== "ALL" && !streamTargetId) {
       setStreamError("Válassz egy célt (eszközt/csoportot).");
       return;
     }
-    setStreamBusy(true);
+    setStreamPlayingId(station.id);
     try {
-      const body: any = { url, title, targetType: streamTargetType };
+      const body: any = {
+        url,
+        title:      `${station.name}${stream.label && stream.label !== "Főadás" ? " · " + stream.label : ""}`,
+        targetType: streamTargetType,
+      };
       if (streamTargetType !== "ALL") body.targetId = streamTargetId;
       await apiFetch("/radio/play-stream", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
       });
-      // Tisztítunk: a felhasználó látja, hogy ment, de a custom URL marad ha az volt
-      setStreamSelectedUrl(""); setStreamSelectedName("");
     } catch (e:any) {
       setStreamError(e?.message ?? "Stream indítása sikertelen");
     } finally {
-      setStreamBusy(false);
+      setStreamPlayingId(null);
     }
+  }
+
+  // ── CRUD: állomások + alstreamek ───────────────────────────────────────────
+  function openNewStation() {
+    setStationError(null);
+    setStationForm({
+      mode: "new", id: "", name: "", genre: "",
+      streams: [{ label: "Főadás", url: "" }],
+    });
+  }
+  function openEditStation(r: NetRadio) {
+    setStationError(null);
+    setStationForm({
+      mode: "edit", id: r.id, name: r.name, genre: r.genre,
+      streams: r.streams.map(s => ({ ...s })),
+    });
+  }
+  function submitStation() {
+    if (!stationForm) return;
+    const name  = stationForm.name.trim();
+    const genre = stationForm.genre.trim();
+    const streams = stationForm.streams
+      .map(s => ({ label: s.label.trim(), url: s.url.trim() }))
+      .filter(s => s.label.length > 0);
+    if (!name) { setStationError("A név kötelező."); return; }
+    if (streams.length === 0) { setStationError("Legalább egy stream-et add meg (a label kötelező)."); return; }
+    if (stationForm.mode === "new") {
+      const newId = (name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "radio")
+                    + "-" + Math.random().toString(36).slice(2, 6);
+      setNetRadios(prev => [...prev, { id: newId, name, genre, streams }]);
+    } else {
+      setNetRadios(prev => prev.map(r => r.id === stationForm.id ? { ...r, name, genre, streams } : r));
+    }
+    setStationForm(null);
+  }
+  function removeStation(id: string) {
+    const r = netRadios.find(x => x.id === id);
+    if (!r) return;
+    if (!window.confirm(`Törlöd a(z) "${r.name}" rádióállomást?`)) return;
+    setNetRadios(prev => prev.filter(x => x.id !== id));
+    setStreamPick(prev => { const c = { ...prev }; delete c[id]; return c; });
+  }
+  function restoreDefaultStations() {
+    if (!window.confirm("Visszaállítod a rádiólistát az alapértelmezettre? A saját bejegyzések elvesznek.")) return;
+    setNetRadios(NET_RADIOS_INITIAL);
+    setStreamPick({});
   }
 
   // ── Playlist builder: hangfelvétel ─────────────────────────────────────────
@@ -1199,48 +1314,17 @@ export default function SchoolRadio() {
 
             {/* ── Internetrádió tab ─────────────────────────────────────── */}
             {sourceTab === "netradio" && (
-              <div style={{padding:"16px 18px",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}}>
                 <div style={{fontSize:12,color:"var(--sl-muted)"}}>
-                  Válassz egy magyar netrádió-csatornát, állítsd be a célt, és
-                  küldd ki azonnal a snap streamen. A backend fogadja a stream-et,
-                  és tovább táplálja a klienseknek.
+                  Görgesd át a listát, válaszd ki az állomást és — ha van —
+                  egy alstreamet, majd nyomd a ▶ gombot. A célt és a stream URL-eket
+                  alább, illetve a Szerkesztés gombbal módosíthatod.
                 </div>
-                <div className="sr-netradio-grid" style={{padding:0}}>
-                  {NET_RADIOS.map(nr => (
-                    <div key={nr.url}
-                      className={`sr-netradio-card${streamSelectedUrl===nr.url?" active":""}`}
-                      onClick={() => {
-                        setStreamSelectedUrl(nr.url);
-                        setStreamSelectedName(nr.name);
-                        setStreamCustomUrl(""); setStreamCustomName("");
-                      }}>
-                      <div className="sr-netradio-name">📻 {nr.name}</div>
-                      {nr.tag && <div className="sr-netradio-tag">{nr.tag}</div>}
-                    </div>
-                  ))}
-                </div>
-                <details style={{marginTop:6}}>
-                  <summary style={{cursor:"pointer",fontSize:12,color:"var(--sl-muted)",fontWeight:700}}>
-                    ＋ Egyedi stream URL
-                  </summary>
-                  <div style={{display:"flex",gap:8,marginTop:8}}>
-                    <input
-                      className="sr-input"
-                      style={{flex:2,minWidth:120}}
-                      placeholder="Név (pl. saját rádió)"
-                      value={streamCustomName}
-                      onChange={e => setStreamCustomName(e.target.value)} />
-                    <input
-                      className="sr-input"
-                      style={{flex:3,minWidth:160}}
-                      placeholder="https://stream.example.com/live.mp3"
-                      value={streamCustomUrl}
-                      onChange={e => { setStreamCustomUrl(e.target.value); setStreamSelectedUrl(""); setStreamSelectedName(""); }} />
-                  </div>
-                </details>
+
+                {/* Cél választó (közös az összes állomásra) */}
                 <div>
-                  <div style={{fontSize:12,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 Cél</div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 Cél</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                     {(["ALL","DEVICE","GROUP"] as const).map(t => (
                       <button key={t} type="button"
                         className={`sr-btn ${streamTargetType===t?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
@@ -1248,41 +1332,99 @@ export default function SchoolRadio() {
                         {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
                       </button>
                     ))}
+                    {streamTargetType==="DEVICE" && (
+                      <select className="sr-select" style={{flex:1,minWidth:140}}
+                        value={streamTargetId} onChange={e => setStreamTargetId(e.target.value)}>
+                        <option value="">— Eszköz —</option>
+                        {devices.map(d => (
+                          <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {streamTargetType==="GROUP" && (
+                      <select className="sr-select" style={{flex:1,minWidth:140}}
+                        value={streamTargetId} onChange={e => setStreamTargetId(e.target.value)}>
+                        <option value="">— Csoport —</option>
+                        {groups.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  {streamTargetType==="DEVICE" && (
-                    <select className="sr-select" style={{marginTop:8,width:"100%"}}
-                      value={streamTargetId}
-                      onChange={e => setStreamTargetId(e.target.value)}>
-                      <option value="">— Válassz eszközt —</option>
-                      {devices.map(d => (
-                        <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  {streamTargetType==="GROUP" && (
-                    <select className="sr-select" style={{marginTop:8,width:"100%"}}
-                      value={streamTargetId}
-                      onChange={e => setStreamTargetId(e.target.value)}>
-                      <option value="">— Válassz csoportot —</option>
-                      {groups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
-                  )}
                 </div>
+
                 {streamError && (
                   <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{streamError}</span></div>
                 )}
-                <button
-                  type="button"
-                  className="sr-btn sr-btn-primary"
-                  disabled={streamBusy || (!streamSelectedUrl && !streamCustomUrl.trim())}
-                  onClick={() => void playStream()}>
-                  {streamBusy ? "⏳ Indítás…" : "▶ Azonnali adásba küldés"}
-                </button>
+
+                {/* Állomás-lista */}
+                <div className="sr-radio-list-wrap">
+                  {netRadios.length === 0 ? (
+                    <div className="sr-empty" style={{padding:"24px 16px"}}>
+                      <div className="sr-empty-icon">📻</div>
+                      <div style={{fontSize:13,fontWeight:700}}>Üres a rádiólista – használd a "Visszaállítás alapra" gombot.</div>
+                    </div>
+                  ) : netRadios.map((r, i) => {
+                    const pickIdx = streamPick[r.id] ?? 0;
+                    const safeIdx = Math.min(pickIdx, r.streams.length - 1);
+                    const playing = streamPlayingId === r.id;
+                    return (
+                      <div className="sr-radio-row" key={r.id}>
+                        <div className="sr-radio-num">{String(i+1).padStart(2,"0")}.</div>
+                        <div>
+                          <div className="sr-radio-name">📻 {r.name}</div>
+                          <div className="sr-radio-genre">{r.genre || "—"}</div>
+                        </div>
+                        <select
+                          className="sr-radio-stream-pick"
+                          value={safeIdx}
+                          disabled={r.streams.length <= 1 && !r.streams[0]?.url}
+                          onChange={e => setStreamPick(prev => ({ ...prev, [r.id]: Number(e.target.value) }))}>
+                          {r.streams.map((s, idx) => (
+                            <option key={idx} value={idx}>
+                              {s.label}{!s.url ? " (URL hiányzik)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="sr-btn sr-btn-primary sr-btn-sm"
+                          onClick={() => void playStation(r)}
+                          disabled={playing || !r.streams[safeIdx]?.url}
+                          title="Azonnali adásba küldés">
+                          {playing ? "⏳" : "▶"}
+                        </button>
+                        <div className="sr-radio-actions">
+                          <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                            onClick={() => openEditStation(r)}
+                            title="Szerkesztés (név, műfaj, alstreamek)">
+                            ✏️
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
+                            onClick={() => removeStation(r.id)}
+                            title="Törlés">
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer: új / restore */}
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
+                  <button type="button" className="sr-btn sr-btn-primary sr-btn-sm" onClick={openNewStation}>
+                    ＋ Új állomás
+                  </button>
+                  <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={restoreDefaultStations}
+                    title="A lista visszaáll az induló 16 állomásra (a saját bejegyzések elvesznek)">
+                    🔄 Visszaállítás alapra
+                  </button>
+                </div>
+
                 <div style={{fontSize:11,color:"var(--sl-muted)"}}>
-                  Az időzítés ehhez a stream-funkcióhoz hamarosan érkezik.
-                  A stream a 🛑 RÁDIÓ STOP gombbal állítható le.
+                  💡 Az alstream URL-eket a myonlineradio.hu-n érdemes ellenőrizni.
+                  A lista a böngészőben tárolódik (per-eszköz).
                 </div>
               </div>
             )}
@@ -2059,6 +2201,85 @@ export default function SchoolRadio() {
           </div>
         </div>
       </div>
+
+      {/* ══════════ Új / szerkesztett rádióállomás modal ══════════ */}
+      {stationForm && (
+        <div className="sr-overlay" onClick={() => setStationForm(null)}>
+          <div className="sr-overlay-modal" style={{maxWidth:560}} onClick={e => e.stopPropagation()}>
+            <div className="sr-overlay-hdr">
+              <div className="sr-overlay-title">
+                {stationForm.mode === "new" ? "＋ Új rádióállomás" : "✏️ Állomás szerkesztése"}
+              </div>
+              <button className="sr-overlay-close" type="button" onClick={() => setStationForm(null)}>✕</button>
+            </div>
+            <div className="sr-overlay-body" style={{display:"flex",flexDirection:"column",gap:12}}>
+              {stationError && (
+                <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{stationError}</span></div>
+              )}
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Név</div>
+                <input className="sr-input" style={{width:"100%"}}
+                  value={stationForm.name}
+                  onChange={e => setStationForm(s => s ? { ...s, name: e.target.value } : s)}
+                  placeholder="pl. Rádió 88" autoFocus />
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Műfaj</div>
+                <input className="sr-input" style={{width:"100%"}}
+                  value={stationForm.genre}
+                  onChange={e => setStationForm(s => s ? { ...s, genre: e.target.value } : s)}
+                  placeholder="pl. rock, retro, jazz" />
+              </div>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span>Alstreamek (legalább 1)</span>
+                  <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                    onClick={() => setStationForm(s => s ? { ...s, streams: [...s.streams, { label: "", url: "" }] } : s)}>
+                    ＋ Hozzáad
+                  </button>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {stationForm.streams.map((s, idx) => (
+                    <div key={idx} className="sr-stream-row">
+                      <input className="sr-input"
+                        placeholder="Label (pl. Főadás, Rock, Jazz)"
+                        value={s.label}
+                        onChange={e => setStationForm(f => f ? {
+                          ...f, streams: f.streams.map((x,i) => i===idx ? { ...x, label: e.target.value } : x),
+                        } : f)} />
+                      <input className="sr-input"
+                        placeholder="https://stream.example.com/live.mp3"
+                        value={s.url}
+                        onChange={e => setStationForm(f => f ? {
+                          ...f, streams: f.streams.map((x,i) => i===idx ? { ...x, url: e.target.value } : x),
+                        } : f)} />
+                      <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
+                        onClick={() => setStationForm(f => f ? {
+                          ...f, streams: f.streams.filter((_,i) => i!==idx),
+                        } : f)}
+                        disabled={stationForm.streams.length <= 1}
+                        title={stationForm.streams.length <= 1 ? "Legalább egy stream kell" : "Stream törlése"}>
+                        🗑
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:6}}>
+                  💡 A myonlineradio.hu-n megnézheted a publikus stream URL-eket és alcsatornákat.
+                </div>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:10,paddingTop:4}}>
+                <button type="button" className="sr-btn sr-btn-ghost" onClick={() => setStationForm(null)}>
+                  Mégse
+                </button>
+                <button type="button" className="sr-btn sr-btn-primary" onClick={submitStation}>
+                  {stationForm.mode === "new" ? "＋ Hozzáadás" : "💾 Mentés"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════ Időzített lejátszások overlay ══════════ */}
       {historyOpen && (
