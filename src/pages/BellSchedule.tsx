@@ -33,6 +33,7 @@ type CalendarDay = {
   isHoliday: boolean;
   templateId: string | null;
   template: BellTemplate | null;
+  note: string | null;        // max 16 char – a naptár-cellában is látszik
 };
 
 // Szerkesztés alatt lévő új sor (még nem lett "Kész"-szel elfogadva)
@@ -43,7 +44,9 @@ type PendingBell = {
   soundFile: string;
 };
 
-const MAX_TOTAL_BYTES = 500 * 1024;
+// 4 MB – az ESP32-S3-N16R8 LittleFS partícióján kb. ennyi marad a hangoknak.
+// (Backend-en is ugyanez a limit: bells.routes.ts MAX_TOTAL_BYTES.)
+const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
 const MONTHS_HU = [
   "Január", "Február", "Március", "Április", "Május", "Június",
   "Július", "Augusztus", "Szeptember", "Október", "November", "December",
@@ -52,7 +55,8 @@ const MONTHS_HU = [
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
-  return `${Math.round(b / 1024)} KB`;
+  if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 }
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -76,7 +80,7 @@ export default function BellSchedule() {
   const [calDays, setCalDays] = useState<CalendarDay[]>([]);
   const [calLoading, setCalLoading] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
-  const [editDay, setEditDay] = useState<{ isHoliday: boolean; templateId: string | null } | null>(null);
+  const [editDay, setEditDay] = useState<{ isHoliday: boolean; templateId: string | null; note: string } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -93,6 +97,8 @@ export default function BellSchedule() {
   const [soundsLoading, setSoundsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Új: belehallgatás – melyik hang sora van kibontva audio player-rel.
+  const [previewSoundId, setPreviewSoundId] = useState<string|null>(null);
 
   const [hasLock, setHasLock] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
@@ -192,7 +198,11 @@ export default function BellSchedule() {
     });
     // editDay az első kijelölt nap adatait mutatja
     const existing = getDayData(dateStr);
-    setEditDay({ isHoliday: existing?.isHoliday ?? false, templateId: existing?.templateId ?? null });
+    setEditDay({
+      isHoliday:  existing?.isHoliday ?? false,
+      templateId: existing?.templateId ?? null,
+      note:       existing?.note ?? "",
+    });
     setDirty(false);
   }
 
@@ -389,6 +399,9 @@ export default function BellSchedule() {
     const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
     while (cells.length % 7 !== 0) cells.push(null);
 
+    // Az alapértelmezett csengetési rend (a normál napokra ezt mutatjuk).
+    const defaultTemplate = templates.find(t => t.isDefault) ?? null;
+
     return (
       <div style={{ overflowX: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -416,19 +429,46 @@ export default function BellSchedule() {
             const isHoliday = data?.isHoliday || isWeekend;
             const hasCustomTemplate = data?.templateId != null;
             const isSelected = selectedDates.has(dateStr);
-            // CSS változók: világos/sötét témához automatikusan igazodik
+            // Minden nap aljára a tényleges csengetési rend név:
+            //   custom: a kiválasztott sablon neve
+            //   normál: az alapértelmezett sablon neve (defaultTemplate)
+            //   ünnep/hétvége: nincs csengetés → üres
+            const effectiveTemplateName = isHoliday
+              ? null
+              : (data?.template?.name ?? defaultTemplate?.name ?? null);
             let cellBg = "var(--sl-surface)";
             let cellBorder = "transparent";
             if (isHoliday) cellBg = "var(--sl-cell-holiday)";
             if (hasCustomTemplate) cellBg = "var(--sl-cell-custom)";
             if (isToday) cellBorder = "var(--sl-blue)";
             if (isSelected) { cellBg = "var(--sl-cell-selected)"; cellBorder = "#3b82f6"; }
+            const titleHover =
+              (data?.note ? `📝 ${data.note} · ` : "") +
+              (effectiveTemplateName ?? (isHoliday ? "Szünnap" : "Normál rend"));
             return (
-              <div key={idx} onClick={(e) => onDayClick(dateStr, e)} style={{ background: cellBg, border: `2px solid ${cellBorder}`, borderRadius: 6, padding: "6px 4px", minHeight: 52, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s", userSelect: "none" }} title={data?.template?.name ?? (isHoliday ? "Szünnap" : "Normál rend")}>
+              <div key={idx} onClick={(e) => onDayClick(dateStr, e)} style={{ background: cellBg, border: `2px solid ${cellBorder}`, borderRadius: 6, padding: "6px 4px", minHeight: 64, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s", userSelect: "none" }} title={titleHover}>
                 <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? "#3b82f6" : isWeekend ? "#ef4444" : "var(--sl-text)" }}>{day}</div>
                 {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>SZÜNNAP</div>}
                 {isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>HÉTVÉGE</div>}
-                {hasCustomTemplate && !isHoliday && <div style={{ fontSize: 9, color: "#16a34a", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{data?.template?.name?.slice(0, 10)}</div>}
+                {/* 16-karakteres megjegyzés (ha van) – kicsi sárga jelzés */}
+                {data?.note && (
+                  <div style={{ fontSize: 9, color: "#d97706", marginTop: 2, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    📝 {data.note}
+                  </div>
+                )}
+                {/* Aktuális csengetési rend neve – minden napon (default vagy custom).
+                    Szünnap/hétvége esetén kihagyjuk (ott úgyse szól). */}
+                {effectiveTemplateName && (
+                  <div style={{
+                    fontSize: 9,
+                    color: hasCustomTemplate ? "#16a34a" : "var(--sl-muted)",
+                    fontWeight: hasCustomTemplate ? 700 : 500,
+                    marginTop: 2,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                  }}>
+                    🔔 {effectiveTemplateName.slice(0, 12)}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -454,6 +494,21 @@ export default function BellSchedule() {
                 </select>
               </div>
             )}
+            {/* 16 karakteres megjegyzés – a naptár-cellában is látszik */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>
+                📝 Megjegyzés (max 16 karakter)
+                <span style={{ float: "right", fontSize: 11, color: "var(--sl-muted)" }}>{editDay.note.length}/16</span>
+              </label>
+              <input
+                type="text"
+                className="sl-input"
+                style={{ width: "100%" }}
+                value={editDay.note}
+                maxLength={16}
+                placeholder="pl. Tanévnyitó, Felmérő, Ülésrend…"
+                onChange={e => { setEditDay({ ...editDay, note: e.target.value.slice(0, 16) }); setDirty(true); }} />
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="sl-btn sl-btn-primary" onClick={() => { if (!confirm("Biztosan mentod?")) return; saveDay(); }} disabled={saving}>{saving ? "Mentés..." : "💾 Mentés"}</button>
               <button className="sl-btn sl-btn-secondary" onClick={() => { if (dirty && !confirm("Elveted a változtatásokat?")) return; setSelectedDates(new Set()); setEditDay(null); setDirty(false); }}>Mégse</button>
@@ -486,14 +541,23 @@ export default function BellSchedule() {
         {templatesLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
           <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
             {templates.map(t => (
-              <div key={t.id} style={{ background: t.isDefault ? "#f0fdf4" : "var(--sl-surface)", border: t.isDefault ? "1px solid #bbf7d0" : "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={t.id} style={{
+                // Alapértelmezett: középkék gradient + fehér szöveg, hogy
+                // a sötét és világos téma alatt is olvasható legyen.
+                // (Eddig világos zöld háttér + világos örökölt szöveg = láthatatlan.)
+                background: t.isDefault ? "linear-gradient(135deg,#1e3a8a,#3b82f6)" : "var(--sl-surface)",
+                color:      t.isDefault ? "#fff" : "var(--sl-text)",
+                border:     t.isDefault ? "1px solid #1e40af" : "1px solid var(--sl-border)",
+                borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12,
+                boxShadow: t.isDefault ? "0 2px 8px rgba(59,130,246,0.25)" : undefined,
+              }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
                     {t.name}
-                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#dcfce7", color: "#15803d", borderRadius: 4, padding: "2px 6px" }}>⭐ Alapértelmezett</span>}
+                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "rgba(255,255,255,0.2)", color: "#fff", borderRadius: 4, padding: "2px 6px" }}>⭐ Alapértelmezett</span>}
                     {t.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#fffbeb", color: "#d97706", borderRadius: 4, padding: "2px 6px" }}>🔒 Zárolt</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t.bells.length} jelzés</div>
+                  <div style={{ fontSize: 12, color: t.isDefault ? "rgba(255,255,255,0.85)" : "var(--sl-muted)", marginTop: 4 }}>{t.bells.length} jelzés</div>
                 </div>
                 <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(t)}>👁 Megtekint{!t.isLocked ? " / Szerkeszt" : ""}</button>
                 {hasLock && !t.isDefault && (
@@ -622,18 +686,35 @@ export default function BellSchedule() {
         </div>
         {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
           <div style={{ display: "grid", gap: 8 }}>
-            {sounds.map(s => (
-              <div key={s.id} style={{ background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 20 }}>🔔</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{s.filename}
-                    {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
+            {sounds.map(s => {
+              const apiBase = ((import.meta as any)?.env?.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+              const audioUrl = `${apiBase}/audio/bells/${encodeURIComponent(s.filename)}`;
+              const expanded = previewSoundId === s.id;
+              return (
+                <div key={s.id} style={{ background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ fontSize: 20 }}>🔔</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{s.filename}
+                        {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>{fmtBytes(s.sizeBytes)}</div>
+                    </div>
+                    {/* ▶ Belehallgatás – toggle a preview-audio player-re */}
+                    <button
+                      className="sl-btn sl-btn-secondary"
+                      onClick={() => setPreviewSoundId(prev => prev === s.id ? null : s.id)}
+                      title={expanded ? "Lejátszó bezárása" : "Belehallgatás"}>
+                      {expanded ? "▾ Bezár" : "▶ Belehallgat"}
+                    </button>
+                    {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>Töröl</button>}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>{fmtBytes(s.sizeBytes)}</div>
+                  {expanded && (
+                    <audio controls autoPlay src={audioUrl} style={{ width: "100%", height: 36 }} />
+                  )}
                 </div>
-                {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>Töröl</button>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
