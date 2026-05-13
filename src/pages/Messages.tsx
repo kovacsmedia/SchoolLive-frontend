@@ -14,6 +14,7 @@ type ScheduleType = "immediate"|"next_bell"|"custom";
 type BellEntry    = { hour: number; minute: number; type: string };
 type ComposerMode = "tts" | "record";
 type RecordState  = "idle" | "recording" | "recorded";
+type IntroSound   = { id:string; filename:string; sizeBytes:number; durationMs:number|null; createdAt:string };
 
 function getNextBreakTime(bells: BellEntry[]): Date | null {
   const sorted = [...bells].sort((a,b) => a.hour*60+a.minute - (b.hour*60+b.minute));
@@ -157,7 +158,8 @@ export default function Messages() {
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string|null>(null);
   const [detailMsg, setDetailMsg] = useState<MessageItem|null>(null);
-  const [composerOpen, setComposerOpen] = useState(false);
+  // Új: a "Korábbi üzenetek" overlay nyitva van-e. (A composer a fő view).
+  const [listOpen, setListOpen] = useState(false);
 
   // TTS state
   const [composerMode, setComposerMode] = useState<ComposerMode>("tts");
@@ -178,6 +180,16 @@ export default function Messages() {
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateMsg, setTemplateMsg] = useState<string|null>(null);
+
+  // Intro hang (üzenet előtt) – default "" = backend dingdong fallback
+  const [introSounds, setIntroSounds]       = useState<IntroSound[]>([]);
+  const [preBellSoundId, setPreBellSoundId] = useState<string>("");
+  const [introUploadBusy, setIntroUploadBusy] = useState(false);
+  const [introUploadError, setIntroUploadError] = useState<string|null>(null);
+  const introFileRef = useRef<HTMLInputElement|null>(null);
+
+  // Replay state (loading per-id, hogy ne lehessen duplán nyomni)
+  const [replayingId, setReplayingId] = useState<string|null>(null);
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [groups, setGroups]   = useState<DeviceGroup[]>([]);
@@ -230,36 +242,95 @@ export default function Messages() {
     setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
 
-  useEffect(() => { loadMessages(1); }, []);
-  useEffect(() => {
-    if (composerOpen) {
-      loadTemplates(); loadDevices(); loadGroups();
-      apiFetch<{ok:boolean;templates:Array<{bells:BellEntry[];isDefault:boolean}>}>("/bells/templates")
-        .then(r => {
-          const def = r.templates?.find(t => t.isDefault) ?? r.templates?.[0];
-          if (def) setBells(def.bells.filter(b => b.type === "MAIN"));
-        }).catch(() => {});
+  // ── Intro sounds (üzenet-előtti rövid bell hangok) ────────────────────────
+  async function loadIntroSounds() {
+    try {
+      const r = await apiFetch<{ok:boolean;sounds:IntroSound[]}>("/bells/intro-sounds");
+      setIntroSounds(r.sounds ?? []);
+    } catch { setIntroSounds([]); }
+  }
+  async function uploadIntroSound(file: File) {
+    if (file.size > 200 * 1024) {
+      setIntroUploadError("A fájl max 200 KB lehet (7s mp3-hoz elég).");
+      return;
     }
-  }, [composerOpen]);
-
-  // Cleanup recording on close
-  useEffect(() => {
-    if (!composerOpen) {
-      stopRecordingCleanup();
+    setIntroUploadBusy(true); setIntroUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file, file.name);
+      const token    = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      const tenantId = sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
+      const resp = await fetch(`${API_BASE}/bells/intro-sounds`, {
+        method: "POST",
+        headers: {
+          ...(token    ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+        },
+        body: fd,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || "Feltöltés sikertelen");
+      await loadIntroSounds();
+      // Az újonnan feltöltött hangot automatikusan kiválasztjuk
+      if (data.sound?.id) setPreBellSoundId(data.sound.id);
+    } catch (e:any) {
+      setIntroUploadError(e?.message ?? "Feltöltés sikertelen");
+    } finally {
+      setIntroUploadBusy(false);
+      if (introFileRef.current) introFileRef.current.value = "";
     }
-  }, [composerOpen]);
+  }
+  async function deleteIntroSound(id: string) {
+    if (!window.confirm("Törlöd ezt a hangot?")) return;
+    try {
+      await apiFetch(`/bells/intro-sounds/${id}`, { method: "DELETE" });
+      if (preBellSoundId === id) setPreBellSoundId("");
+      await loadIntroSounds();
+    } catch (e:any) {
+      setIntroUploadError(e?.message ?? "Törlés sikertelen");
+    }
+  }
 
-  function openComposer() {
+  // ── Replay (újra-bemondatás) ──────────────────────────────────────────────
+  async function replayMessage(id: string) {
+    if (replayingId) return;
+    setReplayingId(id);
+    setSendError(null); setSendSuccess(false);
+    try {
+      await apiPost(`/messages/${id}/replay`, {});
+      setSendSuccess(true);
+      await loadMessages(page);
+    } catch (e:any) {
+      setSendError(e?.message ?? "Újrabemondatás sikertelen");
+    } finally {
+      setReplayingId(null);
+    }
+  }
+
+  useEffect(() => {
+    // A composer most a fő view → minden kezdő adat azonnal betöltődik.
+    loadMessages(1);
+    loadTemplates();
+    loadDevices();
+    loadGroups();
+    loadIntroSounds();
+    apiFetch<{ok:boolean;templates:Array<{bells:BellEntry[];isDefault:boolean}>}>("/bells/templates")
+      .then(r => {
+        const def = r.templates?.find(t => t.isDefault) ?? r.templates?.[0];
+        if (def) setBells(def.bells.filter(b => b.type === "MAIN"));
+      }).catch(() => {});
+    // Komponens unmount-kor a recorder cleanup-ja megfut
+    return () => { stopRecordingCleanup(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function resetComposer() {
     setText(""); setVoice("anna"); setScheduleType("immediate"); setCustomTime("");
     setTargetType("ALL"); setTargetId(""); setSendError(null); setSendSuccess(false);
     setTemplateName(""); setTemplateMsg(null);
     setComposerMode("tts");
     setRecState("idle"); setRecBlob(null); setRecAudioUrl(null); setRecError(null); setRecSeconds(0);
-    setComposerOpen(true);
-  }
-  function closeComposer() {
-    stopRecordingCleanup();
-    setComposerOpen(false); setSendSuccess(false);
+    setPreBellSoundId("");
   }
 
   // ── Felvétel logika ────────────────────────────────────────────────────────
@@ -347,7 +418,12 @@ export default function Messages() {
     }
     setSendError(null); setSending(true);
     try {
-      await apiPost("/messages", { text: text.trim(), voice, targetType, targetId: targetType === "ALL" ? undefined : targetId, scheduledAt: getScheduledAt() });
+      await apiPost("/messages", {
+        text: text.trim(), voice, targetType,
+        targetId: targetType === "ALL" ? undefined : targetId,
+        scheduledAt:    getScheduledAt(),
+        preBellSoundId: preBellSoundId || undefined,
+      });
       setSendSuccess(true); await loadMessages(1);
     } catch (e:any) { setSendError(e?.message ?? "Küldés sikertelen"); }
     finally { setSending(false); }
@@ -364,6 +440,7 @@ export default function Messages() {
       if (targetType !== "ALL" && targetId) formData.append("targetId", targetId);
       const scheduledAt = getScheduledAt();
       if (scheduledAt) formData.append("scheduledAt", scheduledAt);
+      if (preBellSoundId) formData.append("preBellSoundId", preBellSoundId);
 
       const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
       // "activeTenantId" – ugyanaz a kulcs mint BellSchedule/Devices/SchoolRadio oldalakon
@@ -459,6 +536,61 @@ export default function Messages() {
     );
   }
 
+  // ── Intro hang választó (composer-ben TTS és Record módban közös) ─────────
+  function IntroSoundPicker() {
+    return (
+      <div>
+        <label className="ms-label">🔔 Üzenet előtti hang</label>
+        <div className="ms-row" style={{alignItems:"center"}}>
+          <select
+            className="ms-select"
+            style={{flex:1, minWidth:180}}
+            value={preBellSoundId}
+            onChange={e => setPreBellSoundId(e.target.value)}>
+            <option value="">🔔 Alapértelmezett (dingdong)</option>
+            {introSounds.map(s => (
+              <option key={s.id} value={s.id}>
+                🎵 {s.filename}{s.durationMs ? ` (${(s.durationMs/1000).toFixed(1)}s)` : ""}
+              </option>
+            ))}
+          </select>
+          <input
+            ref={introFileRef}
+            type="file"
+            accept="audio/*"
+            style={{display:"none"}}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) void uploadIntroSound(f);
+            }} />
+          <button
+            type="button"
+            className="ms-btn ms-btn-ghost ms-btn-sm"
+            onClick={() => introFileRef.current?.click()}
+            disabled={introUploadBusy}
+            title="Új intro hang feltöltése (max 7s)">
+            {introUploadBusy ? "⏳ Töltés…" : "＋ Feltöltés"}
+          </button>
+          {preBellSoundId && (
+            <button
+              type="button"
+              className="ms-btn ms-btn-danger ms-btn-sm"
+              onClick={() => void deleteIntroSound(preBellSoundId)}
+              title="Kiválasztott hang törlése">
+              🗑
+            </button>
+          )}
+        </div>
+        {introUploadError && (
+          <div style={{fontSize:12,marginTop:5,color:"#dc2626"}}>{introUploadError}</div>
+        )}
+        <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+          Max 7 másodperc. Ha üresen hagyod, a default „dingdong” szól.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ms-page">
       <style>{CSS}</style>
@@ -466,52 +598,212 @@ export default function Messages() {
       <div className="ms-hdr">
         <div>
           <div className="ms-title">📢 Üzenetek</div>
-          <div className="ms-subtitle">Iskolai hangüzenetek küldése és előzményei.</div>
+          <div className="ms-subtitle">Új üzenet összeállítása. A korábbiak külön ablakban érhetők el.</div>
         </div>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-          {canDelete && selectedIds.size > 0 && (
-            <button className="ms-btn ms-btn-danger" onClick={doBulkDelete}>🗑 Kijelöltek törlése ({selectedIds.size})</button>
-          )}
-          <button className="ms-btn ms-btn-primary" onClick={openComposer}>＋ Új üzenet</button>
+          <button
+            className="ms-btn ms-btn-ghost"
+            onClick={() => { setListOpen(true); void loadMessages(1); }}
+            type="button">
+            📥 Korábbi üzenetek{total > 0 ? ` (${total})` : ""}
+          </button>
         </div>
       </div>
 
-      {listError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{listError}</div>}
-
-      {loading ? (
-        <div className="ms-empty"><div className="ms-empty-icon">⏳</div><div className="ms-empty-txt">Betöltés…</div></div>
-      ) : messages.length === 0 ? (
-        <div className="ms-empty">
-          <div className="ms-empty-icon">📭</div>
-          <div className="ms-empty-txt">Még nem küldtek üzenetet</div>
-          <div style={{fontSize:13,marginTop:6}}>Kattints az „Új üzenet" gombra az első küldéshez</div>
-        </div>
-      ) : (
-        <div className="ms-card">
-          {messages.map(m => (
-            <div className="ms-msg-row" key={m.id}>
-              {canDelete ? (
-                <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelect(m.id)} style={{width:15,height:15,cursor:"pointer",flexShrink:0}} />
-              ) : <span />}
-              <div className="ms-msg-excerpt">{messageExcerpt(m)}</div>
-              <div className="ms-msg-meta">{m.createdBy.displayName||m.createdBy.email}</div>
-              <div className="ms-msg-time">
-                {m.playedAt ? formatDate(m.playedAt) : m.scheduledAt ? `⏰ ${formatDate(m.scheduledAt)}` : formatDate(m.createdAt)}
-              </div>
-              <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => setDetailMsg(m)}>Részletek</button>
-              {canDelete && (
-                <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={() => void doDeleteOne(m.id)} title="Törlés">🗑</button>
-              )}
-            </div>
-          ))}
+      {sendSuccess && (
+        <div className="ms-alert ms-alert-success">
+          <span>✅</span>
+          <span style={{flex:1}}>Az üzenet sikeresen elküldve!</span>
+          <button
+            className="ms-btn ms-btn-ghost ms-btn-sm"
+            type="button"
+            onClick={() => { resetComposer(); }}
+            style={{marginLeft:"auto"}}>
+            🔄 Új üzenet
+          </button>
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="ms-pagination">
-          <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page<=1} onClick={() => loadMessages(page-1)}>← Előző</button>
-          <span>{page} / {totalPages}</span>
-          <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page>=totalPages} onClick={() => loadMessages(page+1)}>Következő →</button>
+      {/* ── Composer – fő view ─────────────────────────────────────────────── */}
+      <div className="ms-card" style={{padding:"20px 22px"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:18}}>
+
+          {/* Mode tabs */}
+          <div className="ms-mode-tabs">
+            <button className={"ms-mode-tab"+(composerMode==="tts"?" active":"")} onClick={() => setComposerMode("tts")} type="button">
+              🤖 Szövegfelolvasó (TTS)
+            </button>
+            <button className={"ms-mode-tab"+(composerMode==="record"?" active":"")} onClick={() => setComposerMode("record")} type="button">
+              🎙️ Hangfelvétel
+            </button>
+          </div>
+
+          {/* TTS mód */}
+          {composerMode === "tts" && (
+            <>
+              {templates.length > 0 && (
+                <div>
+                  <div className="ms-label">💾 Mentett sablonok</div>
+                  <div className="ms-tpl-bar">
+                    {templates.map(t => (
+                      <div key={t.id} className="ms-tpl-chip" onClick={() => { setText(t.text); setVoice(t.voice); }}>
+                        {t.name}
+                        <span className="ms-tpl-del" onClick={e => { e.stopPropagation(); deleteTemplate(t.id); }}>✕</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="ms-label">✏️ Üzenet szövege</label>
+                <textarea className="ms-textarea" value={text} onChange={e => setText(e.target.value)} placeholder="Írd be az üzenet szövegét…" />
+              </div>
+              <div>
+                <label className="ms-label">📁 Mentés sablonként</label>
+                <div className="ms-row">
+                  <input className="ms-input" style={{flex:1,minWidth:130}} placeholder="Sablon neve…" value={templateName} onChange={e => setTemplateName(e.target.value)} />
+                  <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={saveTemplate} disabled={savingTemplate}>{savingTemplate?"Mentés…":"💾 Mentés"}</button>
+                </div>
+                {templateMsg && <div style={{fontSize:12,marginTop:5,color:templateMsg.includes("mentve")?"#15803d":"#dc2626"}}>{templateMsg}</div>}
+              </div>
+              <div>
+                <div className="ms-label">🎙️ Hangszín</div>
+                <div className="ms-row">
+                  {Object.entries(VOICE_LABELS).map(([val,label]) => (
+                    <div key={val} className={"ms-chip"+(voice===val?" active":"")} onClick={() => setVoice(val)}>{label}</div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Hangfelvétel mód */}
+          {composerMode === "record" && (
+            <div>
+              <div className="ms-rec-center">
+                {recState === "idle" && (
+                  <>
+                    <div className="ms-mic-icon">🎙️</div>
+                    <div className="ms-rec-hint">Kattints a gombra a felvétel megkezdéséhez.</div>
+                    <button className="ms-btn ms-btn-primary" onClick={startRecording} type="button">
+                      ⏺ Felvétel indítása
+                    </button>
+                    {recError && <div className="ms-alert ms-alert-error" style={{margin:0}}><span>⚠️</span>{recError}</div>}
+                  </>
+                )}
+                {recState === "recording" && (
+                  <>
+                    <div className="ms-mic-icon ms-mic-pulse" style={{color:"#ef4444"}}>🎙️</div>
+                    <div className="ms-rec-time" style={{color:"#ef4444"}}>{fmtRecTime(recSeconds)}</div>
+                    <div className="ms-rec-hint" style={{color:"#ef4444",fontWeight:700}}>● Felvétel folyamatban…</div>
+                    <button className="ms-btn ms-btn-danger" onClick={stopRecording} type="button">
+                      ⏹ Felvétel befejezése
+                    </button>
+                  </>
+                )}
+                {recState === "recorded" && recAudioUrl && (
+                  <>
+                    <div className="ms-mic-icon">✅</div>
+                    <div className="ms-rec-hint">Felvétel kész – hallgasd meg!</div>
+                    <audio controls src={recAudioUrl} style={{width:"100%",maxWidth:380}} />
+                    <div className="ms-row" style={{justifyContent:"center"}}>
+                      <button className="ms-btn ms-btn-ghost" onClick={resetRecording} type="button">
+                        🔄 Új felvétel
+                      </button>
+                      <div style={{fontSize:13,color:"var(--sl-muted)",display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{color:"#22c55e",fontWeight:700}}>✓ Elfogadva</span>
+                        <span>– töltsd ki a részleteket alább</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Üzenet előtti intro hang */}
+          <IntroSoundPicker />
+
+          {/* Cél + ütemezés */}
+          <TargetAndSchedule />
+
+          {sendError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{sendError}</div>}
+
+          <div style={{display:"flex",justifyContent:"flex-end",gap:10,paddingTop:6}}>
+            {composerMode === "tts" && (
+              <button className="ms-btn ms-btn-primary" onClick={sendTTS} disabled={sending}>
+                {sending ? "⏳ Generálás…" : "🔊 Küldés"}
+              </button>
+            )}
+            {composerMode === "record" && (
+              <button className="ms-btn ms-btn-primary" onClick={sendRecording} disabled={sending || recState !== "recorded"}>
+                {sending ? "⏳ Feltöltés…" : "🔊 Küldés"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Korábbi üzenetek overlay ──────────────────────────────────────── */}
+      {listOpen && (
+        <div className="ms-overlay" onClick={() => setListOpen(false)}>
+          <div className="ms-modal" style={{maxWidth:780}} onClick={e => e.stopPropagation()}>
+            <div className="ms-modal-hdr">
+              <div className="ms-modal-title">📥 Korábbi üzenetek{total>0 ? ` (${total})` : ""}</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {canDelete && selectedIds.size > 0 && (
+                  <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={doBulkDelete} type="button">
+                    🗑 Kijelöltek törlése ({selectedIds.size})
+                  </button>
+                )}
+                <button className="ms-close" onClick={() => setListOpen(false)}>✕</button>
+              </div>
+            </div>
+            <div style={{padding:"14px 18px",maxHeight:"70vh",overflowY:"auto"}}>
+              {listError && <div className="ms-alert ms-alert-error" style={{marginBottom:10}}><span>⚠️</span>{listError}</div>}
+              {loading ? (
+                <div className="ms-empty"><div className="ms-empty-icon">⏳</div><div className="ms-empty-txt">Betöltés…</div></div>
+              ) : messages.length === 0 ? (
+                <div className="ms-empty">
+                  <div className="ms-empty-icon">📭</div>
+                  <div className="ms-empty-txt">Még nem küldtek üzenetet</div>
+                </div>
+              ) : (
+                <div>
+                  {messages.map(m => (
+                    <div className="ms-msg-row" key={m.id}>
+                      {canDelete ? (
+                        <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelect(m.id)} style={{width:15,height:15,cursor:"pointer",flexShrink:0}} />
+                      ) : <span />}
+                      <div className="ms-msg-excerpt">{messageExcerpt(m)}</div>
+                      <div className="ms-msg-meta">{m.createdBy.displayName||m.createdBy.email}</div>
+                      <div className="ms-msg-time">
+                        {m.playedAt ? formatDate(m.playedAt) : m.scheduledAt ? `⏰ ${formatDate(m.scheduledAt)}` : formatDate(m.createdAt)}
+                      </div>
+                      <button
+                        className="ms-btn ms-btn-primary ms-btn-sm"
+                        onClick={() => void replayMessage(m.id)}
+                        disabled={!m.fileUrl || !!replayingId}
+                        title={m.fileUrl ? "Újra bemondatás (a tárolt fájl, már tartalmazza a dingdong-ot)" : "Nincs eltárolt fájl"}>
+                        {replayingId === m.id ? "⏳ Küldés…" : "🔁 Újra"}
+                      </button>
+                      <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => setDetailMsg(m)}>Részletek</button>
+                      {canDelete && (
+                        <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={() => void doDeleteOne(m.id)} title="Törlés">🗑</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {totalPages > 1 && (
+                <div className="ms-pagination">
+                  <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page<=1} onClick={() => loadMessages(page-1)}>← Előző</button>
+                  <span>{page} / {totalPages}</span>
+                  <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page>=totalPages} onClick={() => loadMessages(page+1)}>Következő →</button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -544,145 +836,6 @@ export default function Messages() {
         </div>
       )}
 
-      {/* Composer modal */}
-      {composerOpen && (
-        <div className="ms-overlay" onClick={closeComposer}>
-          <div className="ms-modal" onClick={e => e.stopPropagation()}>
-            <div className="ms-modal-hdr">
-              <div className="ms-modal-title">✉️ Új üzenet küldése</div>
-              <button className="ms-close" onClick={closeComposer}>✕</button>
-            </div>
-
-            {sendSuccess ? (
-              <div className="ms-modal-body">
-                <div className="ms-alert ms-alert-success">
-                  <span>✅</span>Az üzenet sikeresen elküldve!
-                </div>
-                <div className="ms-modal-footer" style={{padding:0,border:0}}>
-                  <button className="ms-btn ms-btn-primary" onClick={closeComposer}>Bezárás</button>
-                </div>
-              </div>
-            ) : (
-              <div className="ms-modal-body">
-
-                {/* Mode tabs */}
-                <div className="ms-mode-tabs">
-                  <button className={"ms-mode-tab"+(composerMode==="tts"?" active":"")} onClick={() => setComposerMode("tts")} type="button">
-                    🤖 Szövegfelolvasó (TTS)
-                  </button>
-                  <button className={"ms-mode-tab"+(composerMode==="record"?" active":"")} onClick={() => setComposerMode("record")} type="button">
-                    🎙️ Hangfelvétel
-                  </button>
-                </div>
-
-                {/* ── TTS mód ───────────────────────────────────────────── */}
-                {composerMode === "tts" && (
-                  <>
-                    {templates.length > 0 && (
-                      <div>
-                        <div className="ms-label">💾 Mentett sablonok</div>
-                        <div className="ms-tpl-bar">
-                          {templates.map(t => (
-                            <div key={t.id} className="ms-tpl-chip" onClick={() => { setText(t.text); setVoice(t.voice); }}>
-                              {t.name}
-                              <span className="ms-tpl-del" onClick={e => { e.stopPropagation(); deleteTemplate(t.id); }}>✕</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <label className="ms-label">✏️ Üzenet szövege</label>
-                      <textarea className="ms-textarea" value={text} onChange={e => setText(e.target.value)} placeholder="Írd be az üzenet szövegét…" />
-                    </div>
-                    <div>
-                      <label className="ms-label">📁 Mentés sablonként</label>
-                      <div className="ms-row">
-                        <input className="ms-input" style={{flex:1,minWidth:130}} placeholder="Sablon neve…" value={templateName} onChange={e => setTemplateName(e.target.value)} />
-                        <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={saveTemplate} disabled={savingTemplate}>{savingTemplate?"Mentés…":"💾 Mentés"}</button>
-                      </div>
-                      {templateMsg && <div style={{fontSize:12,marginTop:5,color:templateMsg.includes("mentve")?"#15803d":"#dc2626"}}>{templateMsg}</div>}
-                    </div>
-                    <div>
-                      <div className="ms-label">🎙️ Hangszín</div>
-                      <div className="ms-row">
-                        {Object.entries(VOICE_LABELS).map(([val,label]) => (
-                          <div key={val} className={"ms-chip"+(voice===val?" active":"")} onClick={() => setVoice(val)}>{label}</div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── Hangfelvétel mód ──────────────────────────────────── */}
-                {composerMode === "record" && (
-                  <div>
-                    <div className="ms-rec-center">
-                      {recState === "idle" && (
-                        <>
-                          <div className="ms-mic-icon">🎙️</div>
-                          <div className="ms-rec-hint">Kattints a gombra a felvétel megkezdéséhez.</div>
-                          <button className="ms-btn ms-btn-primary" onClick={startRecording} type="button">
-                            ⏺ Felvétel indítása
-                          </button>
-                          {recError && <div className="ms-alert ms-alert-error" style={{margin:0}}><span>⚠️</span>{recError}</div>}
-                        </>
-                      )}
-
-                      {recState === "recording" && (
-                        <>
-                          <div className="ms-mic-icon ms-mic-pulse" style={{color:"#ef4444"}}>🎙️</div>
-                          <div className="ms-rec-time" style={{color:"#ef4444"}}>{fmtRecTime(recSeconds)}</div>
-                          <div className="ms-rec-hint" style={{color:"#ef4444",fontWeight:700}}>● Felvétel folyamatban…</div>
-                          <button className="ms-btn ms-btn-danger" onClick={stopRecording} type="button">
-                            ⏹ Felvétel befejezése
-                          </button>
-                        </>
-                      )}
-
-                      {recState === "recorded" && recAudioUrl && (
-                        <>
-                          <div className="ms-mic-icon">✅</div>
-                          <div className="ms-rec-hint">Felvétel kész – hallgasd meg!</div>
-                          <audio controls src={recAudioUrl} style={{width:"100%",maxWidth:380}} />
-                          <div className="ms-row" style={{justifyContent:"center"}}>
-                            <button className="ms-btn ms-btn-ghost" onClick={resetRecording} type="button">
-                              🔄 Új felvétel
-                            </button>
-                            <div style={{fontSize:13,color:"var(--sl-muted)",display:"flex",alignItems:"center",gap:6}}>
-                              <span style={{color:"#22c55e",fontWeight:700}}>✓ Elfogadva</span>
-                              <span>– töltsd ki a részleteket alább</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Közös: cél + ütemezés */}
-                <TargetAndSchedule />
-
-                {sendError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{sendError}</div>}
-
-                <div className="ms-modal-footer" style={{padding:"0",border:"0"}}>
-                  <button className="ms-btn ms-btn-ghost" onClick={closeComposer}>Mégse</button>
-                  {composerMode === "tts" && (
-                    <button className="ms-btn ms-btn-primary" onClick={sendTTS} disabled={sending}>
-                      {sending ? "⏳ Generálás…" : "🔊 Küldés"}
-                    </button>
-                  )}
-                  {composerMode === "record" && (
-                    <button className="ms-btn ms-btn-primary" onClick={sendRecording} disabled={sending || recState !== "recorded"}>
-                      {sending ? "⏳ Feltöltés…" : "🔊 Küldés"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
