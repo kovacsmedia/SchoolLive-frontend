@@ -261,53 +261,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * SUPER_ADMIN idle timeout:
-   * - Only when authed and role === SUPER_ADMIN
-   * - Reset timer on typical user activity
-   * - On timeout: logout (clears token + state -> guest)
+   * - Csak authed + role === SUPER_ADMIN esetén aktív
+   * - MINDEN user-aktivitás (mouse/billentyű/scroll/touch/click) reset-eli
+   *   a tétlenség-időmérőt
+   * - A timer-t NEM setTimeout-tal csináljuk (amit a useEffect re-run újra-
+   *   indítana, és potenciálisan elveszítené az aktivitás-event-eket), hanem
+   *   stateless `lastActivityRef` + 1 sec interval ellenőrzéssel.
+   * - `capture: true` event listener: a stopPropagation egy gyermek
+   *   elemen NEM blokkolja az aktivitás-detekciót.
+   * - A useEffect csak a státusz/role változásra fut újra, nem minden
+   *   state-objektum újra-referenciára (ami a logout/refresh dispatch-ek
+   *   miatt gyakran történne).
    */
+  const isSuperAdmin =
+    state.status === "authed" && (state.user as any)?.role === "SUPER_ADMIN";
+
   useEffect(() => {
-    if (state.status !== "authed") return;
+    if (!isSuperAdmin) return;
 
-    const role = (state.user as any)?.role;
-    if (role !== "SUPER_ADMIN") return;
+    let lastActivity = Date.now();
+    const markActivity = () => { lastActivity = Date.now(); };
 
-    let t: number | null = null;
-
-    const reset = () => {
-      if (t) window.clearTimeout(t);
-      t = window.setTimeout(() => {
+    // 1 sec-es watchdog – csak akkor logout, ha a IDLE_MS lejárt.
+    const watchdog = window.setInterval(() => {
+      if (Date.now() - lastActivity >= SUPERADMIN_IDLE_MS) {
         logout();
-      }, SUPERADMIN_IDLE_MS);
-    };
+      }
+    }, 1000);
 
-    const onActivity = () => reset();
-    const onVisibility = () => {
-      if (!document.hidden) reset();
-    };
-
-    // Start timer immediately
-    reset();
-
-    // Typical activity signals
-    window.addEventListener("mousemove", onActivity, { passive: true });
-    window.addEventListener("mousedown", onActivity, { passive: true });
-    window.addEventListener("keydown", onActivity);
-    window.addEventListener("scroll", onActivity, { passive: true });
-    window.addEventListener("touchstart", onActivity, { passive: true });
-    window.addEventListener("click", onActivity, { passive: true });
+    // Aktivitás-eventek capture-mode-ban: a stopPropagation-on átverekszik.
+    const opts: AddEventListenerOptions = { passive: true, capture: true };
+    window.addEventListener("mousemove",  markActivity, opts);
+    window.addEventListener("mousedown",  markActivity, opts);
+    window.addEventListener("keydown",    markActivity, opts);
+    window.addEventListener("scroll",     markActivity, opts);
+    window.addEventListener("touchstart", markActivity, opts);
+    window.addEventListener("click",      markActivity, opts);
+    window.addEventListener("wheel",      markActivity, opts);
+    // Tab-vissza fókusz után is mintha aktív lett volna – ne dobjunk azonnal.
+    const onVisibility = () => { if (!document.hidden) markActivity(); };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", markActivity);
 
     return () => {
-      if (t) window.clearTimeout(t);
-      window.removeEventListener("mousemove", onActivity);
-      window.removeEventListener("mousedown", onActivity);
-      window.removeEventListener("keydown", onActivity);
-      window.removeEventListener("scroll", onActivity);
-      window.removeEventListener("touchstart", onActivity);
-      window.removeEventListener("click", onActivity);
+      window.clearInterval(watchdog);
+      window.removeEventListener("mousemove",  markActivity, opts as any);
+      window.removeEventListener("mousedown",  markActivity, opts as any);
+      window.removeEventListener("keydown",    markActivity, opts as any);
+      window.removeEventListener("scroll",     markActivity, opts as any);
+      window.removeEventListener("touchstart", markActivity, opts as any);
+      window.removeEventListener("click",      markActivity, opts as any);
+      window.removeEventListener("wheel",      markActivity, opts as any);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", markActivity);
     };
-  }, [state, logout]);
+  }, [isSuperAdmin, logout]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ state, refresh, login, logout }),

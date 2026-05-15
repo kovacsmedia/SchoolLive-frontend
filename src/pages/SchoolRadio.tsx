@@ -824,7 +824,7 @@ export default function SchoolRadio() {
     if (!window.confirm(`Beállítod a jelenlegi listát az intézmény alapértelmezettjének? Minden új felhasználó / új böngésző ezt fogja látni először (${netRadios.length} állomás).`)) return;
     setDefaultBusy(true);
     try {
-      await apiFetch("/tenants/me/netradio-presets", {
+      await apiFetch("/admin/tenants/me/netradio-presets", {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ presets: netRadios }),
@@ -847,7 +847,7 @@ export default function SchoolRadio() {
         const tKey = lsKeyForTenant();
         // Ha van local-szerkesztett, ne nyúljunk hozzá
         if (window.localStorage.getItem(tKey)) return;
-        const r = await apiFetch<{ ok:boolean; presets: any }>("/tenants/me/netradio-presets");
+        const r = await apiFetch<{ ok:boolean; presets: any }>("/admin/tenants/me/netradio-presets");
         if (cancelled) return;
         if (r?.presets) {
           const list = normalizeNetRadios(r.presets);
