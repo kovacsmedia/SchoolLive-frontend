@@ -189,6 +189,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } as AuthState);
 
   const logout = useCallback(() => {
+    // KRITIKUS: a backend `User.activeSessionId` mezőjét is törölni kell,
+    // különben a felhasználó 60 sec-ig nem tud újra-bejelentkezni
+    // (auth.service.ts 60 sec inaktivitási küszöb a single-session enforcement-en).
+    //
+    // A `/auth/logout` endpoint sendBeacon kompat – body-token-t is fogad.
+    // Fire-and-forget POST (a re-login-t nem várjuk meg, a navigációt nem
+    // blokkoljuk). Ha a kérés elveszik, a 60 sec timeout fallback-ként megy.
+    try {
+      const tok =
+        sessionStorage.getItem(ACCESS_TOKEN_KEY) ??
+        localStorage.getItem(ACCESS_TOKEN_KEY) ??
+        "";
+      if (tok) {
+        const apiBase =
+          ((import.meta as any)?.env?.VITE_API_BASE_URL ?? "")
+            .toString().trim().replace(/\/$/, "")
+          || "https://api.schoollive.hu";
+        // sendBeacon: a böngésző akkor is elküldi, ha közben a felhasználó
+        // bezárja a tabot vagy navigál (pl. tab-close → logout button).
+        const payload = new Blob(
+          [JSON.stringify({ token: tok })],
+          { type: "application/json" }
+        );
+        const sent = navigator.sendBeacon?.(`${apiBase}/auth/logout`, payload);
+        if (!sent) {
+          // Fallback fetch keep-alive flag-gel
+          void fetch(`${apiBase}/auth/logout`, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ token: tok }),
+            keepalive: true,
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // a kliens-szintű cleanup-ot biztos lefuttatjuk akkor is
+    }
     clearSession();
     clearBothTokens();
     dispatch({ type: "GUEST" });
