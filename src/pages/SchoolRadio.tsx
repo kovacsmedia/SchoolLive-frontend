@@ -536,9 +536,19 @@ export default function SchoolRadio() {
   const [manualNowPlaying, setManualNowPlaying] =
     useState<{ name: string; source: "stream"|"file" } | null>(null);
 
-  // ── Új: stream-volume slider (0..10) – csak a rádió/play-now stream-re hat,
-  // a csengetésre és üzenetekre NEM. A backend a játszás indításakor ffmpeg
-  // pre-gain filter-rel veszi át (volume=X/10).
+  // ── Stream-volume slider (0..10) – CSAK a rádió/play-now streamre hat,
+  // a csengetésre és üzenetekre NEM.
+  //
+  // Mapping a backend-en (sliderToLinearGain):
+  //   slider=10 → 0 dB    (max amplitúdó)
+  //   slider=1  → -36 dB  (~0.016 lineáris)
+  //   slider=0  → mute
+  //   9 lépés: -4 dB/egység, decibel-egyenletes.
+  //
+  // A változás LIVE: a slider mozgásakor azonnal (debouncolt, 150ms-os)
+  // PUT /radio/stream-volume megy ki, és a backend mixer a köv. PCM chunk-tól
+  // alkalmazza az új gain-t. A snapserver puffer (~1 sec) miatt a klienseken
+  // kb. 1 másodperc késéssel hallható a változás.
   const [streamVolume, setStreamVolume] = useState<number>(() => {
     try {
       const raw = window.localStorage.getItem("sl-stream-volume");
@@ -549,6 +559,24 @@ export default function SchoolRadio() {
   });
   useEffect(() => {
     try { window.localStorage.setItem("sl-stream-volume", String(streamVolume)); } catch {}
+  }, [streamVolume]);
+
+  // Debounce-olt live push a backendre. Kerüli, hogy minden 1-egységnyi
+  // slider-mozdulatra hívás menjen ki (chrome 1 egységenként emit-el).
+  // 150ms ablak: kényelmes vonszolásnak, mégis prompt érzet.
+  const liveVolumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (liveVolumeTimer.current) clearTimeout(liveVolumeTimer.current);
+    liveVolumeTimer.current = setTimeout(() => {
+      apiFetch("/radio/stream-volume", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ value: streamVolume }),
+      }).catch(() => { /* lehet, hogy nem szól rádió – nem fatal */ });
+    }, 150);
+    return () => {
+      if (liveVolumeTimer.current) clearTimeout(liveVolumeTimer.current);
+    };
   }, [streamVolume]);
   // Új állomás / szerkesztés modal
   type StationForm = {
