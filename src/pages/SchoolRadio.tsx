@@ -660,6 +660,42 @@ export default function SchoolRadio() {
     );
   }, [schedules, nowTick]);
 
+  // ── Snap-mixer ÉLŐ állapotának pollolása ─────────────────────────────────
+  // A backend `/radio/snap-playing` a snap-pipe-ról közvetlenül adja vissza,
+  // hogy épp megy-e RADIO. Page-mount-on + nowTick-enként (5 sec) frissítjük
+  // a `manualNowPlaying`-et – így:
+  //   • elnavigálás → vissza: a HUD nem felejti el a rádiót
+  //   • másik user bejelentkezik: ő is rögtön látja, mi szól
+  //   • pausedStack (bell/TTS megszakította): továbbra is "playing" jelzés
+  // A felhasználói "Play" gombbal indított optimistic UI nem ütközik:
+  // ha a backend még nem látja (pre-silence alatt), a következő tick átveszi.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ ok: boolean; playing: { name: string; source: "stream" | "file" } | null }>(
+      "/radio/snap-playing",
+    )
+      .then((res) => {
+        if (cancelled) return;
+        if (res.playing) {
+          setManualNowPlaying({
+            name:   res.playing.name,
+            source: res.playing.source,
+          });
+        } else {
+          // Csak akkor töröljük, ha a backend tényleg nem lát semmit.
+          // (Ha a user éppen most kattintott Play-re és a snap még pre-silence-
+          // ben van, a backend null-t adhat – de a következő tick eléri.)
+          setManualNowPlaying(null);
+        }
+      })
+      .catch(() => {
+        /* hálózati hiba: ne piszkáljuk a UI-t */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nowTick]);
+
   useEffect(() => {
     apiFetch<{ ok: boolean; templates: Array<{ bells: BellEntry[]; isDefault: boolean }> }>("/bells/templates")
       .then((r) => {
