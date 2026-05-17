@@ -42,10 +42,10 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ACCESS_TOKEN_KEY = "accessToken";
-// SUPER_ADMIN tétlenségi timeout (5 perc) – jelenleg KIKAPCSOLVA, lásd lejjebb
-// a useEffect-blokkban. A konstans referenciaként marad a könnyű re-enable-hez.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const SUPERADMIN_IDLE_MS = 5 * 60 * 1000;
+// SUPER_ADMIN tétlenségi timeout korábban itt volt:
+//   const SUPERADMIN_IDLE_MS = 5 * 60 * 1000;
+// A timeout-logika a useEffect-blokkban kikapcsolva (user kérés). Ha
+// re-enable kell, a konstanst is visszailleszteni.
 
 function safeGet(storage: Storage, key: string): string | null {
   try {
