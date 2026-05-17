@@ -15,6 +15,9 @@ type DeviceItem = {
   // null-safe: a régi rekordok lehet, hogy nem küldenek vissza volume-ot.
   volume?: number | null;
   muted?: boolean | null;
+  // Manuális szinkron-eltolás ms-ben. A Részletek overlay állítja
+  // 10 ms-os lépésekben, a kliens snapclient-sync-jét tolja előre/hátra.
+  syncOffsetMs?: number | null;
   orgUnitId?: string | null;
 };
 
@@ -315,6 +318,35 @@ export default function Devices() {
   const [editDevice, setEditDevice]   = useState<EditForm | null>(null);
   const [editBusy,   setEditBusy]     = useState(false);
   const [editError,  setEditError]    = useState<string | null>(null);
+
+  // ── Részletek overlay ────────────────────────────────────────────────────
+  // A táblában csak 4 oszlop van (név, státusz, hangerő, részletek-gomb), a
+  // többi infó (HW model, IP, firmware, OTA, utolsó aktivitás, reset/delete
+  // és a sync-eltolás +/- gombok) itt férnek el. Mobilkészüléken átláthatóbb.
+  const [detailsDeviceId, setDetailsDeviceId] = useState<string | null>(null);
+  const detailsDevice = useMemo(
+    () => detailsDeviceId ? devices.find(d => d.deviceId === detailsDeviceId) ?? null : null,
+    [detailsDeviceId, devices],
+  );
+
+  // ── Sync-eltolás ─────────────────────────────────────────────────────────
+  // PATCH a backend-re, ami WS-en SET_SYNC_OFFSET-tel push-olja az adott
+  // kliensnek. Optimistic UI a táblában, hogy a köv. tick-ig is friss legyen.
+  async function sendSyncOffset(deviceId: string, ms: number): Promise<void> {
+    const clamped = Math.max(-2000, Math.min(2000, Math.round(ms / 10) * 10));
+    try {
+      await apiFetch(`/admin/devices/${deviceId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ syncOffsetMs: clamped }),
+      });
+      setDevices(prev => prev.map(p =>
+        p.deviceId === deviceId ? { ...p, syncOffsetMs: clamped } : p,
+      ));
+    } catch (e) {
+      setError(safeErrorMessage(e));
+    }
+  }
 
   // ── Hangerő-küldés helper ─────────────────────────────────────────────────
   // Egy lépésben: PATCH /admin/devices/:id (Device.volume update) + queue-ba
@@ -751,18 +783,18 @@ export default function Devices() {
           <table className="dv-table">
             <thead>
               <tr>
-                <th>Eszköznév</th><th>Típus</th><th>HW modell</th><th>Státusz</th><th>IP cím</th><th>Firmware</th><th>OTA</th><th>Hangerő</th><th>Utolsó aktivitás</th>
-                {canWrite && <th style={{ textAlign:"right" }}>Műveletek</th>}
+                <th>Eszköznév</th><th>Státusz</th><th>Hangerő</th>
+                <th style={{ textAlign:"right" }}>Részletek</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={canWrite?10:9} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
+                <tr><td colSpan={4} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
                   <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>Betöltés…</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={canWrite?10:9}>
+                <tr><td colSpan={4}>
                   <div className="dv-empty">
                     <div className="dv-empty-icon">🔇</div>
                     <div className="dv-empty-txt">Nincs megjeleníthető eszköz</div>
@@ -770,137 +802,55 @@ export default function Devices() {
                   </div>
                 </td></tr>
               )}
-              {filtered.map(d => {
-                const cb = CLASS_BADGE[d.deviceClass] || CLASS_BADGE.SPEAKER;
-                return (
-                  <tr key={d.deviceId}>
-                    <td><strong style={{ fontWeight:700 }}>{d.name}</strong></td>
-                    <td>
-                      <span className="dv-badge" style={{ background:cb.bg, color:cb.color, borderColor:cb.border }}>
-                        {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : "Multi"}
-                      </span>
-                    </td>
-                    <td style={{ fontSize:12 }}>
-                      {d.hwModel ? (() => {
-                        const hw  = HW_MODEL_OPTIONS.find(h => h.value === d.hwModel);
-                        const bdg = HW_MODEL_BADGE[d.hwModel ?? ""] ?? { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
-                        return (
-                          <span className="dv-badge" style={{ background:bdg.bg, color:bdg.color, borderColor:bdg.border, fontSize:11 }}>
-                            {hw?.icon ?? "🔧"} {hw?.label ?? d.hwModel}
+              {filtered.map(d => (
+                <tr key={d.deviceId}>
+                  <td><strong style={{ fontWeight:700 }}>{d.name}</strong></td>
+                  <td>
+                    <span className="dv-badge" style={d.isOnline
+                      ? { background:"#f0fdf4", color:"#15803d", borderColor:"#bbf7d0" }
+                      : { background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)" }
+                    }>
+                      <span style={{ width:7,height:7,borderRadius:"50%",background:d.isOnline?"#22c55e":"#94a3b8",display:"inline-block" }} />
+                      {d.isOnline ? "Online" : "Offline"}
+                    </span>
+                  </td>
+                  <td>
+                    {(() => {
+                      const vol = typeof d.volume === "number" ? d.volume : 5;
+                      const globallyOverridden = globalMute || globalMax;
+                      const cls = vol === 0 ? "muted" : vol === 10 ? "maxed" : "";
+                      return (
+                        <div className="dv-vol-row">
+                          <input
+                            type="range"
+                            min={0} max={10} step={1}
+                            value={vol}
+                            disabled={!canWrite || globallyOverridden}
+                            className="dv-vol-slider"
+                            style={{ ["--vol" as any]: `${vol * 10}%` }}
+                            onChange={e => handleVolumeSlider(d.deviceId, Number(e.target.value))}
+                            title={
+                              globalMute ? "Globális némítás aktív" :
+                              globalMax  ? "Globális max hangerő aktív" :
+                              `Hangerő: ${vol}/10${vol === 0 ? " (némítva)" : ""}`
+                            }
+                          />
+                          <span className={`dv-vol-val ${cls}`}>
+                            {vol === 0 ? "🔇" : vol === 10 ? "📢" : vol}
                           </span>
-                        );
-                      })() : <span style={{ color:"var(--sl-muted)" }}>—</span>}
-                    </td>
-                    <td>
-                      <span className="dv-badge" style={d.isOnline
-                        ? { background:"#f0fdf4", color:"#15803d", borderColor:"#bbf7d0" }
-                        : { background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)" }
-                      }>
-                        <span style={{ width:7,height:7,borderRadius:"50%",background:d.isOnline?"#22c55e":"#94a3b8",display:"inline-block" }} />
-                        {d.isOnline ? "Online" : "Offline"}
-                      </span>
-                    </td>
-                    <td style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
-                    <td style={{ fontSize:12 }}>{d.firmwareVersion ?? <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
-                    <td style={{ fontSize:12 }}>
-                      {d.otaStatus && d.otaStatus !== "UP_TO_DATE" ? (() => {
-                        const os = d.otaStatus as OtaStatus;
-                        const ob = OTA_STATUS_BADGE[os] ?? OTA_STATUS_BADGE.UP_TO_DATE;
-                        return (
-                          <div>
-                            <span className="dv-badge" style={{ background:ob.bg, color:ob.color, borderColor:ob.border, fontSize:11 }}>
-                              {ob.icon} {ob.label}
-                              {(os==="DOWNLOADING"||os==="INSTALLING") && (d.otaProgress??0)>0 &&
-                                ` ${d.otaProgress}%`}
-                            </span>
-                            {(os==="DOWNLOADING"||os==="INSTALLING") && (
-                              <div className="dv-ota-bar" style={{width:120,marginTop:4}}>
-                                <div className="dv-ota-fill" style={{width:`${d.otaProgress??0}%`}}/>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })() : <span style={{color:"var(--sl-muted)",fontSize:11}}>—</span>}
-                    </td>
-                    <td>
-                      {/* Per-device hangerő-szabályzó (0..10).
-                          Globális Némítás/Max BE állapotban a slider letiltott
-                          – ott a globális toggle viszi az értéket. */}
-                      {(() => {
-                        const vol = typeof d.volume === "number" ? d.volume : 5;
-                        const globallyOverridden = globalMute || globalMax;
-                        const cls = vol === 0 ? "muted" : vol === 10 ? "maxed" : "";
-                        return (
-                          <div className="dv-vol-row">
-                            <input
-                              type="range"
-                              min={0} max={10} step={1}
-                              value={vol}
-                              disabled={!canWrite || globallyOverridden}
-                              className="dv-vol-slider"
-                              style={{ ["--vol" as any]: `${vol * 10}%` }}
-                              onChange={e => handleVolumeSlider(d.deviceId, Number(e.target.value))}
-                              title={
-                                globalMute ? "Globális némítás aktív" :
-                                globalMax  ? "Globális max hangerő aktív" :
-                                `Hangerő: ${vol}/10${vol === 0 ? " (némítva)" : ""}`
-                              }
-                            />
-                            <span className={`dv-vol-val ${cls}`}>
-                              {vol === 0 ? "🔇" : vol === 10 ? "📢" : vol}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ fontSize:12 }}>
-                      {(() => {
-                        const s = d.secondsSinceLastSeen;
-                        if (s === null || s === undefined) return "—";
-                        if (s < 60)    return `${s}mp`;
-                        if (s < 3600)  return `${Math.floor(s/60)}p ${s%60}mp`;
-                        if (s < 86400) return `${Math.floor(s/3600)}ó ${Math.floor((s%3600)/60)}p`;
-                        return `${Math.floor(s/86400)}n ${Math.floor((s%86400)/3600)}ó`;
-                      })()}
-                    </td>
-                    {canWrite && (
-                      <td style={{ textAlign:"right" }}>
-                        <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                          {/* Reset provision – csak native playereknek */}
-                          {d.isNativePlayer && (
-                            <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                              title="Visszaállítás provisioning módba"
-                              onClick={() => void resetProvision(d.deviceId, d.name)}>
-                              🔄 Reset
-                            </button>
-                          )}
-                          <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
-                            onClick={async () => {
-                              if (!window.confirm(`Törlöd? (${d.name})`)) return;
-                              try { await apiFetch(`/admin/devices/${d.deviceId}`, { method:"DELETE" }); void loadDevices(); }
-                              catch (e) { setError(safeErrorMessage(e)); }
-                            }}>
-                            🗑 Törlés
-                          </button>
-                          <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                            title="Eszköz tulajdonságai szerkesztése"
-                            onClick={() => {
-                              setEditError(null);
-                              setEditDevice({
-                                deviceId:    d.deviceId,
-                                name:        d.name,
-                                deviceClass: d.deviceClass,
-                                hwModel:     d.hwModel ?? "",
-                              });
-                            }}>
-                            ✏️ Szerkeszt
-                          </button>
                         </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
+                      );
+                    })()}
+                  </td>
+                  <td style={{ textAlign:"right" }}>
+                    <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
+                      title="Részletek + sync + szerkesztés + törlés"
+                      onClick={() => setDetailsDeviceId(d.deviceId)}>
+                      🔍 Részletek
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -1145,6 +1095,159 @@ export default function Devices() {
       )}
 
       {/* ── Eszköz szerkesztés modal ────────────────────────────────────────── */}
+      {/* ── Részletek overlay ─────────────────────────────────────────────── */}
+      {detailsDevice && (() => {
+        const d = detailsDevice;
+        const offset = typeof d.syncOffsetMs === "number" ? d.syncOffsetMs : 0;
+        const lastSeenLabel = (() => {
+          const s = d.secondsSinceLastSeen;
+          if (s === null || s === undefined) return "—";
+          if (s < 60)    return `${s}mp`;
+          if (s < 3600)  return `${Math.floor(s/60)}p ${s%60}mp`;
+          if (s < 86400) return `${Math.floor(s/3600)}ó ${Math.floor((s%3600)/60)}p`;
+          return `${Math.floor(s/86400)}n ${Math.floor((s%86400)/3600)}ó`;
+        })();
+        const cb = CLASS_BADGE[d.deviceClass] || CLASS_BADGE.SPEAKER;
+        return (
+          <Modal title={`Részletek: ${d.name}`} icon="🔍" onClose={() => setDetailsDeviceId(null)}>
+            <div className="dv-modal-body">
+              {/* Alapadatok rács */}
+              <div style={{ display:"grid", gridTemplateColumns:"max-content 1fr", gap:"8px 14px", fontSize:13 }}>
+                <div style={{ color:"var(--sl-muted)" }}>Típus</div>
+                <div>
+                  <span className="dv-badge" style={{ background:cb.bg, color:cb.color, borderColor:cb.border }}>
+                    {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : "Multi"}
+                  </span>
+                </div>
+                <div style={{ color:"var(--sl-muted)" }}>HW modell</div>
+                <div>
+                  {d.hwModel ? (() => {
+                    const hw  = HW_MODEL_OPTIONS.find(h => h.value === d.hwModel);
+                    const bdg = HW_MODEL_BADGE[d.hwModel ?? ""] ?? { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
+                    return (
+                      <span className="dv-badge" style={{ background:bdg.bg, color:bdg.color, borderColor:bdg.border, fontSize:11 }}>
+                        {hw?.icon ?? "🔧"} {hw?.label ?? d.hwModel}
+                      </span>
+                    );
+                  })() : <span style={{ color:"var(--sl-muted)" }}>—</span>}
+                </div>
+                <div style={{ color:"var(--sl-muted)" }}>IP cím</div>
+                <div style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? "—"}</div>
+                <div style={{ color:"var(--sl-muted)" }}>Firmware</div>
+                <div style={{ fontSize:12 }}>{d.firmwareVersion ?? "—"}</div>
+                <div style={{ color:"var(--sl-muted)" }}>OTA</div>
+                <div>
+                  {d.otaStatus && d.otaStatus !== "UP_TO_DATE" ? (() => {
+                    const os = d.otaStatus as OtaStatus;
+                    const ob = OTA_STATUS_BADGE[os] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                    return (
+                      <span className="dv-badge" style={{ background:ob.bg, color:ob.color, borderColor:ob.border, fontSize:11 }}>
+                        {ob.icon} {ob.label}
+                        {(os==="DOWNLOADING"||os==="INSTALLING") && (d.otaProgress??0)>0 && ` ${d.otaProgress}%`}
+                      </span>
+                    );
+                  })() : <span style={{ color:"var(--sl-muted)", fontSize:12 }}>UP_TO_DATE</span>}
+                </div>
+                <div style={{ color:"var(--sl-muted)" }}>Utolsó aktivitás</div>
+                <div style={{ fontSize:12 }}>{lastSeenLabel}</div>
+              </div>
+
+              {/* ── Sync-eltolás (manuális finomhangolás) ─────────────────── */}
+              <div style={{
+                marginTop:18, padding:"14px 16px",
+                background:"#f8fafc", border:"1.5px solid var(--sl-border)",
+                borderRadius:11,
+              }}>
+                <div style={{ fontWeight:700, fontSize:13, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
+                  ⏱ Snap szinkron-eltolás
+                </div>
+                <div style={{ fontSize:11, color:"var(--sl-muted)", marginBottom:12, lineHeight:1.5 }}>
+                  Hallás-alapú finomhangolás: pozitív érték → eszköz <b>későbbre</b> csúszik
+                  (más eszközhöz képest hátrébb), negatív → <b>előrébb</b>. 10 ms-os lépések,
+                  ±2000 ms tartomány. A változás a következő hangchunk-tól érvényesül.
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
+                  <button className="dv-btn dv-btn-ghost" type="button"
+                    onClick={() => void sendSyncOffset(d.deviceId, offset - 10)}
+                    disabled={!canWrite || offset <= -2000}
+                    title="-10 ms (előrébb csúsztatás)">
+                    ◀ −10 ms
+                  </button>
+                  <div style={{
+                    minWidth:90, textAlign:"center",
+                    fontFamily:"monospace", fontSize:18, fontWeight:700,
+                    padding:"6px 14px",
+                    background:offset === 0 ? "var(--sl-bg)" : (offset > 0 ? "#fef3c7" : "#dbeafe"),
+                    border:`1.5px solid ${offset === 0 ? "var(--sl-border)" : (offset > 0 ? "#fcd34d" : "#93c5fd")}`,
+                    borderRadius:8,
+                    color: offset === 0 ? "var(--sl-muted)" : (offset > 0 ? "#92400e" : "#1e40af"),
+                  }}>
+                    {offset > 0 ? `+${offset}` : offset} ms
+                  </div>
+                  <button className="dv-btn dv-btn-ghost" type="button"
+                    onClick={() => void sendSyncOffset(d.deviceId, offset + 10)}
+                    disabled={!canWrite || offset >= 2000}
+                    title="+10 ms (hátrébb csúsztatás)">
+                    +10 ms ▶
+                  </button>
+                </div>
+                {offset !== 0 && (
+                  <div style={{ marginTop:8, textAlign:"center" }}>
+                    <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
+                      onClick={() => void sendSyncOffset(d.deviceId, 0)} disabled={!canWrite}>
+                      ↻ Reset 0-ra
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="dv-modal-footer" style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {d.isNativePlayer && (
+                <button className="dv-btn dv-btn-ghost" type="button"
+                  title="Visszaállítás provisioning módba"
+                  disabled={!canWrite}
+                  onClick={() => {
+                    setDetailsDeviceId(null);
+                    void resetProvision(d.deviceId, d.name);
+                  }}>
+                  🔄 Reset
+                </button>
+              )}
+              <button className="dv-btn dv-btn-danger" type="button"
+                disabled={!canWrite}
+                onClick={async () => {
+                  if (!window.confirm(`Törlöd? (${d.name})`)) return;
+                  try {
+                    await apiFetch(`/admin/devices/${d.deviceId}`, { method:"DELETE" });
+                    setDetailsDeviceId(null);
+                    void loadDevices();
+                  } catch (e) { setError(safeErrorMessage(e)); }
+                }}>
+                🗑 Törlés
+              </button>
+              <div style={{ flex:1 }} />
+              <button className="dv-btn dv-btn-ghost" type="button"
+                onClick={() => setDetailsDeviceId(null)}>Bezár</button>
+              {canWrite && (
+                <button className="dv-btn dv-btn-primary" type="button"
+                  onClick={() => {
+                    setEditError(null);
+                    setEditDevice({
+                      deviceId:    d.deviceId,
+                      name:        d.name,
+                      deviceClass: d.deviceClass,
+                      hwModel:     d.hwModel ?? "",
+                    });
+                    setDetailsDeviceId(null);
+                  }}>
+                  ✏️ Szerkeszt
+                </button>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
+
       {editDevice && (
         <Modal title="Eszköz szerkesztése" icon="✏️" onClose={() => setEditDevice(null)}>
           <div className="dv-modal-body">
