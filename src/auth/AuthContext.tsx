@@ -42,6 +42,9 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ACCESS_TOKEN_KEY = "accessToken";
+// SUPER_ADMIN tétlenségi timeout (5 perc) – jelenleg KIKAPCSOLVA, lásd lejjebb
+// a useEffect-blokkban. A konstans referenciaként marad a könnyű re-enable-hez.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPERADMIN_IDLE_MS = 5 * 60 * 1000;
 
 function safeGet(storage: Storage, key: string): string | null {
@@ -297,62 +300,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   /**
-   * SUPER_ADMIN idle timeout:
-   * - Csak authed + role === SUPER_ADMIN esetén aktív
-   * - MINDEN user-aktivitás (mouse/billentyű/scroll/touch/click) reset-eli
-   *   a tétlenség-időmérőt
-   * - A timer-t NEM setTimeout-tal csináljuk (amit a useEffect re-run újra-
-   *   indítana, és potenciálisan elveszítené az aktivitás-event-eket), hanem
-   *   stateless `lastActivityRef` + 1 sec interval ellenőrzéssel.
-   * - `capture: true` event listener: a stopPropagation egy gyermek
-   *   elemen NEM blokkolja az aktivitás-detekciót.
-   * - A useEffect csak a státusz/role változásra fut újra, nem minden
-   *   state-objektum újra-referenciára (ami a logout/refresh dispatch-ek
-   *   miatt gyakran történne).
+   * SUPER_ADMIN idle timeout – KIKAPCSOLVA (user kérés).
+   *
+   * Korábban 5 perc tétlenség után auto-logoutolt SUPER_ADMIN-okat, de
+   * zavaró volt hosszabb műveletek (pl. rádiólista szerkesztés, csengetési
+   * rend tervezés) közben. A felhasználó kézzel logout-ol, ha akar.
+   *
+   * Visszakapcsoláshoz: aktiváld a `SUPERADMIN_IDLE_MS` konstanst, és
+   * vedd ki a kikapcsolásra utaló kommentet az alábbi useEffect-ben.
    */
-  const isSuperAdmin =
-    state.status === "authed" && (state.user as any)?.role === "SUPER_ADMIN";
-
   useEffect(() => {
-    if (!isSuperAdmin) return;
-
-    let lastActivity = Date.now();
-    const markActivity = () => { lastActivity = Date.now(); };
-
-    // 1 sec-es watchdog – csak akkor logout, ha a IDLE_MS lejárt.
-    const watchdog = window.setInterval(() => {
-      if (Date.now() - lastActivity >= SUPERADMIN_IDLE_MS) {
-        logout();
-      }
-    }, 1000);
-
-    // Aktivitás-eventek capture-mode-ban: a stopPropagation-on átverekszik.
-    const opts: AddEventListenerOptions = { passive: true, capture: true };
-    window.addEventListener("mousemove",  markActivity, opts);
-    window.addEventListener("mousedown",  markActivity, opts);
-    window.addEventListener("keydown",    markActivity, opts);
-    window.addEventListener("scroll",     markActivity, opts);
-    window.addEventListener("touchstart", markActivity, opts);
-    window.addEventListener("click",      markActivity, opts);
-    window.addEventListener("wheel",      markActivity, opts);
-    // Tab-vissza fókusz után is mintha aktív lett volna – ne dobjunk azonnal.
-    const onVisibility = () => { if (!document.hidden) markActivity(); };
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", markActivity);
-
-    return () => {
-      window.clearInterval(watchdog);
-      window.removeEventListener("mousemove",  markActivity, opts as any);
-      window.removeEventListener("mousedown",  markActivity, opts as any);
-      window.removeEventListener("keydown",    markActivity, opts as any);
-      window.removeEventListener("scroll",     markActivity, opts as any);
-      window.removeEventListener("touchstart", markActivity, opts as any);
-      window.removeEventListener("click",      markActivity, opts as any);
-      window.removeEventListener("wheel",      markActivity, opts as any);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", markActivity);
-    };
-  }, [isSuperAdmin, logout]);
+    // Idle-timeout disabled – semmi sem fut, a hook tisztán passzív marad.
+    // Ha kell, az alábbi blokkot kell visszahozni:
+    //
+    //   const isSuperAdmin =
+    //     state.status === "authed" && (state.user as any)?.role === "SUPER_ADMIN";
+    //   if (!isSuperAdmin) return;
+    //   let lastActivity = Date.now();
+    //   const markActivity = () => { lastActivity = Date.now(); };
+    //   const watchdog = window.setInterval(() => {
+    //     if (Date.now() - lastActivity >= SUPERADMIN_IDLE_MS) logout();
+    //   }, 1000);
+    //   const opts: AddEventListenerOptions = { passive: true, capture: true };
+    //   ["mousemove","mousedown","keydown","scroll","touchstart","click","wheel"]
+    //     .forEach(e => window.addEventListener(e, markActivity, opts));
+    //   const onVis = () => { if (!document.hidden) markActivity(); };
+    //   document.addEventListener("visibilitychange", onVis);
+    //   window.addEventListener("focus", markActivity);
+    //   return () => { window.clearInterval(watchdog); ...removeEventListener-ek };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({ state, refresh, login, logout }),
