@@ -665,7 +665,11 @@ export default function VirtualPlayer() {
                   </>
                 ) : hud.kind === "tts" ? (
                   <>
-                    {hud.title && <div className="vp-msg-title">{hud.title}</div>}
+                    {/* A backend `NOW_PLAYING_INFO.title` TTS-nél a szöveg
+                       első ~200 karakterét tartalmazza, ami ugyanaz, mint a
+                       `text` → ne ismételjük. Csak a teljes szöveg jelenik
+                       meg nagyban, fent egy ikon. */}
+                    <div style={{fontSize:48}}>📢</div>
                     {hud.text && (
                       <div className="vp-msg-text" style={{ fontSize: calcFontSize(hud.text) }}>
                         {hud.text}
