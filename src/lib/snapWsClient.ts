@@ -71,7 +71,11 @@ export class SnapWsClient {
   private codec: Codec = "unknown";
   private sampleRate = 48000;
   private channelCount = 2;
-  private opusDecoder: OpusDecoder | null = null;
+  // OpusDecoder generic-je a sampleRate literal-uniót szigorúan ellenőrzi
+  // (8000|12000|16000|24000|48000). A snapserver konfigurációnk fixen 48 kHz-es,
+  // de futáskor a sample_rate-et a CodecHeader-ből olvassuk – a típust `any`-ra
+  // engedjük, hogy a deklaráció és az ensureOpusDecoder() konzisztens legyen.
+  private opusDecoder: OpusDecoder<any> | null = null;
   private opusReady = false;
 
   /** Snap server clock minus local clock (ms). +X → server előrébb jár. */
@@ -86,11 +90,6 @@ export class SnapWsClient {
   private syncOffsetMs = 0;
 
   private gainNode: GainNode;
-
-  /** Sorbarakott (még le nem ütemezett) chunk-ok várólistája. A renderLoop
-   *  ütemezi őket egyenként pre-buffer mértékig, hogy ha sokat tolunk be
-   *  az audio scheduler-be előre, a hangerő/mute-váltások mégis reagáljanak. */
-  private chunkQueue: AudioChunk[] = [];
 
   /** Eddig már ütemezett (és/vagy lejátszott) AudioBufferSourceNode-ok – a
    *  destruktorban explicit stop-oljuk őket, hogy reconnect-kor ne menjenek
@@ -121,7 +120,6 @@ export class SnapWsClient {
     try { this.ws?.close(1000, "client stop"); } catch {}
     this.ws = null;
     this.flushScheduledSources();
-    this.chunkQueue = [];
     try { this.gainNode.disconnect(); } catch {}
   }
 
@@ -168,7 +166,6 @@ export class SnapWsClient {
       console.log("[SnapWS] 🔌 csatlakozva");
       this.serverOffsetKnown = false;
       this.serverOffsetMs = 0;
-      this.chunkQueue = [];
       this.streamStartedNotified = false;
       this.sendHello();
       // Egy gyors TIME-csomag a kezdeti offset-becsléshez.
@@ -324,7 +321,6 @@ export class SnapWsClient {
       if (codecName === "opus") this.setupOpus(rest);
       else if (codecName === "pcm") this.setupPcm(rest);
       else console.warn("[SnapWS] Unsupported codec:", codecName);
-      this.chunkQueue = [];
     } catch (e) {
       console.warn("[SnapWS] CodecHeader parse hiba:", e);
     }
@@ -366,9 +362,12 @@ export class SnapWsClient {
   private async ensureOpusDecoder(force = false): Promise<void> {
     if (!force && this.opusDecoder) return;
     try {
+      // sampleRate-et kihagyjuk a constructorból – az OpusDecoder default-ja
+      // 48 kHz, ami pont a snapserver konfigurációja. (A literal-union típus
+      // miatt a futáskor kiolvasott `this.sampleRate: number` nem passzol a
+      // szigorú `8000|12000|16000|24000|48000`-be.)
       const decoder = new OpusDecoder({
-        channels: this.channelCount,
-        sampleRate: this.sampleRate,
+        channels: this.channelCount as 1 | 2,
       });
       await decoder.ready;
       this.opusDecoder = decoder;
@@ -400,8 +399,12 @@ export class SnapWsClient {
         const audioBuf = this.opts.audioCtx.createBuffer(
           this.channelCount, samples, this.sampleRate
         );
+        // copyToChannel a szigorú `Float32Array<ArrayBuffer>`-t várja, az
+        // opus-decoder pedig `Float32Array<ArrayBufferLike>`-ot ad vissza.
+        // A különbséget elkerüljük úgy, hogy közvetlenül a getChannelData()-ra
+        // hívunk `.set()`-et (ArrayLike<number> párosítható minden Float32-vel).
         for (let ch = 0; ch < this.channelCount; ch++) {
-          audioBuf.copyToChannel(decoded.channelData[ch], ch, 0);
+          audioBuf.getChannelData(ch).set(decoded.channelData[ch]);
         }
         chunk = { buffer: audioBuf, serverTimestampMs };
       } catch (e) {
