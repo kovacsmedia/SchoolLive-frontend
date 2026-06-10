@@ -11,7 +11,7 @@ function formatAuthError(err: any): string {
 }
 
 export default function Login() {
-  const { login, state } = useAuth();
+  const { login, logout, state } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = useMemo(() => ((location.state||{}) as LocationState).from||"/app",[location.state]);
@@ -21,15 +21,30 @@ export default function Login() {
   const [showPw, setShowPw]   = useState(false);
   const [error, setError]     = useState<string|null>(null);
   const [busy, setBusy]       = useState(false);
+  // Csak akkor irányítjuk át az usert, ha EBBEN a session-ben kattintott a
+  // belépés gombra. Direkt /login-látogatáskor (pl. PLAYER-mód felülbírálása
+  // adminra) nem ugratjuk azonnal a saját oldalára.
+  const [didSubmit, setDidSubmit] = useState(false);
 
-  useEffect(() => { if (state.status === "authed") navigate(from, { replace: true }); }, [state.status, navigate, from]);
+  useEffect(() => {
+    if (state.status === "authed" && didSubmit) {
+      navigate(from, { replace: true });
+    }
+  }, [state.status, didSubmit, navigate, from]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setError(null); setBusy(true);
-    try { await login(email.trim(), password); }
+    try {
+      await login(email.trim(), password);
+      setDidSubmit(true);
+    }
     catch (err: any) { setError(formatAuthError(err)); }
     finally { setBusy(false); }
   }
+
+  const isAlreadyAuthed = state.status === "authed" && !didSubmit;
+  const currentUserEmail = state.status === "authed" ? ((state.user as any)?.email ?? "") : "";
+  const currentUserRole  = state.status === "authed" ? ((state.user as any)?.role  ?? "") : "";
 
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Nunito','Segoe UI',sans-serif", background:"linear-gradient(160deg,#f0f7ff 0%,#f5f3ff 55%,#fff7ed 100%)" }}>
@@ -69,6 +84,24 @@ export default function Login() {
           padding:10px 14px; font-size:13px; color:#dc2626; margin-bottom:16px;
           display:flex; align-items:flex-start; gap:7px;
         }
+        .lg-already{
+          background:#eff6ff; border:1px solid #bfdbfe; border-radius:11px;
+          padding:12px 14px; font-size:13px; color:#1e40af; margin-bottom:16px;
+          display:flex; flex-direction:column; gap:10px;
+        }
+        .lg-already-row{display:flex; gap:8px; flex-wrap:wrap}
+        .lg-already-btn{
+          flex:1; min-width:120px; padding:8px 12px; border-radius:9px;
+          border:1px solid #bfdbfe; background:#fff; color:#1e40af;
+          font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
+          transition:all 0.15s;
+        }
+        .lg-already-btn:hover{background:#dbeafe}
+        .lg-already-btn.primary{
+          background:linear-gradient(135deg,#3b82f6,#6366f1); color:#fff;
+          border-color:transparent;
+        }
+        .lg-already-btn.primary:hover{filter:brightness(1.05)}
         .lg-btn{
           width:100%; padding:13px; border-radius:13px; border:none;
           background:linear-gradient(135deg,#3b82f6,#6366f1);
@@ -106,6 +139,31 @@ export default function Login() {
           <p className="lg-sub">Jelentkezz be az iskolai rendszerbe</p>
 
           {error && <div className="lg-error"><span>⚠️</span><span>{error}</span></div>}
+
+          {isAlreadyAuthed && (
+            <div className="lg-already">
+              <div>
+                Be vagy jelentkezve mint <strong>{currentUserEmail || "ismeretlen"}</strong>
+                {currentUserRole && <> ({currentUserRole})</>}.
+              </div>
+              <div className="lg-already-row">
+                <button
+                  type="button"
+                  className="lg-already-btn primary"
+                  onClick={() => navigate(from, { replace: true })}
+                >
+                  Tovább ide
+                </button>
+                <button
+                  type="button"
+                  className="lg-already-btn"
+                  onClick={() => logout()}
+                >
+                  Kijelentkezés
+                </button>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={onSubmit}>
             <div className="lg-field">
