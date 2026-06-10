@@ -96,6 +96,16 @@ export class SnapWsClient {
    *  egymással szembe. */
   private scheduledSources: AudioBufferSourceNode[] = [];
 
+  /** Az első chunk-ot snap-TIME alapján "horgonyozzuk" (`anchored=false`); a
+   *  többit pontosan az előző végéhez láncoljuk (`anchored=true`). Ez kritikus:
+   *  ha minden chunk-ot függetlenül számolnánk a snap-TIME-ből, sub-sample
+   *  rounding-error keletkezne minden 20 ms-os határon → másodpercenként 50×
+   *  kattanás → grízes hang. A láncolt időzítéssel a `BufferSourceNode`-ok
+   *  sample-folyamatosan szólnak; a snap multiroom-szinkron a kezdeti
+   *  horgony révén megmarad, drift-et periodikusan korrigáljuk. */
+  private anchored = false;
+  private nextPlayCtxTime = 0;
+
   private streamStartedNotified = false;
 
   constructor(opts: SnapWsOptions) {
@@ -119,6 +129,7 @@ export class SnapWsClient {
     if (this.timeSyncTimer)  { clearInterval(this.timeSyncTimer); this.timeSyncTimer = null; }
     try { this.ws?.close(1000, "client stop"); } catch {}
     this.ws = null;
+    this.anchored = false;
     this.flushScheduledSources();
     try { this.gainNode.disconnect(); } catch {}
   }
@@ -167,6 +178,8 @@ export class SnapWsClient {
       this.serverOffsetKnown = false;
       this.serverOffsetMs = 0;
       this.streamStartedNotified = false;
+      this.anchored = false;
+      this.nextPlayCtxTime = 0;
       this.sendHello();
       // Egy gyors TIME-csomag a kezdeti offset-becsléshez.
       setTimeout(() => this.sendTimeRequest(), 200);
@@ -192,6 +205,7 @@ export class SnapWsClient {
       console.log(`[SnapWS] 🔌 lezárva (${evt.code}) – reconnect ${RECONNECT_DELAY_MS}ms`);
       this.ws = null;
       this.serverOffsetKnown = false;
+      this.anchored = false;
       this.flushScheduledSources();
       this.opts.onDisconnected?.();
       if (this.timeSyncTimer) { clearInterval(this.timeSyncTimer); this.timeSyncTimer = null; }
@@ -321,6 +335,8 @@ export class SnapWsClient {
       if (codecName === "opus") this.setupOpus(rest);
       else if (codecName === "pcm") this.setupPcm(rest);
       else console.warn("[SnapWS] Unsupported codec:", codecName);
+      // Új codec → új stream-anchor szükséges
+      this.anchored = false;
     } catch (e) {
       console.warn("[SnapWS] CodecHeader parse hiba:", e);
     }
@@ -468,22 +484,55 @@ export class SnapWsClient {
     const outputLatencyS =
       (ctx as any).outputLatency ?? (ctx as any).baseLatency ?? 0;
 
-    const ctxPlayTime = ctx.currentTime + Math.max(0, aheadMs / 1000) - outputLatencyS;
+    // Ideális kontextus-idő, amikor ez a chunk a snap-TIME szerint hangozna.
+    const idealCtxTime = ctx.currentTime + (aheadMs / 1000) - outputLatencyS;
 
-    if (aheadMs < -300) {
-      // Túl későn jött, eldobjuk – nem érdemes "now"-on lejátszani, mert az
-      // multiroom-szempontból elcsúszott
-      return;
+    let scheduleAt: number;
+
+    if (!this.anchored) {
+      // ── HORGONYZÁS: az első chunk pozícionálja a stream-időt a snap-TIME-ra
+      if (aheadMs < -300) {
+        // ennyire elcsúszott chunk-ot el is dobunk, várjuk a következőt
+        return;
+      }
+      scheduleAt = Math.max(ctx.currentTime + 0.005, idealCtxTime);
+      this.nextPlayCtxTime = scheduleAt + chunk.buffer.duration;
+      this.anchored = true;
+    } else {
+      // ── LÁNCOLÁS: pontosan az előző chunk vége + 0 sample = sample-folyamatos
+      scheduleAt = this.nextPlayCtxTime;
+      this.nextPlayCtxTime += chunk.buffer.duration;
+
+      // Drift-figyelő: ha a láncolt időzítés ±200 ms-en kívül elcsúszott a
+      // snap-TIME ideáltól (pl. CPU-akadás vagy WS-burst), újra-horgonyzunk.
+      // Visszahívjuk magunkat ugyanazzal a chunk-kal, és most a !anchored ág
+      // viszi pozícióba. Egy kis hangzási rés keletkezik, de a multiroom-szinkron
+      // megmarad.
+      const driftMs = (scheduleAt - idealCtxTime) * 1000;
+      if (driftMs < -200 || driftMs > 200) {
+        console.warn(`[SnapWS] Re-anchor: drift=${driftMs.toFixed(0)}ms`);
+        this.anchored = false;
+        this.scheduleChunk(chunk);
+        return;
+      }
+
+      // Ha az AudioContext-óra előrébb jár a tervezett indításnál, az audio
+      // alulcsordult (pl. tab-throttle). Re-anchor + dob.
+      if (scheduleAt < ctx.currentTime) {
+        this.anchored = false;
+        return;
+      }
     }
 
     const src = ctx.createBufferSource();
     src.buffer = chunk.buffer;
     src.connect(this.gainNode);
     try {
-      src.start(Math.max(ctx.currentTime, ctxPlayTime));
+      src.start(scheduleAt);
     } catch {
-      // pl. már lejárt; eldobjuk
+      // pl. már lejárt; eldobjuk és újrahorgonyzunk
       try { src.disconnect(); } catch {}
+      this.anchored = false;
       return;
     }
     this.scheduledSources.push(src);
