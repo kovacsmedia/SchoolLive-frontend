@@ -19,7 +19,7 @@ type DeviceItem = {
   // 10 ms-os lépésekben, a kliens snapclient-sync-jét tolja előre/hátra.
   syncOffsetMs?: number | null;
   // ESP32 mono DAC csatorna-mód
-  channelMode?: "MIXED" | "LEFT" | "RIGHT" | null;
+  channelMode?: "MIXED" | "LEFT" | "RIGHT" | "STEREO" | null;
   orgUnitId?: string | null;
 };
 
@@ -351,7 +351,7 @@ export default function Devices() {
   }
 
   // ── Csatorna-mód küldés (ESP32 mono DAC) ─────────────────────────────────
-  async function sendChannelMode(deviceId: string, mode: "MIXED" | "LEFT" | "RIGHT"): Promise<void> {
+  async function sendChannelMode(deviceId: string, mode: "MIXED" | "LEFT" | "RIGHT" | "STEREO"): Promise<void> {
     try {
       await apiFetch(`/admin/devices/${deviceId}`, {
         method:  "PATCH",
@@ -1231,13 +1231,13 @@ export default function Devices() {
                   🔊 Mono csatorna-mód
                 </div>
                 <div style={{ fontSize:11, color:"var(--sl-muted)", marginBottom:12, lineHeight:1.5 }}>
-                  A MAX98357A mono erősítő melyik sztereó csatornát játssza le.
-                  Hasznos, ha a forrásanyag csatorna-egyenlőtlenséget tartalmaz.
+                  Mono DAC-nál: <b>Mix</b> = (L+R)/2, <b>Bal/Jobb</b> = csak az adott csatorna.
+                  Sztereó DAC-nál: <b>Sztereó</b> = pass-through, változatlan L/R kimenet.
                 </div>
                 <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
-                  {(["LEFT", "MIXED", "RIGHT"] as const).map(mode => {
+                  {(["LEFT", "MIXED", "STEREO", "RIGHT"] as const).map(mode => {
                     const active = (d.channelMode ?? "MIXED") === mode;
-                    const labels: Record<string, string> = { LEFT:"◀ Bal", MIXED:"⊕ Mixed", RIGHT:"Jobb ▶" };
+                    const labels: Record<string, string> = { LEFT:"◀ Bal", MIXED:"⊕ Mix", STEREO:"🎵 Sztereó", RIGHT:"Jobb ▶" };
                     return (
                       <button key={mode}
                         className="dv-btn dv-btn-ghost"
@@ -1247,9 +1247,9 @@ export default function Devices() {
                         style={{
                           flex:1,
                           fontWeight: active ? 800 : 400,
-                          background: active ? "var(--sl-primary)" : undefined,
+                          background: active ? "linear-gradient(135deg,#3b82f6,#6366f1)" : undefined,
                           color: active ? "#fff" : undefined,
-                          border: active ? "1.5px solid var(--sl-primary)" : undefined,
+                          border: active ? "1.5px solid #6366f1" : undefined,
                           fontSize:12,
                         }}>
                         {labels[mode]}
