@@ -18,6 +18,8 @@ type DeviceItem = {
   // Manuális szinkron-eltolás ms-ben. A Részletek overlay állítja
   // 10 ms-os lépésekben, a kliens snapclient-sync-jét tolja előre/hátra.
   syncOffsetMs?: number | null;
+  // ESP32 mono DAC csatorna-mód
+  channelMode?: "MIXED" | "LEFT" | "RIGHT" | null;
   orgUnitId?: string | null;
 };
 
@@ -342,6 +344,22 @@ export default function Devices() {
       });
       setDevices(prev => prev.map(p =>
         p.deviceId === deviceId ? { ...p, syncOffsetMs: clamped } : p,
+      ));
+    } catch (e) {
+      setError(safeErrorMessage(e));
+    }
+  }
+
+  // ── Csatorna-mód küldés (ESP32 mono DAC) ─────────────────────────────────
+  async function sendChannelMode(deviceId: string, mode: "MIXED" | "LEFT" | "RIGHT"): Promise<void> {
+    try {
+      await apiFetch(`/admin/devices/${deviceId}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ channelMode: mode }),
+      });
+      setDevices(prev => prev.map(p =>
+        p.deviceId === deviceId ? { ...p, channelMode: mode } : p,
       ));
     } catch (e) {
       setError(safeErrorMessage(e));
@@ -1201,6 +1219,47 @@ export default function Devices() {
                 )}
               </div>
             </div>
+
+            {/* ── Csatorna-mód (csak ESP32 SPEAKER eszközöknél) ─────────────── */}
+            {d.deviceClass === "SPEAKER" && !d.isVirtualPlayer && (
+              <div style={{
+                marginTop:14, padding:"14px 16px",
+                background:"#f8fafc", border:"1.5px solid var(--sl-border)",
+                borderRadius:11,
+              }}>
+                <div style={{ fontWeight:700, fontSize:13, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}>
+                  🔊 Mono csatorna-mód
+                </div>
+                <div style={{ fontSize:11, color:"var(--sl-muted)", marginBottom:12, lineHeight:1.5 }}>
+                  A MAX98357A mono erősítő melyik sztereó csatornát játssza le.
+                  Hasznos, ha a forrásanyag csatorna-egyenlőtlenséget tartalmaz.
+                </div>
+                <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
+                  {(["LEFT", "MIXED", "RIGHT"] as const).map(mode => {
+                    const active = (d.channelMode ?? "MIXED") === mode;
+                    const labels: Record<string, string> = { LEFT:"◀ Bal", MIXED:"⊕ Mixed", RIGHT:"Jobb ▶" };
+                    return (
+                      <button key={mode}
+                        className="dv-btn dv-btn-ghost"
+                        type="button"
+                        disabled={!canWrite}
+                        onClick={() => void sendChannelMode(d.deviceId, mode)}
+                        style={{
+                          flex:1,
+                          fontWeight: active ? 800 : 400,
+                          background: active ? "var(--sl-primary)" : undefined,
+                          color: active ? "#fff" : undefined,
+                          border: active ? "1.5px solid var(--sl-primary)" : undefined,
+                          fontSize:12,
+                        }}>
+                        {labels[mode]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="dv-modal-footer" style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {d.isNativePlayer && (
                 <button className="dv-btn dv-btn-ghost" type="button"
