@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
-type DeviceClass = "SPEAKER" | "DISPLAY" | "MULTI";
+type DeviceClass = "SPEAKER" | "DISPLAY" | "MULTI" | "MULTIZONE";
 type WifiSecurity = "OPEN" | "WPA2_PERSONAL" | "WPA3_PERSONAL" | "WPA2_ENTERPRISE";
 
 type DeviceItem = {
@@ -20,6 +20,8 @@ type DeviceItem = {
   syncOffsetMs?: number | null;
   // ESP32 mono DAC csatorna-mód
   channelMode?: "MIXED" | "LEFT" | "RIGHT" | "STEREO" | null;
+  parentDeviceId?: string | null;
+  zoneIndex?: number | null;
   orgUnitId?: string | null;
 };
 
@@ -106,9 +108,10 @@ const OTA_STATUS_BADGE: Record<OtaStatus,{bg:string;color:string;border:string;l
 };
 
 const DEVICE_CLASS_OPTIONS = [
-  { value:"SPEAKER", label:"🔊 Hangszóró", description:"Csak hanglejátszás" },
-  { value:"DISPLAY", label:"🖥️ Kijelző",  description:"Vizuális megjelenítés" },
-  { value:"MULTI",   label:"🎛️ Multi",    description:"Hang + kijelző" },
+  { value:"SPEAKER",    label:"🔊 Hangszóró",   description:"Csak hanglejátszás" },
+  { value:"DISPLAY",    label:"🖥️ Kijelző",     description:"Vizuális megjelenítés" },
+  { value:"MULTI",      label:"🎛️ Multi",       description:"Hang + kijelző" },
+  { value:"MULTIZONE",  label:"🔀 Multizone",   description:"8 zónás relés erősítő (8 eszközt hoz létre)" },
 ];
 const WIFI_SECURITY_OPTIONS = [
   { value:"WPA2_PERSONAL",   label:"WPA2 Personal (leggyakoribb)" },
@@ -131,9 +134,10 @@ function safeErrorMessage(e: unknown): string {
 }
 
 const CLASS_BADGE: Record<DeviceClass, {bg:string;color:string;border:string;icon:string}> = {
-  SPEAKER:{ bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", icon:"🔊" },
-  DISPLAY:{ bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", icon:"🖥️" },
-  MULTI:  { bg:"#fffbeb", color:"#d97706", border:"#fde68a", icon:"🎛️" },
+  SPEAKER:   { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", icon:"🔊" },
+  DISPLAY:   { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", icon:"🖥️" },
+  MULTI:     { bg:"#fffbeb", color:"#d97706", border:"#fde68a", icon:"🎛️" },
+  MULTIZONE: { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", icon:"🔀" },
 };
 
 type ActivateForm = {
@@ -1134,7 +1138,7 @@ export default function Devices() {
                 <div style={{ color:"var(--sl-muted)" }}>Típus</div>
                 <div>
                   <span className="dv-badge" style={{ background:cb.bg, color:cb.color, borderColor:cb.border }}>
-                    {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : "Multi"}
+                    {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : d.deviceClass === "MULTIZONE" ? `Multizone${d.zoneIndex ? ` Z${d.zoneIndex}` : ""}` : "Multi"}
                   </span>
                 </div>
                 <div style={{ color:"var(--sl-muted)" }}>HW modell</div>
@@ -1221,7 +1225,7 @@ export default function Devices() {
             </div>
 
             {/* ── Csatorna-mód (csak ESP32 SPEAKER eszközöknél) ─────────────── */}
-            {d.deviceClass === "SPEAKER" && !d.isVirtualPlayer && (
+            {d.deviceClass === "SPEAKER" && !d.isVirtualPlayer && !d.parentDeviceId && (
               <div style={{
                 marginTop:14, padding:"14px 16px",
                 background:"#f8fafc", border:"1.5px solid var(--sl-border)",
