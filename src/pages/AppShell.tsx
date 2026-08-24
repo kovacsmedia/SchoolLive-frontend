@@ -299,8 +299,8 @@ export default function AppShell() {
   );
 
   function onLogout() {
-    safeRemove(sessionStorage, ACTIVE_TENANT_KEY);
-    safeRemove(localStorage, ACTIVE_TENANT_KEY);
+    // activeTenantId törlését most már az AuthContext.logout() központilag
+    // elvégzi (minden logout-útvonalon, nem csak itt).
     logout(); navigate("/login", { replace: true });
   }
 

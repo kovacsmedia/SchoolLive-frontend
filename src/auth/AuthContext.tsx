@@ -310,6 +310,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // ── Aktív munkamenet fenntartása ──────────────────────────────────────────
+  // A 15 perces access-token TTL-t nem hosszabbítja meg semmi automatikusan
+  // (nincs külön refresh-token) – enélkül egy dolgozó felhasználó munkamenete
+  // 15 perc után "kifagy" (a kérések csendben 401-eznek, amíg valami rá nem
+  // vezet a logoutra). Amíg a fül látható/aktív, periodikusan lecseréljük a
+  // tokent a POST /auth/refresh végponton, jelszó újbóli megadása nélkül.
+  // Ha a fül háttérben van, NEM frissítünk – így egy ténylegesen inaktív
+  // (bezárt/háttérbe küldött) munkamenet a natural TTL szerint lejár, a
+  // felhasználó pedig valóban ki lesz léptetve, nem "fantom-bejelentkezve".
+  useEffect(() => {
+    if (state.status !== "authed") return;
+
+    const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 15 perces TTL-hez bőven belül
+
+    const tryRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshAccessToken().catch(() => {
+        // A token már érvénytelen (pl. időközben mégis lejárt, vagy a
+        // szerver-oldali session törlődött) – tiszta, teljes logout, hogy a
+        // felhasználó azonnal újra be tudjon lépni.
+        logout();
+      });
+    };
+
+    const interval = window.setInterval(tryRefresh, REFRESH_INTERVAL_MS);
+
+    // Ha a user visszavált a fülre (pl. hosszabb ideig más fülön volt),
+    // azonnal próbáljunk frissíteni ahelyett hogy a köv. intervalig várnánk.
+    const onVisible = () => { if (document.visibilityState === "visible") tryRefresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [state.status, logout]);
+
   /**
    * SUPER_ADMIN idle timeout – KIKAPCSOLVA (user kérés).
    *
