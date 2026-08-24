@@ -67,22 +67,52 @@ type NetRadio = {
 // Az UI ékezet-mentesen tárolja és jeleníti meg a rádióneveket
 // (lásd `stripAccents`), ezért a seed is ékezet nélküli.
 const NET_RADIOS_INITIAL: NetRadio[] = [
-  { id: "oxygen-music",   name: "Oxygen Music",     genre: "pop / dance",       streams: [{ label: "Foadas", url: "https://onair.oxygenmusic.hu/oxygenmusic.mp3" }] },
-  { id: "radio-1",        name: "Radio 1",          genre: "kereskedelmi pop",  streams: [{ label: "Foadas", url: "https://stream.radio1.hu/radio1.mp3" }] },
-  { id: "retro-radio",    name: "Retro Radio",      genre: "retro",             streams: [{ label: "Foadas", url: "https://icast.connectmedia.hu/5201/retroradio.mp3" }] },
-  { id: "petofi-radio",   name: "Petofi Radio",     genre: "kozszolgalati pop", streams: [{ label: "Foadas", url: "https://icast.connectmedia.hu/4736/mr2.mp3" }] },
-  { id: "laza-radio",     name: "Laza Radio",       genre: "soft pop / chill",  streams: [{ label: "Foadas", url: "" }] },
-  { id: "megadance",      name: "Megadance Radio",  genre: "dance / EDM",       streams: [{ label: "Foadas", url: "" }] },
-  { id: "radio-sunrise",  name: "Radio Sunrise",    genre: "chill / lounge",    streams: [{ label: "Foadas", url: "" }] },
-  { id: "juventus-radio", name: "Juventus Radio",   genre: "kereskedelmi pop",  streams: [{ label: "Foadas", url: "" }] },
-  { id: "radio-gaga",     name: "Radio GaGa",       genre: "magyar zene",       streams: [{ label: "Foadas", url: "" }] },
-  { id: "radio-88",       name: "Radio 88",         genre: "kereskedelmi",      streams: [{ label: "Foadas", url: "" }] },
-  { id: "poptarisznya",   name: "Poptarisznya",     genre: "retro / oldies",    streams: [{ label: "Foadas", url: "" }] },
-  { id: "sunshine-radio", name: "Sunshine Radio",   genre: "pop / chart",       streams: [{ label: "Foadas", url: "" }] },
-  { id: "roxy-radio",     name: "Roxy Radio",       genre: "rock",              streams: [{ label: "Foadas", url: "" }] },
-  { id: "mix-radio",      name: "Mix Radio",        genre: "vegyes / pop",      streams: [{ label: "Foadas", url: "" }] },
-  { id: "csukas-mese",    name: "Csukas Meseradio", genre: "gyermek / mese",    streams: [{ label: "Foadas", url: "" }] },
-  { id: "rohely-radio",   name: "Rohely Radio",     genre: "humor / talk",      streams: [{ label: "Foadas", url: "" }] },
+  { id: "oxygen-music", name: "Oxygen Music", genre: "pop / dance", streams: [
+    { label: "Main 320kbit", url: "https://oxygenmusic.hu:8443/oxygenmusic" },
+    { label: "Main 192kbit", url: "https://oxygenmusic.hu:8443/oxygenmusic_192" },
+    { label: "OzoneFM",      url: "https://oxygenmusic.hu:8443/ozonefm_192" },
+    { label: "90s",          url: "https://oxygenmusic.hu:8443/oxygenthe90shits" },
+    { label: "80s",          url: "https://oxygenmusic.hu:8443/oxygenthe80shits_192" },
+    { label: "00s",          url: "https://oxygenmusic.hu:8443/oxygenthe00shits_192" },
+    { label: "10s",          url: "https://oxygenmusic.hu:8443/oxygenthe10shits" },
+    { label: "Xmas",         url: "https://oxygenmusic.hu:8443/xmas_320" },
+  ] },
+  { id: "radio-1", name: "Radio 1", genre: "kereskedelmi pop", streams: [
+    { label: "Main 128kbit", url: "https://icast.connectmedia.hu/5202/live.mp3" },
+  ] },
+  { id: "retro-radio", name: "Retro Radio", genre: "retro", streams: [
+    { label: "Main 128kbit", url: "https://icast.connectmedia.hu/5001/live.mp3" },
+  ] },
+  { id: "petofi-radio", name: "Petofi Radio", genre: "magyar pop", streams: [
+    { label: "Main", url: "https://icast.connectmedia.hu/4736/mr2.mp3" },
+  ] },
+  { id: "roxy-radio", name: "Roxy Radio", genre: "poprock", streams: [
+    { label: "Main 192kbit", url: "https://s2.audiostream.hu/roxy_192k" },
+  ] },
+  { id: "cool-fm-2af7", name: "Cool FM", genre: "multi genre", streams: [
+    { label: "Top40",       url: "https://mediagw.e-tiger.net/stream/coolfm" },
+    { label: "Dance",       url: "https://mediagw.e-tiger.net/stream/dds" },
+    { label: "Pop",         url: "https://mediagw.e-tiger.net/stream/zc01" },
+    { label: "Rap, HipHop", url: "https://mediagw.e-tiger.net/stream/zc08" },
+    { label: "Acoustic",    url: "https://mediagw.e-tiger.net/stream/zc12" },
+    { label: "Jazzy",       url: "https://mediagw.e-tiger.net/stream/zc13" },
+    { label: "Alternative", url: "https://mediagw.e-tiger.net/stream/zc16" },
+  ] },
+  { id: "laza-radio-vylu", name: "Laza Radio", genre: "PopDance", streams: [
+    { label: "Main 320kbit", url: "https://stream.lazaradio.com/live.ogg" },
+  ] },
+  { id: "mixradio-3zxm", name: "MixRadio", genre: "Dance", streams: [
+    { label: "Dance",  url: "https://stream.phost.hu:8006/live" },
+    { label: "Retro",  url: "https://stream.phost.hu:8004/retro" },
+    { label: "Summer", url: "https://stream.phost.hu:8010/creamix" },
+  ] },
+  { id: "poptarisznya-tr2z", name: "Poptarisznya", genre: "Multi", streams: [
+    { label: "Live",   url: "http://adas.poptarisznya.hu:8200/live.mp3" },
+    { label: "Oldies", url: "http://adas.poptarisznya.hu:8200/oldies.mp3" },
+  ] },
+  { id: "magic-disco-klsx", name: "Magic Disco", genre: "Disco Italo", streams: [
+    { label: "Italo disco", url: "http://178.238.212.164:4420/live.mp3" },
+  ] },
 ];
 
 // localStorage perzisztencia tenant-szétválasztva. A kulcs:
