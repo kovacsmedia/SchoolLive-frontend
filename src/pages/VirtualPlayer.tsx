@@ -244,6 +244,10 @@ export default function VirtualPlayer() {
   const snapDeviceIdRef = useRef<string>("");
   const wakeLockRef    = useRef<WakeLockSentinel | null>(null);
   const beaconTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
+  // connectWS-en belül (a fájlban lentebb definiált) reloginPlayer-t hívjuk
+  // WS 4002 (lejárt token) esetén – ref-en át, hogy ne kelljen a connectWS
+  // useCallback deps-jébe felvenni / deklarációs sorrendtől függővé tenni.
+  const reloginPlayerRef = useRef<() => Promise<void>>(async () => {});
   const bellBannerTimer = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const hudDismissTimer = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const volumeRef       = useRef(volume);
@@ -332,6 +336,10 @@ export default function VirtualPlayer() {
     ws.onopen = () => {
       console.log("[VP] /sync WS csatlakozva");
       ws.send(JSON.stringify({ type: "TIME_SYNC", seq: Date.now() }));
+      // Minden (re)csatlakozáskor frissítjük a csengetési rendet – ez pótolja
+      // a korábbi 60s-es HTTP poll-t, és a diszkonnekt alatt esetleg
+      // elmulasztott SYNC_BELLS push-okat is behozza.
+      fetchBells();
     };
 
     ws.onmessage = (evt) => {
@@ -436,6 +444,10 @@ export default function VirtualPlayer() {
     ws.onclose = (evt) => {
       console.log(`[VP] /sync WS lezárva (${evt.code})`);
       wsRef.current = null;
+      // 4002 = "Invalid token" (SyncEngine.handleConnection) – lejárt JWT,
+      // csendes relogin, mielőtt újracsatlakoznánk. Korábban ezt csak a
+      // beacon HTTP 401 válasza jelezte.
+      if (evt.code === 4002) void reloginPlayerRef.current();
       wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
     };
 
@@ -464,6 +476,7 @@ export default function VirtualPlayer() {
       }
     } catch (e) { console.warn("[VP] reloginPlayer hiba:", e); }
   }, []);
+  reloginPlayerRef.current = reloginPlayer;
 
   // ── Reg + status ─────────────────────────────────────────────────────────
   const register = useCallback(async () => {
@@ -562,27 +575,29 @@ export default function VirtualPlayer() {
     }
 
     fetchBells();
-    const bellSyncTimer = setInterval(fetchBells, 60_000);
 
     connectWS();
 
-    const beacon = async () => {
-      const ip = await getPublicIp();
-      try {
-        await apiFetch("/player/device/beacon", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clientId, ipAddress: ip }),
-        });
-      } catch (err: any) {
-        const is401 = err?.status === 401 || String(err?.message ?? "").includes("401");
-        if (is401) void reloginPlayer();
-      }
+    // WS-alapú beacon (korábban 30s-enkénti HTTP POST /player/device/beacon
+    // volt) – ugyanaz a payload, csak a SyncEngine WS "BEACON" handlere
+    // dolgozza fel. Az eszköz IP-címét a WS upgrade request-ből a backend
+    // már amúgy is látja, nem kell hozzá kliens-oldali ipify.org lekérdezés.
+    // A lejárt-token detektálás (korábban HTTP 401) a WS close code 4002-ből
+    // jön (ld. connectWS ws.onclose).
+    const beacon = () => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        type:            "BEACON",
+        volume:          volumeRef.current,
+        muted:           mutedRef.current,
+        firmwareVersion: "WP",
+        statusPayload:   { clientId, snapConnected: !!snapClientRef.current },
+      }));
     };
-    beacon();
     beaconTimer.current = setInterval(beacon, 30_000);
 
     return () => {
-      clearInterval(bellSyncTimer);
       if (beaconTimer.current) clearInterval(beaconTimer.current);
       if (wsReconnectRef.current) clearTimeout(wsReconnectRef.current);
       wsRef.current?.close(1000, "component unmount");
