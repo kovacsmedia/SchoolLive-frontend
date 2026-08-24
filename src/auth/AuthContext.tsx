@@ -7,7 +7,7 @@ import React, {
   useReducer,
 } from "react";
 import type { Me, LoginResponse } from "../lib/auth";
-import { me as fetchMe, clearSession, login as apiLogin } from "../lib/auth";
+import { me as fetchMe, clearSession, login as apiLogin, refreshAccessToken } from "../lib/auth";
 
 type AuthState =
   | { status: "loading" }
@@ -42,6 +42,11 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ACCESS_TOKEN_KEY = "accessToken";
+// AppShell tenant-választó ugyanezt a kulcsot használja. Korábban csak
+// AppShell.onLogout törölte – bármely MÁS logout-útvonalon (sikertelen
+// refresh(), Login.tsx kilépés gomb) életben maradt, és a következő
+// bejelentkezéskor egy régi tenantId-t küldött volna a kérésekkel.
+const ACTIVE_TENANT_KEY = "activeTenantId";
 // SUPER_ADMIN tétlenségi timeout korábban itt volt:
 //   const SUPERADMIN_IDLE_MS = 5 * 60 * 1000;
 // A timeout-logika a useEffect-blokkban kikapcsolva (user kérés). Ha
@@ -74,6 +79,11 @@ function safeRemove(storage: Storage, key: string) {
 function clearBothTokens() {
   safeRemove(sessionStorage, ACCESS_TOKEN_KEY);
   safeRemove(localStorage, ACCESS_TOKEN_KEY);
+}
+
+function clearActiveTenant() {
+  safeRemove(sessionStorage, ACTIVE_TENANT_KEY);
+  safeRemove(localStorage, ACTIVE_TENANT_KEY);
 }
 
 /**
@@ -231,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     clearSession();
     clearBothTokens();
+    clearActiveTenant();
     dispatch({ type: "GUEST" });
   }, []);
 

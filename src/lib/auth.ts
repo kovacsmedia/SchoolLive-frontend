@@ -105,6 +105,26 @@ export async function login(email: string, password: string): Promise<LoginRespo
 }
 
 /**
+ * Csendes token-frissítés: az aktuális (még érvényes) access tokent
+ * lecseréli egy friss TTL-űre, jelszó nélkül. Az AuthContext hívja
+ * periodikusan, amíg a fül aktív/fókuszban van, hogy egy dolgozó
+ * felhasználó munkamenete ne járjon le a 15 perces token TTL miatt.
+ *
+ * Az új tokent UGYANABBA a storage-ba írja, ahol a régi volt (session vs
+ * local) – nem `setAccessToken`-t hívjuk, mert az mindig localStorage-ba
+ * írna, ami a SUPER_ADMIN session-only szabályt megsértené.
+ */
+export async function refreshAccessToken(): Promise<string> {
+  const res = await apiPost<{ accessToken: string }>("/auth/refresh");
+  const token = res?.accessToken;
+  if (token) {
+    const inSession = !!safeGet(sessionStorage, ACCESS_TOKEN_KEY);
+    safeSet(inSession ? sessionStorage : localStorage, ACCESS_TOKEN_KEY, token);
+  }
+  return token;
+}
+
+/**
  * Fetch current user (returns Me directly, supports multiple backend shapes)
  */
 export async function me(): Promise<Me> {
