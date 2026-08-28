@@ -125,6 +125,24 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
         d?.message ??
         d?.error ??
         `HTTP ${res.status} (${res.statusText})`;
+
+      // A user időközben (helyes jelszóval) máshonnan bejelentkezett – ez a
+      // munkamenet itt AZONNAL, teljesen érvénytelen. Bárhonnan jöjjön is a
+      // kérés, azonnal töröljük a helyi auth-állapotot és login-ra
+      // navigálunk – nem várjuk meg a köv. periodikus refresh-tick-et
+      // (AuthContext), ami akár percekig is eltarthatna.
+      if (res.status === 401 && d?.error === "session_superseded") {
+        try {
+          sessionStorage.removeItem("accessToken");
+          localStorage.removeItem("accessToken");
+          sessionStorage.removeItem("activeTenantId");
+          localStorage.removeItem("activeTenantId");
+        } catch { /* ignore */ }
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
+      }
+
       throw new ApiError(msg, res.status, data);
     }
 
