@@ -3,6 +3,9 @@
 type ApiErrorData = {
   error?: string;
   message?: string;
+  // Multi-node cluster: 409 "Tenant not hosted on this node" válaszoknál a
+  // backend ezt is visszaadja, hogy a kliens azonnal tudja hova forduljon.
+  correctNodeHostname?: string;
 };
 
 export class ApiError extends Error {
@@ -17,7 +20,16 @@ export class ApiError extends Error {
   }
 }
 
+// Multi-node cluster: ha egy kérés 409-et kap "correctNodeHostname"-mel (a
+// tenant időközben más node-ra került), ide kerül az override – a fül
+// mostantól ezt a node-ot használja, amíg újra nem töltődik az oldal.
+// SZÁNDÉKOSAN NEM localStorage-ba mentve: egy elavult, reload után is
+// megmaradó override rosszabb (tévesen rossz node-hoz kötné a frissen
+// újratöltött fület), mint egy plusz 409+retry kör minden reload után.
+let _baseUrlOverride: string | null = null;
+
 function getBaseUrl(): string {
+  if (_baseUrlOverride) return _baseUrlOverride;
   const v = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
   const base = (v ?? "").trim();
   if (!base) return "";
@@ -82,7 +94,7 @@ function resolveTenantId(token: string): string | null {
   return null;
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
     throw new ApiError(
@@ -141,6 +153,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
           window.location.href = "/login";
         }
+      }
+
+      // Multi-node cluster: a tenant időközben másik node-ra került. Egyetlen
+      // automatikus retry az új host-tal – a _isRetry guard véd a végtelen
+      // ciklustól, ha az új node is (átmenetileg) elutasítaná.
+      if (res.status === 409 && typeof d?.correctNodeHostname === "string" && !_isRetry) {
+        _baseUrlOverride = `https://${d.correctNodeHostname}`;
+        return apiFetch<T>(path, init, true); // a `finally` lent úgyis clearTimeout-ol
       }
 
       throw new ApiError(msg, res.status, data);
