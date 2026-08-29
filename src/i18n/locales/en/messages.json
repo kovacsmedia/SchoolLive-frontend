@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Compose a new message. Previous messages are available in a separate window.",
+    "historyButton": "Message history"
+  },
+  "success": {
+    "sent": "Message sent successfully!",
+    "newMessage": "New message"
+  },
+  "composer": {
+    "ttsTab": "Text-to-speech (TTS)",
+    "recordTab": "Voice recording",
+    "textLabel": "Message text",
+    "textPlaceholder": "Type the message text…",
+    "voiceLabel": "Voice"
+  },
+  "voices": {
+    "anna": "Anna (female)",
+    "berta": "Berta (female)",
+    "imre": "Imre (male)"
+  },
+  "translate": {
+    "button": "Translate",
+    "title": "Translate",
+    "hrNote": "Serbian voice",
+    "emptyText": "The text cannot be empty!",
+    "failed": "Translation failed"
+  },
+  "templates": {
+    "savedLabel": "Saved templates",
+    "saveLabel": "Save as template",
+    "namePlaceholder": "Template name (no accents)…",
+    "saving": "Saving…",
+    "saved": "Template saved!",
+    "saveFailed": "Save failed",
+    "nameAndTextRequired": "Please enter a name and text!"
+  },
+  "record": {
+    "idleHint": "Click the button to start recording.",
+    "start": "Start recording",
+    "recordingHint": "Recording in progress…",
+    "stop": "Stop recording",
+    "doneHint": "Recording finished – listen to it!",
+    "newRecording": "New recording",
+    "accepted": "Accepted",
+    "fillDetails": "fill in the details below",
+    "micDenied": "Microphone access denied. Please allow it in your browser.",
+    "micUnavailable": "Microphone unavailable: {{error}}",
+    "noRecording": "No recording available!",
+    "uploadFailed": "Upload failed"
+  },
+  "introSound": {
+    "label": "Sound before message",
+    "defaultOption": "Default (ding-dong)",
+    "uploadTitle": "Upload new intro sound (max 7s)",
+    "uploading": "Uploading…",
+    "uploadButton": "Upload",
+    "deleteTitle": "Delete selected sound",
+    "deleteConfirm": "Delete this sound?",
+    "deleteFailed": "Delete failed",
+    "maxSizeError": "The file must be max 200 KB (enough for a 7s mp3).",
+    "uploadFailed": "Upload failed",
+    "hint": "Max 7 seconds. If left empty, the default \"ding-dong\" will play."
+  },
+  "target": {
+    "label": "Playback devices",
+    "all": "All",
+    "device": "Single device",
+    "group": "Group",
+    "noDevices": "No devices available",
+    "chooseGroupPlaceholder": "Choose a group…"
+  },
+  "schedule": {
+    "label": "Playback time",
+    "immediate": "Immediately",
+    "nextBell": "Next break",
+    "customTime": "Custom time",
+    "nextBreakAt": "Next break: {{time}}",
+    "noMoreBreaksToday": "There are no more breaks today."
+  },
+  "errors": {
+    "textRequired": "The text cannot be empty!",
+    "chooseTarget": "Please choose a target!",
+    "noMoreBreaksToday": "There are no more breaks today.",
+    "enterTime": "Please enter a time!",
+    "timePassed": "The specified time has already passed!",
+    "lessonOverlapConfirm": "⚠️ This time falls during a lesson! Are you sure you want to proceed?",
+    "sendFailed": "Sending failed"
+  },
+  "send": {
+    "generating": "Generating…",
+    "uploading": "Uploading…"
+  },
+  "history": {
+    "loadFailed": "Loading failed",
+    "deleteConfirmSingle": "Delete this message?",
+    "deleteConfirmBulk": "Delete the {{count}} selected messages?",
+    "deleteSelected": "Delete selected ({{count}})",
+    "empty": "No messages have been sent yet",
+    "replayTooltip": "Play again (target + timing selectable)",
+    "noFileTooltip": "No stored file",
+    "replayAction": "Replay",
+    "detailsAction": "Details",
+    "prevPage": "Previous",
+    "nextPage": "Next",
+    "voiceMessage": "Voice message"
+  },
+  "detail": {
+    "title": "Message details",
+    "from": "Sender",
+    "created": "Created",
+    "scheduled": "Scheduled",
+    "played": "Played",
+    "target": "Target",
+    "textLabel": "Text"
+  },
+  "replay": {
+    "title": "Play message again",
+    "storedFileNote": "The stored audio file will be sent out – the ding-dong will not be added again.",
+    "noFileError": "This message has no stored file.",
+    "replayFailed": "Replay failed",
+    "sending": "Sending…",
+    "sendImmediate": "Immediate",
+    "schedule": "Schedule"
+  }
+}

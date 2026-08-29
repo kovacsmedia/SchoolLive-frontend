@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "Došlo je do pogreške.",
+    "sendFailed": "Slanje e-pošte nije uspjelo."
+  },
+  "nav": {
+    "login": "Prijava →"
+  },
+  "hero": {
+    "tag": "🏫 Sustav školske komunikacije",
+    "titlePrefix": "Jednostavnija školska",
+    "titleHighlight": "komunikacija",
+    "description": "SchoolLive pomaže da školske poruke uvijek na vrijeme, razumljivo i pouzdano stignu tamo gdje su potrebne — manje nesporazuma, brža reakcija, mirnija svakodnevica.",
+    "ctaPrimary": "🚀 Uđi u sustav",
+    "ctaSecondary": "Saznaj više ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatski, precizni signali prema rasporedu škole. S predlošcima organiziranim u kalendaru i neradnim danima." },
+    "messages": { "title": "Trenutne poruke", "desc": "Pošaljite glasovnu poruku u bilo koji dio zgrade za nekoliko sekundi, uz TTS glas." },
+    "radio":    { "title": "Školski radio", "desc": "Glazba i emisije po rasporedu, u cijeloj zgradi istovremeno – upravljano izravno iz preglednika." },
+    "devices":  { "title": "Više uređaja", "desc": "Svi zvučnici i zasloni na jednom mjestu, sa statusom u stvarnom vremenu, organizirani u grupe." },
+    "security": { "title": "Sigurno", "desc": "Uloge, upravljanje pristupom, razdvajanje ustanova, revidirane radnje." }
+  },
+  "cta": {
+    "title": "🎯 Želite li isprobati i u vašoj ustanovi?",
+    "description": "Zatražite besplatno probno razdoblje — besplatno uvođenje uz osobnu prezentaciju!",
+    "contactButton": "📩 Kontaktirajte nas"
+  },
+  "contactModal": {
+    "title": "📩 Kontakt",
+    "subtitle": "Ispunite obrazac ispod i uskoro ćemo vas kontaktirati!",
+    "sending": "⏳ Slanje…",
+    "submit": "📨 Pošalji",
+    "success": {
+      "title": "Hvala na interesu!",
+      "message": "Primili smo vašu poruku, uskoro ćemo vas kontaktirati."
+    },
+    "fields": {
+      "name":        { "label": "Vaše ime *", "placeholder": "npr. Ivan Horvat" },
+      "institution": { "label": "Vaša ustanova", "placeholder": "npr. Osnovna škola Ivana Gundulića" },
+      "email":       { "label": "E-mail adresa *", "placeholder": "npr. ivan.horvat@skola.hr" },
+      "phone":       { "label": "Broj telefona", "placeholder": "npr. +385 91 123 4567" }
+    }
+  },
+  "footer": {
+    "tagline": "Sustav školske komunikacije"
+  }
+}

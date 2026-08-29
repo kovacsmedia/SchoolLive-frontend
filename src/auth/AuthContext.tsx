@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import type { Me, LoginResponse } from "../lib/auth";
 import { me as fetchMe, clearSession, login as apiLogin, refreshAccessToken } from "../lib/auth";
+import { applyLocale } from "../i18n";
 
 type AuthState =
   | { status: "loading" }
@@ -258,6 +259,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userRaw = await fetchMe();
       assertValidMe(userRaw);
       enforceTokenStoragePolicy(userRaw);
+      applyLocale((userRaw as any)?.locale);
       dispatch({ type: "AUTHED", user: userRaw });
     } catch {
       logout();
@@ -284,6 +286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 4) role-based storage policy
         enforceTokenStoragePolicy(userRaw);
+        applyLocale((userRaw as any)?.locale);
 
         dispatch({ type: "AUTHED", user: userRaw });
         return res;

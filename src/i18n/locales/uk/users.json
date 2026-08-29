@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Керування користувачами та правами доступу закладу."
+  },
+  "actions": {
+    "addUser": "＋ Новий користувач",
+    "deactivate": "⏸ Деактивувати",
+    "create": "✅ Створити",
+    "creating": "⏳ Створення…",
+    "saving": "⏳ Збереження…"
+  },
+  "table": {
+    "emailHeader": "Ел. пошта",
+    "nameHeader": "Ім'я",
+    "statusHeader": "Статус",
+    "roleHeader": "Роль",
+    "createdAtHeader": "Створено",
+    "lastLoginHeader": "Останній вхід",
+    "actionsHeader": "Дії",
+    "noResults": "Немає результатів"
+  },
+  "status": {
+    "active": "✓ Активний",
+    "inactive": "✗ Неактивний"
+  },
+  "modals": {
+    "createTitle": "Новий користувач",
+    "editTitle": "Редагування: {{email}}",
+    "messagesTitle": "Повідомлення: {{email}}"
+  },
+  "form": {
+    "emailLabel": "Електронна адреса *",
+    "emailPlaceholder": "напр. vchytel@shkola.ua",
+    "displayNameLabel": "Відображуване ім'я",
+    "displayNamePlaceholder": "напр. Іван Петренко",
+    "displayNameHint": "Необов'язково",
+    "roleLabel": "Роль",
+    "statusLabel": "Статус",
+    "activeCheckbox": "Активний користувач",
+    "passwordLabel": "Пароль",
+    "passwordPlaceholder": "Мінімум 6 символів",
+    "passwordHintEdit": "Якщо залишити порожнім, не зміниться.",
+    "passwordHintCreate": "Обов'язково для нового користувача."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Адміністратор",
+      "description": "Адміністратор тенанта: повні права в межах закладу."
+    },
+    "EDITOR": {
+      "label": "Редактор",
+      "description": "Надсилання повідомлень, керування запланованими сигналами."
+    },
+    "CONTRIBUTOR": {
+      "label": "Дописувач",
+      "description": "Надсилання миттєвих повідомлень."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Право на перегляд Player."
+    }
+  },
+  "messages": {
+    "empty": "Цей користувач ще не надсилав жодного повідомлення.",
+    "count": "{{count}} повідомлень"
+  },
+  "confirm": {
+    "deactivateMessage": "Ви впевнені, що хочете деактивувати цього користувача?\n{{email}}\n\nОбліковий запис залишиться, але користувач не зможе увійти.",
+    "deleteMessage": "⚠️ ОСТАТОЧНЕ ВИДАЛЕННЯ ⚠️\n\nВи впевнені, що хочете видалити цього користувача?\n{{email}}\n\nЦю дію неможливо скасувати!"
+  },
+  "errors": {
+    "emailRequired": "Електронна адреса обов'язкова.",
+    "passwordRequired": "Пароль обов'язковий.",
+    "emailRequiredShort": "Ел. пошта обов'язкова.",
+    "backendNotOk": "Бекенд не відповів статусом ok.",
+    "createFailed": "Не вдалося створити. ",
+    "updateFailed": "Не вдалося оновити. ",
+    "deactivateFailed": "Не вдалося деактивувати. ",
+    "deleteFailed": "Не вдалося видалити. ",
+    "unknown": "Невідома помилка"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Compunerea unui mesaj nou. Cele anterioare sunt disponibile într-o fereastră separată.",
+    "historyButton": "Mesaje anterioare"
+  },
+  "success": {
+    "sent": "Mesajul a fost trimis cu succes!",
+    "newMessage": "Mesaj nou"
+  },
+  "composer": {
+    "ttsTab": "Sinteză vocală (TTS)",
+    "recordTab": "Înregistrare vocală",
+    "textLabel": "Textul mesajului",
+    "textPlaceholder": "Introduceți textul mesajului…",
+    "voiceLabel": "Voce"
+  },
+  "voices": {
+    "anna": "Anna (feminin)",
+    "berta": "Berta (feminin)",
+    "imre": "Imre (masculin)"
+  },
+  "translate": {
+    "button": "Traducere",
+    "title": "Traducere",
+    "hrNote": "voce sârbă",
+    "emptyText": "Textul nu poate fi gol!",
+    "failed": "Traducerea a eșuat"
+  },
+  "templates": {
+    "savedLabel": "Șabloane salvate",
+    "saveLabel": "Salvează ca șablon",
+    "namePlaceholder": "Numele șablonului…",
+    "saving": "Se salvează…",
+    "saved": "Șablon salvat!",
+    "saveFailed": "Salvarea a eșuat",
+    "nameAndTextRequired": "Introduceți numele și textul!"
+  },
+  "record": {
+    "idleHint": "Apăsați butonul pentru a începe înregistrarea.",
+    "start": "Începe înregistrarea",
+    "recordingHint": "Înregistrare în curs…",
+    "stop": "Oprește înregistrarea",
+    "doneHint": "Înregistrare gata – ascultați-o!",
+    "newRecording": "Înregistrare nouă",
+    "accepted": "Acceptat",
+    "fillDetails": "completați detaliile mai jos",
+    "micDenied": "Acces la microfon refuzat. Permiteți accesul în browser.",
+    "micUnavailable": "Microfonul nu este disponibil: {{error}}",
+    "noRecording": "Nu există nicio înregistrare!",
+    "uploadFailed": "Încărcarea a eșuat"
+  },
+  "introSound": {
+    "label": "Sunet înainte de mesaj",
+    "defaultOption": "Implicit (dingdong)",
+    "uploadTitle": "Încarcă un sunet de intro nou (max. 7s)",
+    "uploading": "Se încarcă…",
+    "uploadButton": "Încarcă",
+    "deleteTitle": "Șterge sunetul selectat",
+    "deleteConfirm": "Ștergeți acest sunet?",
+    "deleteFailed": "Ștergerea a eșuat",
+    "maxSizeError": "Fișierul poate avea maximum 200 KB (suficient pentru un mp3 de 7s).",
+    "uploadFailed": "Încărcarea a eșuat",
+    "hint": "Maximum 7 secunde. Dacă lăsați gol, va suna implicit „dingdong”."
+  },
+  "target": {
+    "label": "Dispozitive de redare",
+    "all": "Toate",
+    "device": "Individual",
+    "group": "Grup",
+    "noDevices": "Niciun dispozitiv disponibil",
+    "chooseGroupPlaceholder": "Alegeți un grup…"
+  },
+  "schedule": {
+    "label": "Momentul redării",
+    "immediate": "Imediat",
+    "nextBell": "Următoarea pauză",
+    "customTime": "Oră",
+    "nextBreakAt": "Următoarea pauză: {{time}}",
+    "noMoreBreaksToday": "Astăzi nu mai există altă pauză."
+  },
+  "errors": {
+    "textRequired": "Textul nu poate fi gol!",
+    "chooseTarget": "Alegeți o țintă!",
+    "noMoreBreaksToday": "Astăzi nu mai există altă pauză.",
+    "enterTime": "Introduceți ora!",
+    "timePassed": "Ora specificată a trecut deja!",
+    "lessonOverlapConfirm": "⚠️ Oră în timpul programului de curs! Sigur doriți să continuați?",
+    "sendFailed": "Trimiterea a eșuat"
+  },
+  "send": {
+    "generating": "Se generează…",
+    "uploading": "Se încarcă…"
+  },
+  "history": {
+    "loadFailed": "Încărcarea a eșuat",
+    "deleteConfirmSingle": "Ștergeți acest mesaj?",
+    "deleteConfirmBulk": "Ștergeți cele {{count}} mesaje selectate?",
+    "deleteSelected": "Șterge selectate ({{count}})",
+    "empty": "Nu s-a trimis încă niciun mesaj",
+    "replayTooltip": "Redifuzare (țintă + programare opțională)",
+    "noFileTooltip": "Niciun fișier salvat",
+    "replayAction": "Din nou",
+    "detailsAction": "Detalii",
+    "prevPage": "Anterior",
+    "nextPage": "Următor",
+    "voiceMessage": "Mesaj vocal"
+  },
+  "detail": {
+    "title": "Detaliile mesajului",
+    "from": "Expeditor",
+    "created": "Creat",
+    "scheduled": "Programat",
+    "played": "Redat",
+    "target": "Țintă",
+    "textLabel": "Text"
+  },
+  "replay": {
+    "title": "Redifuzarea mesajului",
+    "storedFileNote": "Se trimite fișierul audio salvat – dingdong-ul nu se mai adaugă din nou.",
+    "noFileError": "Acest mesaj nu are un fișier salvat.",
+    "replayFailed": "Redifuzarea a eșuat",
+    "sending": "Se trimite…",
+    "sendImmediate": "Imediat",
+    "schedule": "Programează"
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Naptár, sablonok és hangfájlok kezelése",
+    "endEditing": "Szerkesztés vége",
+    "lockActive": "Szerkesztési zár aktív",
+    "loadingCalendar": "Naptár betöltése...",
+    "tabs": {
+      "calendar": "Naptár",
+      "templates": "Sablonok",
+      "sounds": "Hangfájlok"
+    }
+  },
+  "calendar": {
+    "today": "Ma",
+    "loadHolidaysButton": "Ünnepnapok betöltése",
+    "hint": "Kattints egy napra a szerkesztéshez. Shift: tartomány kijelölése, Ctrl/Cmd: több nap kijelölése.",
+    "holidayTitle": "Munkaszüneti nap",
+    "normalTitle": "Tanítási nap",
+    "holidayBadge": "Szünnap",
+    "weekendBadge": "Hétvége",
+    "weekdays": {
+      "mon": "H",
+      "tue": "K",
+      "wed": "Sze",
+      "thu": "Cs",
+      "fri": "P",
+      "sat": "Szo",
+      "sun": "V"
+    },
+    "months": {
+      "january": "Január",
+      "february": "Február",
+      "march": "Március",
+      "april": "Április",
+      "may": "Május",
+      "june": "Június",
+      "july": "Július",
+      "august": "Augusztus",
+      "september": "Szeptember",
+      "october": "Október",
+      "november": "November",
+      "december": "December"
+    },
+    "dayPanel": {
+      "multipleSelected": "{{count}} nap kiválasztva",
+      "titleSuffix": "szerkesztése",
+      "multiHint": "(minden kijelölt napra ugyanazok a beállítások kerülnek)",
+      "holidayCheckbox": "Szünnap (nincs csengetés)",
+      "templateDefaultOption": "Alapértelmezett sablon",
+      "noteLabel": "Megjegyzés",
+      "notePlaceholder": "pl. Rövidített óra"
+    }
+  },
+  "templates": {
+    "heading": "Csengetési rend sablonok",
+    "newButton": "Új sablon",
+    "defaultInfo": {
+      "prefix": "Az",
+      "highlight": "alapértelmezett",
+      "suffix": "sablon töltődik le az eszközre offline fallbackként."
+    },
+    "noDefaultWarning": "Nincs alapértelmezett sablon beállítva!",
+    "defaultBadge": "Alapértelmezett",
+    "lockedBadge": "Zárolt",
+    "bellsCount": "{{count}} jelzés",
+    "viewButton": "Megtekint",
+    "setDefaultTitle": "Beállítás offline alapértelmezettként",
+    "setDefaultShort": "Alapért.",
+    "newTemplateTitle": "Új sablon",
+    "nameLabel": "Sablon neve",
+    "namePlaceholder": "pl. Rövidített nap",
+    "tableHeaders": {
+      "time": "Időpont",
+      "type": "Típus",
+      "sound": "Hang"
+    },
+    "bellType": {
+      "main": "Fő",
+      "signal": "Jelző"
+    },
+    "commitButton": "✓ Kész",
+    "commitRowTitle": "Sor elfogadása és berendezés",
+    "discardRowTitle": "Sor elvetése",
+    "addBellButton": "Jelzés hozzáadása",
+    "pendingHint": {
+      "prefix": "Állítsd be az időpontot, majd nyomj",
+      "suffix": "-t a beillesztéshez"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Tárhelyhasználat",
+    "available": "Elérhető: {{available}}",
+    "uploadButton": "MP3 feltöltése",
+    "uploadingButton": "Feltöltés...",
+    "noFreeSpace": "Nincs szabad hely!",
+    "defaultBadge": "Alapértelmezett",
+    "previewButton": "Belehallgat",
+    "previewTitle": "Belehallgatás",
+    "closePlayerTitle": "Lejátszó bezárása"
+  },
+  "confirm": {
+    "loadHolidays": "Betöltöd a(z) {{year}}. év ünnepnapjait?",
+    "deleteTemplate": "Törlöd a(z) \"{{name}}\" sablont?",
+    "setDefaultTemplate": "Beállítod a(z) \"{{name}}\" sablont alapértelmezettként?",
+    "saveDay": "Elmented a módosításokat?",
+    "discardChanges": "El nem mentett módosítások vannak. Biztosan elveted őket?",
+    "deleteSound": "Törlöd a(z) \"{{filename}}\" hangfájlt?"
+  },
+  "success": {
+    "daysSaved": "{{count}} nap elmentve.",
+    "holidaysLoaded": "{{count}} ünnepnap betöltve.",
+    "templateSaved": "Sablon elmentve.",
+    "templateDeleted": "Sablon törölve.",
+    "templateSetDefault": "\"{{name}}\" beállítva alapértelmezettként.",
+    "soundUploaded": "Hangfájl feltöltve!",
+    "soundDeleted": "Hangfájl törölve!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Nem sikerült betölteni a sablonokat.",
+    "loadCalendarFailed": "Nem sikerült betölteni a naptárt.",
+    "loadSoundsFailed": "Nem sikerült betölteni a hangfájlokat.",
+    "lockConflict": "Valaki más már szerkeszti a csengetési rendet.",
+    "lockFailed": "Nem sikerült megszerezni a szerkesztési zárat.",
+    "saveFailed": "Nem sikerült menteni.",
+    "loadHolidaysFailed": "Nem sikerült betölteni az ünnepnapokat.",
+    "pendingBellUnfinished": "Fejezd be a folyamatban lévő jelzés hozzáadását (✓ Kész vagy ✕).",
+    "templateNameRequired": "A sablon neve kötelező.",
+    "deleteFailed": "Nem sikerült törölni.",
+    "setDefaultFailed": "Nem sikerült beállítani alapértelmezettként.",
+    "notEnoughSpace": "Nincs elég hely! Elérhető: {{available}}, szükséges: {{needed}}",
+    "uploadFailed": "Feltöltési hiba"
+  },
+  "shared": {
+    "saveButton": "Mentés",
+    "savingButton": "Mentés..."
+  }
+}

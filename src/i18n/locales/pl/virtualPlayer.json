@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Kliknij, aby włączyć dźwięk",
+    "startButton": "Rozpocznij"
+  },
+  "pending": {
+    "title": "Odtwarzacz wirtualny",
+    "registering": "Trwa rejestracja urządzenia…",
+    "errorLine1": "Nie udało się połączyć z serwerem.",
+    "errorLine2": "Spróbuj ponownie później lub wyloguj się i zaloguj ponownie.",
+    "deviceIdLabel": "Identyfikator urządzenia",
+    "statusConnecting": "Łączenie…",
+    "statusError": "Błąd połączenia"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Trwa dzwonek"
+  },
+  "hud": {
+    "defaultRadioTitle": "Radio szkolne",
+    "defaultMessageTitle": "Wiadomość"
+  },
+  "nextBell": {
+    "label": "Następny dzwonek:",
+    "none": "Dzisiaj nie ma już więcej dzwonków"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-stream połączony",
+    "snapOfflineTooltip": "Snap-stream offline",
+    "audioStreamOk": "Strumień audio OK",
+    "audioStreamWaiting": "Strumień audio oczekuje…",
+    "unmuteTooltip": "Wyłącz wyciszenie",
+    "muteTooltip": "Wycisz"
+  }
+}

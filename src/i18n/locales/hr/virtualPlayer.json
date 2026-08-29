@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Kliknite za omogućavanje zvuka",
+    "startButton": "Pokreni"
+  },
+  "pending": {
+    "title": "Virtualni player",
+    "registering": "Registracija uređaja u tijeku…",
+    "errorLine1": "Povezivanje sa serverom nije uspjelo.",
+    "errorLine2": "Pokušajte ponovno kasnije ili se odjavite i ponovno prijavite.",
+    "deviceIdLabel": "ID uređaja",
+    "statusConnecting": "Povezivanje…",
+    "statusError": "Greška veze"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Zvono u tijeku"
+  },
+  "hud": {
+    "defaultRadioTitle": "Školski radio",
+    "defaultMessageTitle": "Poruka"
+  },
+  "nextBell": {
+    "label": "Sljedeće zvono:",
+    "none": "Danas više nema zvona"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-stream povezan",
+    "snapOfflineTooltip": "Snap-stream offline",
+    "audioStreamOk": "Audio stream OK",
+    "audioStreamWaiting": "Audio stream čeka…",
+    "unmuteTooltip": "Ukini isključivanje zvuka",
+    "muteTooltip": "Isključi zvuk"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Zostavenie novej správy. Predchádzajúce sú dostupné v samostatnom okne.",
+    "historyButton": "Predchádzajúce správy"
+  },
+  "success": {
+    "sent": "Správa bola úspešne odoslaná!",
+    "newMessage": "Nová správa"
+  },
+  "composer": {
+    "ttsTab": "Čítanie textu (TTS)",
+    "recordTab": "Hlasový záznam",
+    "textLabel": "Text správy",
+    "textPlaceholder": "Zadajte text správy…",
+    "voiceLabel": "Hlas"
+  },
+  "voices": {
+    "anna": "Anna (žena)",
+    "berta": "Berta (žena)",
+    "imre": "Imre (muž)"
+  },
+  "translate": {
+    "button": "Preklad",
+    "title": "Preklad",
+    "hrNote": "srbský hlas",
+    "emptyText": "Text nemôže byť prázdny!",
+    "failed": "Preklad zlyhal"
+  },
+  "templates": {
+    "savedLabel": "Uložené šablóny",
+    "saveLabel": "Uložiť ako šablónu",
+    "namePlaceholder": "Názov šablóny…",
+    "saving": "Ukladanie…",
+    "saved": "Šablóna uložená!",
+    "saveFailed": "Uloženie zlyhalo",
+    "nameAndTextRequired": "Zadajte názov a text!"
+  },
+  "record": {
+    "idleHint": "Kliknutím na tlačidlo spustíte nahrávanie.",
+    "start": "Spustiť nahrávanie",
+    "recordingHint": "Prebieha nahrávanie…",
+    "stop": "Ukončiť nahrávanie",
+    "doneHint": "Nahrávka je hotová – vypočujte si ju!",
+    "newRecording": "Nová nahrávka",
+    "accepted": "Prijaté",
+    "fillDetails": "vyplňte podrobnosti nižšie",
+    "micDenied": "Prístup k mikrofónu zamietnutý. Povoľte ho v prehliadači.",
+    "micUnavailable": "Mikrofón nie je dostupný: {{error}}",
+    "noRecording": "Žiadna nahraná nahrávka!",
+    "uploadFailed": "Nahrávanie na server zlyhalo"
+  },
+  "introSound": {
+    "label": "Zvuk pred správou",
+    "defaultOption": "Predvolené (dingdong)",
+    "uploadTitle": "Nahrať nový úvodný zvuk (max. 7 s)",
+    "uploading": "Nahrávanie…",
+    "uploadButton": "Nahrať",
+    "deleteTitle": "Vymazať vybraný zvuk",
+    "deleteConfirm": "Vymazať tento zvuk?",
+    "deleteFailed": "Vymazanie zlyhalo",
+    "maxSizeError": "Súbor môže mať maximálne 200 KB (postačuje na 7s mp3).",
+    "uploadFailed": "Nahrávanie na server zlyhalo",
+    "hint": "Maximálne 7 sekúnd. Ak ponecháte prázdne, zaznie predvolený „dingdong“."
+  },
+  "target": {
+    "label": "Prehrávacie zariadenia",
+    "all": "Všetky",
+    "device": "Vlastné",
+    "group": "Skupina",
+    "noDevices": "Žiadne dostupné zariadenie",
+    "chooseGroupPlaceholder": "Vyberte skupinu…"
+  },
+  "schedule": {
+    "label": "Čas prehrania",
+    "immediate": "Okamžite",
+    "nextBell": "Ďalšia prestávka",
+    "customTime": "Čas",
+    "nextBreakAt": "Ďalšia prestávka: {{time}}",
+    "noMoreBreaksToday": "Dnes už nie je žiadna ďalšia prestávka."
+  },
+  "errors": {
+    "textRequired": "Text nemôže byť prázdny!",
+    "chooseTarget": "Vyberte cieľ!",
+    "noMoreBreaksToday": "Dnes už nie je žiadna ďalšia prestávka.",
+    "enterTime": "Zadajte čas!",
+    "timePassed": "Zadaný čas už uplynul!",
+    "lessonOverlapConfirm": "⚠️ Čas počas vyučovacej hodiny! Naozaj chcete pokračovať?",
+    "sendFailed": "Odoslanie zlyhalo"
+  },
+  "send": {
+    "generating": "Generovanie…",
+    "uploading": "Nahrávanie…"
+  },
+  "history": {
+    "loadFailed": "Načítanie zlyhalo",
+    "deleteConfirmSingle": "Vymazať túto správu?",
+    "deleteConfirmBulk": "Vymazať {{count}} vybraných správ?",
+    "deleteSelected": "Vymazať vybrané ({{count}})",
+    "empty": "Zatiaľ nebola odoslaná žiadna správa",
+    "replayTooltip": "Znova prehrať (cieľ + čas je možné zvoliť)",
+    "noFileTooltip": "Žiadny uložený súbor",
+    "replayAction": "Znova",
+    "detailsAction": "Podrobnosti",
+    "prevPage": "Predchádzajúca",
+    "nextPage": "Ďalšia",
+    "voiceMessage": "Hlasová správa"
+  },
+  "detail": {
+    "title": "Podrobnosti správy",
+    "from": "Odosielateľ",
+    "created": "Vytvorené",
+    "scheduled": "Naplánované",
+    "played": "Prehrané",
+    "target": "Cieľ",
+    "textLabel": "Text"
+  },
+  "replay": {
+    "title": "Znova prehrať správu",
+    "storedFileNote": "Odošle sa uložený zvukový súbor – dingdong sa už nepridá znova.",
+    "noFileError": "K tejto správe nie je uložený žiadny súbor.",
+    "replayFailed": "Opätovné prehratie zlyhalo",
+    "sending": "Odosielanie…",
+    "sendImmediate": "Okamžite",
+    "schedule": "Naplánovať"
+  }
+}

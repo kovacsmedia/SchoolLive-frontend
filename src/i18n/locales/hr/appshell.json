@@ -1,0 +1,14 @@
+{
+  "menuAria": "Izbornik",
+  "statusTime": "Vrijeme:",
+  "statusBell": "Zvono:",
+  "statusMessage": "Poruka:",
+  "statusRadio": "Radio:",
+  "chooseTenantPlaceholder": "Odaberite ustanovu…",
+  "inactiveSuffix": " (neaktivno)",
+  "chooseTenantBadge": "⚠️ Odaberite ustanovu",
+  "chooseTenantTitle": "Odaberite ustanovu!",
+  "chooseTenantBody": "U administratorskom načinu rada odaberite ustanovu na gornjoj traci kako biste pristupili podacima.",
+  "tenantsLoadError": "Učitavanje nije uspjelo",
+  "defaultUserName": "Korisnik"
+}

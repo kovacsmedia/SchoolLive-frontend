@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Zariadenia inštitúcie",
+    "subtitle": "Všetky reproduktory a displeje na jednom mieste — so stavom v reálnom čase."
+  },
+  "buttons": {
+    "addDevice": "Nové zariadenie",
+    "groups": "Skupiny",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Obnoviť"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Stlmenie VYPNUTÉ – obnovia sa jednotlivé hlasitosti",
+    "muteAllTooltipOff": "Stlmenie ZAPNUTÉ – hlasitosť všetkých zariadení bude 0",
+    "muteAllLabelOn": "Stlmenie ZAP",
+    "muteAllLabel": "Stlmiť",
+    "maxAllTooltipOn": "Max. hlasitosť VYPNUTÁ – obnovia sa jednotlivé hlasitosti",
+    "maxAllTooltipOff": "Max. hlasitosť ZAPNUTÁ – hlasitosť všetkých zariadení bude 10",
+    "maxAllLabelOn": "Max ZAP",
+    "maxAllLabel": "Max",
+    "globalMuteActiveTooltip": "Globálne stlmenie aktívne",
+    "globalMaxActiveTooltip": "Globálna maximálna hlasitosť aktívna",
+    "tooltip": "Hlasitosť: {{vol}}/10",
+    "mutedSuffix": " (stlmené)"
+  },
+  "activate": {
+    "esp32Title": "Aktivovať zariadenie ESP32",
+    "pendingIdLabel": "Pending ID: {{id}}",
+    "deviceNameLabel": "Názov zariadenia *",
+    "deviceNameLabelShort": "Názov zariadenia",
+    "deviceNamePlaceholderEsp32": "napr. reproduktor triedy 14",
+    "deviceNamePlaceholderWebplayer": "napr. tablet na vrátnici, displej v jedálni",
+    "deviceNamePlaceholderNative": "napr. Windows PC na vrátnici",
+    "deviceClassLabel": "Typ zariadenia *",
+    "deviceClassLabelShort": "Typ zariadenia",
+    "tenantLabel": "Inštitúcia *",
+    "tenantPlaceholder": "Vyberte inštitúciu…",
+    "wifiSectionTitle": "Konfigurácia WiFi",
+    "wifiSsidLabel": "WiFi SSID *",
+    "wifiSsidPlaceholder": "napr. Škola-WiFi",
+    "wifiHiddenLabel": "Skrytá sieť",
+    "wifiSecurityLabel": "Typ zabezpečenia",
+    "wifiPasswordLabel": "Heslo WiFi *",
+    "passwordPlaceholder": "Heslo",
+    "wifiUserLabel": "Prihlasovacie meno *",
+    "wifiUserPlaceholder": "napr. pouzivatel@skola.sk",
+    "openNetworkWarning": "Otvorená sieť – v produkčnom prostredí sa neodporúča",
+    "activating": "⏳ Aktivuje sa…",
+    "activateButton": "⚡ Aktivovať",
+    "activateButtonWebplayer": "📱 Aktivovať",
+    "activateButtonNative": "🖥️ Aktivovať",
+    "webplayerTitle": "Aktivovať virtuálny prehrávač",
+    "webplayerHint": "Aktivujete zariadenie WebPlayer. Prehliadač bude fungovať ako virtuálny reproduktor.",
+    "nativeTitle": "Aktivovať Native Player",
+    "nativeHint": "Aktivácia natívneho Windows/Linux/Android prehrávača. Zariadenie sa pripojí pomocou vlastného kľúča zariadenia.",
+    "successTitle": "Zariadenie aktivované: {{name}}",
+    "deviceKeyLabel": "Kľúč zariadenia (viditeľný iba raz!):"
+  },
+  "table": {
+    "title": "Zoznam zariadení",
+    "countLabel": "{{filtered}} / {{total}} zariadení",
+    "nameHeader": "Názov zariadenia",
+    "statusHeader": "Stav",
+    "volumeHeader": "Hlasitosť",
+    "detailsHeader": "Podrobnosti",
+    "emptyTitle": "Žiadne zariadenie na zobrazenie",
+    "emptyHint": "Pridajte zariadenia tlačidlom „Nové zariadenie“",
+    "detailsButtonTitle": "Podrobnosti + synchronizácia + úprava + vymazanie"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "pending": {
+    "title": "Zariadenia čakajúce na aktiváciu",
+    "nativeSectionTitle": "Native Playery (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Zariadenie zatiaľ neodoslalo svoj kľúč. Počkajte pár sekúnd.",
+    "keyReady": "Kľúč pripravený",
+    "keyWaiting": "Čaká sa…",
+    "webplayerSectionTitle": "Virtuálne prehrávače (WebPlayer)",
+    "lastSeen": "Naposledy videné: {{date}}",
+    "esp32Hint": "Nasledujúce zariadenia ESP32 sú v režime provisioningu a čakajú na aktiváciu.",
+    "esp32Empty": "Žiadne zariadenie ESP32 nečaká na aktiváciu."
+  },
+  "details": {
+    "durationSeconds": "{{s}}s",
+    "durationMinutes": "{{m}}m {{s}}s",
+    "durationHours": "{{h}}h {{m}}m",
+    "durationDays": "{{d}}d {{h}}h",
+    "title": "Podrobnosti: {{name}}",
+    "typeLabel": "Typ",
+    "hwModelLabel": "HW model",
+    "ipLabel": "IP adresa",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Posledná aktivita",
+    "resetTooltip": "Vrátiť do režimu provisioningu",
+    "resetButton": "Reset",
+    "resetConfirm": "Vrátiť do režimu provisioningu?\n{{name}}\n\nZariadenie stratí svoj aktivovaný stav.",
+    "deleteConfirm": "Vymazať? ({{name}})"
+  },
+  "sync": {
+    "title": "Snap offset synchronizácie",
+    "description": "Doladenie podľa sluchu: kladná hodnota spôsobí, že zariadenie hrá <b>neskôr</b> (viac oneskorene voči ostatným zariadeniam), záporná → <b>skôr</b>. Kroky po 10 ms, rozsah ±2000 ms. Zmena sa prejaví od ďalšieho audio bloku.",
+    "earlierTooltip": "-10 ms (posunúť skôr)",
+    "laterTooltip": "+10 ms (posunúť neskôr)",
+    "resetButton": "Resetovať na 0"
+  },
+  "channelMode": {
+    "title": "Mono kanálový režim",
+    "description": "Pri mono DAC: <b>Mix</b> = (L+R)/2, <b>Ľavý/Pravý</b> = iba daný kanál. Pri stereo DAC: <b>Stereo</b> = priamy priechod, nezmenený L/R výstup.",
+    "left": "Ľavý",
+    "mix": "Mix",
+    "stereo": "Stereo",
+    "right": "Pravý"
+  },
+  "editModal": {
+    "title": "Upraviť zariadenie",
+    "typeNote": "Poznámka: typ momentálne mení backend iba pri opätovnom provisioningu — toto pole je vyhradené na neskôr.",
+    "hwModelLabel": "Hardvérový model",
+    "hwModelNotSet": "— Nenastavené —",
+    "saving": "⏳ Ukladanie…"
+  },
+  "groups": {
+    "title": "Skupiny zariadení",
+    "newGroupPlaceholder": "Názov novej skupiny…",
+    "createButton": "Vytvoriť",
+    "empty": "Zatiaľ žiadna skupina.",
+    "renameSaveButton": "Uložiť",
+    "noMembers": "Žiadni členovia",
+    "memberCount": "{{count}} zariadení",
+    "membersButton": "Členovia",
+    "renameButton": "Premenovať",
+    "selectMembersLabel": "VÝBER ČLENOV",
+    "deleteConfirm": "Vymazať túto skupinu?"
+  },
+  "ota": {
+    "modalTitle": "Správa firmvéru OTA",
+    "uploadSectionTitle": "Nahrať nový firmvér",
+    "versionLabel": "Verzia *",
+    "targetDeviceLabel": "Cieľové zariadenie",
+    "targetAll": "Všetky zariadenia",
+    "notesLabel": "Poznámka",
+    "notesPlaceholder": "Poznámky k vydaniu…",
+    "mandatoryLabel": "Povinná aktualizácia",
+    "uploadInProgress": "Prebieha nahrávanie…",
+    "uploadDropHint": "Kliknutím vyberte súbor .bin",
+    "availableVersionsTitle": "Dostupné verzie",
+    "noReleases": "Zatiaľ nebol nahraný žiadny firmvér.",
+    "mandatoryBadge": "Povinné",
+    "deviceUpdateStatusTitle": "Stav aktualizácie zariadení",
+    "noPhysicalDevices": "Žiadne fyzické zariadenie",
+    "uploadSuccess": "✅ {{version}} úspešne nahraná",
+    "deleteConfirm": "Vymazať verziu {{version}}?",
+    "status": {
+      "upToDate": "Aktuálne",
+      "pending": "Čaká na aktualizáciu",
+      "downloading": "Sťahovanie…",
+      "installing": "Inštalácia…",
+      "failed": "Zlyhalo",
+      "rollback": "Vrátené späť"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Displej",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Virtuálny (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Reproduktor", "description": "Iba prehrávanie zvuku" },
+    "display":   { "label": "Displej", "description": "Vizuálne zobrazenie" },
+    "multi":     { "label": "Multi", "description": "Zvuk + displej" },
+    "multizone": { "label": "Multizone", "description": "8-zónový reléový zosilňovač (vytvorí 8 zariadení)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (najbežnejšie)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Otvorená sieť (nešifrovaná)"
+  },
+  "errors": {
+    "unknown": "Neznáma chyba",
+    "deviceNameRequired": "Názov zariadenia nemôže byť prázdny.",
+    "versionRequired": "Číslo verzie je povinné!",
+    "uploadFailed": "Nahrávanie zlyhalo",
+    "deleteFailed": "Vymazanie zlyhalo",
+    "groupsLoadFailed": "Nepodarilo sa načítať skupiny",
+    "groupCreateFailed": "Vytvorenie zlyhalo",
+    "groupSaveFailed": "Uloženie zlyhalo",
+    "groupRenameFailed": "Premenovanie zlyhalo",
+    "deviceNameRequiredLong": "Názov zariadenia je povinný.",
+    "deviceNameRequiredShort": "Názov zariadenia je povinný.",
+    "tenantRequired": "Výber inštitúcie je povinný.",
+    "wifiSsidRequired": "WiFi SSID je povinné.",
+    "wifiPasswordRequired": "Heslo WiFi je povinné.",
+    "wifiUserRequired": "Pri WPA2 Enterprise je potrebné prihlasovacie meno."
+  }
+}

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
+import i18n from "../i18n";
 
 type TenantDto = { id:string; name:string; domain?:string|null; isActive:boolean; createdAt?:string|null; address?:string|null; directorName?:string|null; directorPhone?:string|null; directorEmail?:string|null; eduId?:string|null; };
 type FormState = { name:string; domain:string; isActive:boolean; address:string; directorName:string; directorPhone:string; directorEmail:string; eduId:string; };
@@ -10,8 +12,8 @@ const EMPTY_FORM:FormState = { name:"",domain:"",isActive:true,address:"",direct
 function fmtDT(iso?:string|null) { if (!iso) return "–"; const d=new Date(iso); return isNaN(d.getTime())?"–":d.toLocaleString("hu-HU"); }
 function safeErr(e:unknown):string {
   if (typeof e==="string") return e;
-  if (e&&typeof e==="object") { const a=e as any; return a?.data?.message||a?.data?.error||a?.message||"Ismeretlen hiba"; }
-  return "Ismeretlen hiba";
+  if (e&&typeof e==="object") { const a=e as any; return a?.data?.message||a?.data?.error||a?.message||i18n.t("tenants:errors.unknown"); }
+  return i18n.t("tenants:errors.unknown");
 }
 
 const CSS = `
@@ -79,46 +81,47 @@ function TenantForm({ form, setForm }: {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
 }) {
+  const { t } = useTranslation(["tenants", "common"]);
   return (
     <>
       <div className="tp-grid2">
         <div>
-          <label className="tp-label">Intézmény neve *</label>
-          <input className="tp-input" value={form.name} onChange={e => setForm(s=>({...s,name:e.target.value}))} placeholder="pl. Kossuth Lajos Általános Iskola" />
+          <label className="tp-label">{t("tenants:form.nameLabel")}</label>
+          <input className="tp-input" value={form.name} onChange={e => setForm(s=>({...s,name:e.target.value}))} placeholder={t("tenants:form.namePlaceholder")} />
         </div>
         <div>
-          <label className="tp-label">Domain / subdomain</label>
-          <input className="tp-input" value={form.domain} onChange={e => setForm(s=>({...s,domain:e.target.value}))} placeholder="pl. kossuth.schoollive.hu" />
+          <label className="tp-label">{t("tenants:form.domainLabel")}</label>
+          <input className="tp-input" value={form.domain} onChange={e => setForm(s=>({...s,domain:e.target.value}))} placeholder={t("tenants:form.domainPlaceholder")} />
         </div>
       </div>
       <label className="tp-check-row">
         <input type="checkbox" checked={form.isActive} onChange={e => setForm(s=>({...s,isActive:e.target.checked}))} />
-        Aktív intézmény
+        {t("tenants:form.activeLabel")}
       </label>
-      <div className="tp-section-title">🏫 Kapcsolattartó / Igazgató</div>
+      <div className="tp-section-title">🏫 {t("tenants:form.contactSectionTitle")}</div>
       <div className="tp-grid2">
         <div>
-          <label className="tp-label">Igazgató neve</label>
-          <input className="tp-input" value={form.directorName} onChange={e => setForm(s=>({...s,directorName:e.target.value}))} placeholder="pl. Nagy István" />
+          <label className="tp-label">{t("tenants:form.directorNameLabel")}</label>
+          <input className="tp-input" value={form.directorName} onChange={e => setForm(s=>({...s,directorName:e.target.value}))} placeholder={t("tenants:form.directorNamePlaceholder")} />
         </div>
         <div>
-          <label className="tp-label">Telefon</label>
-          <input className="tp-input" value={form.directorPhone} onChange={e => setForm(s=>({...s,directorPhone:e.target.value}))} placeholder="+36 20 123 4567" />
+          <label className="tp-label">{t("tenants:fields.phone")}</label>
+          <input className="tp-input" value={form.directorPhone} onChange={e => setForm(s=>({...s,directorPhone:e.target.value}))} placeholder={t("tenants:form.phonePlaceholder")} />
         </div>
       </div>
       <div>
-        <label className="tp-label">E-mail</label>
-        <input className="tp-input" type="email" value={form.directorEmail} onChange={e => setForm(s=>({...s,directorEmail:e.target.value}))} placeholder="igazgato@iskola.hu" />
+        <label className="tp-label">{t("tenants:fields.email")}</label>
+        <input className="tp-input" type="email" value={form.directorEmail} onChange={e => setForm(s=>({...s,directorEmail:e.target.value}))} placeholder={t("tenants:form.emailPlaceholder")} />
       </div>
-      <div className="tp-section-title">📋 Egyéb adatok</div>
+      <div className="tp-section-title">📋 {t("tenants:form.otherSectionTitle")}</div>
       <div className="tp-grid2">
         <div>
-          <label className="tp-label">Cím</label>
-          <input className="tp-input" value={form.address} onChange={e => setForm(s=>({...s,address:e.target.value}))} placeholder="1234 Budapest, Fő u. 1." />
+          <label className="tp-label">{t("tenants:fields.address")}</label>
+          <input className="tp-input" value={form.address} onChange={e => setForm(s=>({...s,address:e.target.value}))} placeholder={t("tenants:form.addressPlaceholder")} />
         </div>
         <div>
-          <label className="tp-label">OM azonosító</label>
-          <input className="tp-input" value={form.eduId} onChange={e => setForm(s=>({...s,eduId:e.target.value}))} placeholder="032456" />
+          <label className="tp-label">{t("tenants:fields.eduId")}</label>
+          <input className="tp-input" value={form.eduId} onChange={e => setForm(s=>({...s,eduId:e.target.value}))} placeholder={t("tenants:form.eduIdPlaceholder")} />
         </div>
       </div>
     </>
@@ -128,6 +131,7 @@ function TenantForm({ form, setForm }: {
 export default function TenantsPage() {
   const { state } = useAuth();
   const navigate  = useNavigate();
+  const { t: tt } = useTranslation(["tenants", "common"]);
 
   useEffect(() => {
     if (state.status === "authed" && (state.user as any)?.role !== "SUPER_ADMIN") navigate("/app", { replace:true });
@@ -168,24 +172,24 @@ export default function TenantsPage() {
   function openDetail(t:TenantDto) { setSelected(t); setIsDetailOpen(true); }
 
   async function submitCreate() {
-    if (!form.name.trim()) { setError("Az intézmény neve kötelező."); return; }
+    if (!form.name.trim()) { setError(tt("tenants:errors.nameRequired")); return; }
     setBusyAction("create");
     try {
       const r = await apiFetch<{ok:boolean}>("/admin/tenants",{ method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({ name:form.name.trim(), domain:form.domain.trim()||null, isActive:form.isActive, address:form.address.trim()||null, directorName:form.directorName.trim()||null, directorPhone:form.directorPhone.trim()||null, directorEmail:form.directorEmail.trim()||null, eduId:form.eduId.trim()||null }) });
-      if (!r?.ok) throw new Error("Backend hiba");
+      if (!r?.ok) throw new Error(tt("tenants:errors.backendError"));
       setIsCreateOpen(false); await load();
     } catch (e) { setError(safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
   async function submitUpdate() {
-    if (!selected||!form.name.trim()) { setError("Az intézmény neve kötelező."); return; }
+    if (!selected||!form.name.trim()) { setError(tt("tenants:errors.nameRequired")); return; }
     setBusyAction("update");
     try {
       const r = await apiFetch<{ok:boolean}>(`/admin/tenants/${selected.id}`,{ method:"PATCH", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({ name:form.name.trim(), domain:form.domain.trim()||null, isActive:form.isActive, address:form.address.trim()||null, directorName:form.directorName.trim()||null, directorPhone:form.directorPhone.trim()||null, directorEmail:form.directorEmail.trim()||null, eduId:form.eduId.trim()||null }) });
-      if (!r?.ok) throw new Error("Backend hiba");
+      if (!r?.ok) throw new Error(tt("tenants:errors.backendError"));
       setIsEditOpen(false); setSelected(null); await load();
     } catch (e) { setError(safeErr(e)); }
     finally { setBusyAction(null); }
@@ -193,23 +197,23 @@ export default function TenantsPage() {
 
   // Soft delete (deaktiválás)
   async function doDeactivate(t:TenantDto) {
-    if (!window.confirm(`Deaktiválod az intézményt?\n\n${t.name}`)) return;
+    if (!window.confirm(tt("tenants:confirm.deactivateMessage", { name: t.name }))) return;
     setBusyAction("delete");
     try {
       await apiFetch<unknown>(`/admin/tenants/${t.id}`,{method:"DELETE"});
       await load();
-    } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
+    } catch (e) { setError(tt("tenants:errors.deactivateFailed")+" "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
   // Hard delete (végleges törlés)
   async function doHardDelete(t:TenantDto) {
-    if (!window.confirm(`Véglegesen törlöd az intézményt? Ez nem visszafordítható!\nAz összes felhasználó, eszköz és adat törlődik!\n\n${t.name}`)) return;
+    if (!window.confirm(tt("tenants:confirm.hardDeleteMessage", { name: t.name }))) return;
     setBusyAction("delete");
     try {
       await apiFetch<unknown>(`/admin/tenants/${t.id}?permanent=true`,{method:"DELETE"});
       await load();
-    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
+    } catch (e) { setError(tt("tenants:errors.deleteFailed")+" "+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
@@ -219,14 +223,14 @@ export default function TenantsPage() {
 
       <div className="tp-hdr">
         <div>
-          <div className="tp-title">🏫 Intézmények</div>
-          <div className="tp-subtitle">Tenant-szintű intézmények és beállításaik kezelése.</div>
+          <div className="tp-title">🏫 {tt("common:nav.tenants")}</div>
+          <div className="tp-subtitle">{tt("tenants:page.subtitle")}</div>
         </div>
         <div className="tp-actions">
-          <input className="tp-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
-          <button className="tp-btn tp-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új intézmény</button>
+          <input className="tp-search" placeholder={`🔍 ${tt("tenants:search.placeholder")}`} value={q} onChange={e => setQ(e.target.value)} />
+          <button className="tp-btn tp-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ {tt("tenants:actions.newTenant")}</button>
           <button className="tp-btn tp-btn-ghost" onClick={() => setShowInactive(v=>!v)} type="button" style={showInactive?{borderColor:"#3b82f6",color:"#3b82f6"}:{}}>
-            {showInactive ? "👁 Inaktívak elrejtve" : "👁 Inaktívak mutatása"}
+            {showInactive ? `👁 ${tt("tenants:actions.inactiveHidden")}` : `👁 ${tt("tenants:actions.inactiveVisible")}`}
           </button>
           <button className="tp-btn tp-btn-ghost" onClick={() => void load()} disabled={loading} type="button">🔄</button>
         </div>
@@ -239,19 +243,19 @@ export default function TenantsPage() {
           <table className="tp-table">
             <thead>
               <tr>
-                <th>Intézmény</th><th>Domain</th><th>Státusz</th><th>OM azonosító</th><th>Létrehozva</th><th style={{ textAlign:"right" }}>Műveletek</th>
+                <th>{tt("tenants:table.nameHeader")}</th><th>{tt("tenants:fields.domain")}</th><th>{tt("tenants:fields.status")}</th><th>{tt("tenants:fields.eduId")}</th><th>{tt("tenants:fields.createdAt")}</th><th style={{ textAlign:"right" }}>{tt("tenants:table.actionsHeader")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr><td colSpan={6} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
-                  <span style={{ fontSize:22 }}>⏳</span><div style={{ fontSize:13, marginTop:8 }}>Betöltés…</div>
+                  <span style={{ fontSize:22 }}>⏳</span><div style={{ fontSize:13, marginTop:8 }}>{tt("common:actions.loading")}</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
                 <tr><td colSpan={6} style={{ textAlign:"center", padding:"48px", color:"var(--sl-muted)" }}>
                   <div style={{ fontSize:40, marginBottom:10 }}>🏫</div>
-                  <div style={{ fontWeight:700, fontFamily:"'Nunito',sans-serif" }}>Nincs intézmény</div>
+                  <div style={{ fontWeight:700, fontFamily:"'Nunito',sans-serif" }}>{tt("tenants:table.emptyTitle")}</div>
                 </td></tr>
               )}
               {filtered.map(t => (
@@ -265,17 +269,17 @@ export default function TenantsPage() {
                     <span className="tp-badge" style={t.isActive
                       ? {background:"#f0fdf4",color:"#15803d",borderColor:"#bbf7d0"}
                       : {background:"#fef2f2",color:"#dc2626",borderColor:"#fecaca"}}>
-                      {t.isActive ? "✓ Aktív" : "✗ Inaktív"}
+                      {t.isActive ? `✓ ${tt("tenants:status.active")}` : `✗ ${tt("tenants:status.inactive")}`}
                     </span>
                   </td>
                   <td style={{ fontSize:12 }}>{t.eduId || <span style={{ color:"var(--sl-muted)" }}>—</span>}</td>
                   <td style={{ fontSize:12 }}>{fmtDT(t.createdAt)}</td>
                   <td style={{ textAlign:"right" }}>
                     <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                      <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openDetail(t)} type="button">🔍 Részletek</button>
-                      <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openEdit(t)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
-                      <button className="tp-btn tp-btn-danger tp-btn-sm" onClick={() => void doDeactivate(t)} disabled={busyAction==="delete"} type="button">🗑 Deaktivál</button>
-                      <button className="tp-btn tp-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(t)} disabled={busyAction==="delete"} type="button">🗑 Törlés</button>
+                      <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openDetail(t)} type="button">🔍 {tt("tenants:table.viewDetailsAction")}</button>
+                      <button className="tp-btn tp-btn-ghost tp-btn-sm" onClick={() => openEdit(t)} disabled={!!busyAction} type="button">✏️ {tt("tenants:table.editAction")}</button>
+                      <button className="tp-btn tp-btn-danger tp-btn-sm" onClick={() => void doDeactivate(t)} disabled={busyAction==="delete"} type="button">🗑 {tt("tenants:table.deactivateAction")}</button>
+                      <button className="tp-btn tp-btn-sm" style={{ background:"#dc2626", color:"#fff", border:"none" }} onClick={() => void doHardDelete(t)} disabled={busyAction==="delete"} type="button">🗑 {tt("common:actions.delete")}</button>
                     </div>
                   </td>
                 </tr>
@@ -287,12 +291,12 @@ export default function TenantsPage() {
 
       {/* Create modal */}
       {isCreateOpen && (
-        <Modal title="Új intézmény" icon="🏫" onClose={() => setIsCreateOpen(false)}>
+        <Modal title={tt("tenants:actions.newTenant")} icon="🏫" onClose={() => setIsCreateOpen(false)}>
           <div className="tp-modal-body"><TenantForm form={form} setForm={setForm} /></div>
           <div className="tp-modal-footer">
-            <button className="tp-btn tp-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
+            <button className="tp-btn tp-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">{tt("common:actions.cancel")}</button>
             <button className="tp-btn tp-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
-              {busyAction==="create" ? "⏳ Létrehozás…" : "✅ Létrehoz"}
+              {busyAction==="create" ? `⏳ ${tt("tenants:modal.creating")}` : `✅ ${tt("tenants:modal.create")}`}
             </button>
           </div>
         </Modal>
@@ -300,12 +304,12 @@ export default function TenantsPage() {
 
       {/* Edit modal */}
       {isEditOpen && selected && (
-        <Modal title={`Szerkesztés: ${selected.name}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
+        <Modal title={tt("tenants:modal.editTitle", { name: selected.name })} icon="✏️" onClose={() => setIsEditOpen(false)}>
           <div className="tp-modal-body"><TenantForm form={form} setForm={setForm} /></div>
           <div className="tp-modal-footer">
-            <button className="tp-btn tp-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">Mégse</button>
+            <button className="tp-btn tp-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">{tt("common:actions.cancel")}</button>
             <button className="tp-btn tp-btn-primary" onClick={() => void submitUpdate()} disabled={busyAction==="update"} type="button">
-              {busyAction==="update" ? "⏳ Mentés…" : "💾 Mentés"}
+              {busyAction==="update" ? `⏳ ${tt("tenants:modal.saving")}` : `💾 ${tt("common:actions.save")}`}
             </button>
           </div>
         </Modal>
@@ -316,14 +320,14 @@ export default function TenantsPage() {
         <Modal title={selected.name} icon="🏫" onClose={() => setIsDetailOpen(false)}>
           <div className="tp-modal-body">
             {[
-              ["Státusz", selected.isActive ? "✓ Aktív" : "✗ Inaktív"],
-              ["Domain", selected.domain||"—"],
-              ["OM azonosító", selected.eduId||"—"],
-              ["Cím", selected.address||"—"],
-              ["Igazgató", selected.directorName||"—"],
-              ["Telefon", selected.directorPhone||"—"],
-              ["E-mail", selected.directorEmail||"—"],
-              ["Létrehozva", fmtDT(selected.createdAt)],
+              [tt("tenants:fields.status"), selected.isActive ? `✓ ${tt("tenants:status.active")}` : `✗ ${tt("tenants:status.inactive")}`],
+              [tt("tenants:fields.domain"), selected.domain||"—"],
+              [tt("tenants:fields.eduId"), selected.eduId||"—"],
+              [tt("tenants:fields.address"), selected.address||"—"],
+              [tt("tenants:fields.director"), selected.directorName||"—"],
+              [tt("tenants:fields.phone"), selected.directorPhone||"—"],
+              [tt("tenants:fields.email"), selected.directorEmail||"—"],
+              [tt("tenants:fields.createdAt"), fmtDT(selected.createdAt)],
             ].map(([k,v]) => (
               <div key={k} style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
                 <div style={{ minWidth:110, fontSize:12, fontWeight:800, color:"var(--sl-muted)", fontFamily:"'Nunito',sans-serif", textTransform:"uppercase", letterSpacing:"0.5px", paddingTop:2 }}>{k}</div>
@@ -332,8 +336,8 @@ export default function TenantsPage() {
             ))}
           </div>
           <div className="tp-modal-footer">
-            <button className="tp-btn tp-btn-ghost" onClick={() => { setIsDetailOpen(false); openEdit(selected); }} type="button">✏️ Szerkeszt</button>
-            <button className="tp-btn tp-btn-ghost" onClick={() => setIsDetailOpen(false)} type="button">Bezár</button>
+            <button className="tp-btn tp-btn-ghost" onClick={() => { setIsDetailOpen(false); openEdit(selected); }} type="button">✏️ {tt("tenants:table.editAction")}</button>
+            <button className="tp-btn tp-btn-ghost" onClick={() => setIsDetailOpen(false)} type="button">{tt("tenants:detail.closeAction")}</button>
           </div>
         </Modal>
       )}

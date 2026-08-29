@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Натисніть, щоб увімкнути звук",
+    "startButton": "Почати"
+  },
+  "pending": {
+    "title": "Віртуальний програвач",
+    "registering": "Триває реєстрація пристрою…",
+    "errorLine1": "Не вдалося підключитися до сервера.",
+    "errorLine2": "Спробуйте пізніше або вийдіть і увійдіть знову.",
+    "deviceIdLabel": "Ідентифікатор пристрою",
+    "statusConnecting": "Підключення…",
+    "statusError": "Помилка з'єднання"
+  },
+  "status": {
+    "online": "Онлайн",
+    "offline": "Офлайн"
+  },
+  "bellBanner": {
+    "text": "Триває дзвінок"
+  },
+  "hud": {
+    "defaultRadioTitle": "Шкільне радіо",
+    "defaultMessageTitle": "Повідомлення"
+  },
+  "nextBell": {
+    "label": "Наступний дзвінок:",
+    "none": "Сьогодні більше немає дзвінків"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-потік підключено",
+    "snapOfflineTooltip": "Snap-потік офлайн",
+    "audioStreamOk": "Аудіопотік OK",
+    "audioStreamWaiting": "Аудіопотік очікує…",
+    "unmuteTooltip": "Скасувати вимкнення звуку",
+    "muteTooltip": "Вимкнути звук"
+  }
+}

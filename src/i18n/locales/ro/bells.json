@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Gestionarea calendarului, șabloanelor și fișierelor audio",
+    "endEditing": "Termină editarea",
+    "lockActive": "Blocare de editare activă",
+    "loadingCalendar": "Se încarcă calendarul...",
+    "tabs": {
+      "calendar": "Calendar",
+      "templates": "Șabloane",
+      "sounds": "Fișiere audio"
+    }
+  },
+  "calendar": {
+    "today": "Astăzi",
+    "loadHolidaysButton": "Încarcă sărbătorile",
+    "hint": "Faceți clic pe o zi pentru a o edita. Shift: selectare interval, Ctrl/Cmd: selectare mai multe zile.",
+    "holidayTitle": "Zi liberă",
+    "normalTitle": "Zi de școală",
+    "holidayBadge": "Liber",
+    "weekendBadge": "Weekend",
+    "weekdays": {
+      "mon": "Lu",
+      "tue": "Ma",
+      "wed": "Mi",
+      "thu": "Jo",
+      "fri": "Vi",
+      "sat": "Sâ",
+      "sun": "Du"
+    },
+    "months": {
+      "january": "Ianuarie",
+      "february": "Februarie",
+      "march": "Martie",
+      "april": "Aprilie",
+      "may": "Mai",
+      "june": "Iunie",
+      "july": "Iulie",
+      "august": "August",
+      "september": "Septembrie",
+      "october": "Octombrie",
+      "november": "Noiembrie",
+      "december": "Decembrie"
+    },
+    "dayPanel": {
+      "multipleSelected": "{{count}} zile selectate",
+      "titleSuffix": "editare",
+      "multiHint": "(aceleași setări se vor aplica tuturor zilelor selectate)",
+      "holidayCheckbox": "Liber (fără sonerii)",
+      "templateDefaultOption": "Șablon implicit",
+      "noteLabel": "Notă",
+      "notePlaceholder": "ex. Ore scurtate"
+    }
+  },
+  "templates": {
+    "heading": "Șabloane de program de sonerii",
+    "newButton": "Șablon nou",
+    "defaultInfo": {
+      "prefix": "Șablonul",
+      "highlight": "implicit",
+      "suffix": "este descărcat pe dispozitiv ca rezervă offline."
+    },
+    "noDefaultWarning": "Nu este setat niciun șablon implicit!",
+    "defaultBadge": "Implicit",
+    "lockedBadge": "Blocat",
+    "bellsCount": "{{count}} semnale",
+    "viewButton": "Vizualizează",
+    "setDefaultTitle": "Setează ca implicit offline",
+    "setDefaultShort": "Implicit",
+    "newTemplateTitle": "Șablon nou",
+    "nameLabel": "Numele șablonului",
+    "namePlaceholder": "ex. Zi scurtată",
+    "tableHeaders": {
+      "time": "Oră",
+      "type": "Tip",
+      "sound": "Sunet"
+    },
+    "bellType": {
+      "main": "Principal",
+      "signal": "Semnal"
+    },
+    "commitButton": "✓ Gata",
+    "commitRowTitle": "Acceptă și inserează rândul",
+    "discardRowTitle": "Renunță la rând",
+    "addBellButton": "Adaugă semnal",
+    "pendingHint": {
+      "prefix": "Setați ora, apoi apăsați",
+      "suffix": "pentru a insera"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Utilizarea spațiului de stocare",
+    "available": "Disponibil: {{available}}",
+    "uploadButton": "Încarcă MP3",
+    "uploadingButton": "Se încarcă...",
+    "noFreeSpace": "Nu există spațiu liber!",
+    "defaultBadge": "Implicit",
+    "previewButton": "Ascultă",
+    "previewTitle": "Previzualizare",
+    "closePlayerTitle": "Închide playerul"
+  },
+  "confirm": {
+    "loadHolidays": "Încărcați sărbătorile pentru anul {{year}}?",
+    "deleteTemplate": "Ștergeți șablonul „{{name}}”?",
+    "setDefaultTemplate": "Setați șablonul „{{name}}” ca implicit?",
+    "saveDay": "Salvați modificările?",
+    "discardChanges": "Există modificări nesalvate. Sigur doriți să le renunțați?",
+    "deleteSound": "Ștergeți fișierul audio „{{filename}}”?"
+  },
+  "success": {
+    "daysSaved": "{{count}} zile salvate.",
+    "holidaysLoaded": "{{count}} sărbători încărcate.",
+    "templateSaved": "Șablon salvat.",
+    "templateDeleted": "Șablon șters.",
+    "templateSetDefault": "„{{name}}” setat ca implicit.",
+    "soundUploaded": "Fișier audio încărcat!",
+    "soundDeleted": "Fișier audio șters!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Șabloanele nu au putut fi încărcate.",
+    "loadCalendarFailed": "Calendarul nu a putut fi încărcat.",
+    "loadSoundsFailed": "Fișierele audio nu au putut fi încărcate.",
+    "lockConflict": "Altcineva editează deja programul de sonerii.",
+    "lockFailed": "Blocarea de editare nu a putut fi obținută.",
+    "saveFailed": "Salvarea nu a reușit.",
+    "loadHolidaysFailed": "Sărbătorile nu au putut fi încărcate.",
+    "pendingBellUnfinished": "Finalizați adăugarea semnalului curent (✓ Gata sau ✕).",
+    "templateNameRequired": "Numele șablonului este obligatoriu.",
+    "deleteFailed": "Ștergerea nu a reușit.",
+    "setDefaultFailed": "Nu a putut fi setat ca implicit.",
+    "notEnoughSpace": "Spațiu insuficient! Disponibil: {{available}}, necesar: {{needed}}",
+    "uploadFailed": "Eroare la încărcare"
+  },
+  "shared": {
+    "saveButton": "Salvează",
+    "savingButton": "Se salvează..."
+  }
+}

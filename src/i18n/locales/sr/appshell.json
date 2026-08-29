@@ -1,0 +1,14 @@
+{
+  "menuAria": "Мени",
+  "statusTime": "Време:",
+  "statusBell": "Звоно:",
+  "statusMessage": "Порука:",
+  "statusRadio": "Радио:",
+  "chooseTenantPlaceholder": "Изаберите установу…",
+  "inactiveSuffix": " (неактивно)",
+  "chooseTenantBadge": "⚠️ Изаберите установу",
+  "chooseTenantTitle": "Изаберите установу!",
+  "chooseTenantBody": "У режиму администратора изаберите установу на горњој траци да бисте приступили подацима.",
+  "tenantsLoadError": "Учитавање није успело",
+  "defaultUserName": "Корисник"
+}

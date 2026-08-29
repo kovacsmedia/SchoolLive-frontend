@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Új üzenet összeállítása. A korábbiak külön ablakban érhetők el.",
+    "historyButton": "Korábbi üzenetek"
+  },
+  "success": {
+    "sent": "Az üzenet sikeresen elküldve!",
+    "newMessage": "Új üzenet"
+  },
+  "composer": {
+    "ttsTab": "Szövegfelolvasó (TTS)",
+    "recordTab": "Hangfelvétel",
+    "textLabel": "Üzenet szövege",
+    "textPlaceholder": "Írd be az üzenet szövegét…",
+    "voiceLabel": "Hangszín"
+  },
+  "voices": {
+    "anna": "Anna (női)",
+    "berta": "Berta (női)",
+    "imre": "Imre (férfi)"
+  },
+  "translate": {
+    "button": "Fordítás",
+    "title": "Fordítás",
+    "hrNote": "szerb hang",
+    "emptyText": "A szöveg nem lehet üres!",
+    "failed": "Fordítás sikertelen"
+  },
+  "templates": {
+    "savedLabel": "Mentett sablonok",
+    "saveLabel": "Mentés sablonként",
+    "namePlaceholder": "Sablon neve (ekezetek nelkul)…",
+    "saving": "Mentés…",
+    "saved": "Sablon elmentve!",
+    "saveFailed": "Mentés sikertelen",
+    "nameAndTextRequired": "Adj meg nevet és szöveget!"
+  },
+  "record": {
+    "idleHint": "Kattints a gombra a felvétel megkezdéséhez.",
+    "start": "Felvétel indítása",
+    "recordingHint": "Felvétel folyamatban…",
+    "stop": "Felvétel befejezése",
+    "doneHint": "Felvétel kész – hallgasd meg!",
+    "newRecording": "Új felvétel",
+    "accepted": "Elfogadva",
+    "fillDetails": "töltsd ki a részleteket alább",
+    "micDenied": "Mikrofon hozzáférés megtagadva. Engedélyezze a böngészőben.",
+    "micUnavailable": "Mikrofon nem érhető el: {{error}}",
+    "noRecording": "Nincs rögzített hang!",
+    "uploadFailed": "Feltöltés sikertelen"
+  },
+  "introSound": {
+    "label": "Üzenet előtti hang",
+    "defaultOption": "Alapértelmezett (dingdong)",
+    "uploadTitle": "Új intro hang feltöltése (max 7s)",
+    "uploading": "Töltés…",
+    "uploadButton": "Feltöltés",
+    "deleteTitle": "Kiválasztott hang törlése",
+    "deleteConfirm": "Törlöd ezt a hangot?",
+    "deleteFailed": "Törlés sikertelen",
+    "maxSizeError": "A fájl max 200 KB lehet (7s mp3-hoz elég).",
+    "uploadFailed": "Feltöltés sikertelen",
+    "hint": "Max 7 másodperc. Ha üresen hagyod, a default „dingdong” szól."
+  },
+  "target": {
+    "label": "Lejátszó eszközök",
+    "all": "Összes",
+    "device": "Egyedi",
+    "group": "Csoport",
+    "noDevices": "Nincs elérhető eszköz",
+    "chooseGroupPlaceholder": "Válassz csoportot…"
+  },
+  "schedule": {
+    "label": "Lejátszás időpontja",
+    "immediate": "Azonnal",
+    "nextBell": "Köv. szünet",
+    "customTime": "Időpont",
+    "nextBreakAt": "Következő szünet: {{time}}",
+    "noMoreBreaksToday": "Ma már nincs több szünet."
+  },
+  "errors": {
+    "textRequired": "A szöveg nem lehet üres!",
+    "chooseTarget": "Válassz célt!",
+    "noMoreBreaksToday": "Ma már nincs több szünet.",
+    "enterTime": "Add meg az időpontot!",
+    "timePassed": "A megadott időpont már elmúlt!",
+    "lessonOverlapConfirm": "⚠️ Tanítási óra alatti időpont! Biztosan így szeretnéd?",
+    "sendFailed": "Küldés sikertelen"
+  },
+  "send": {
+    "generating": "Generálás…",
+    "uploading": "Feltöltés…"
+  },
+  "history": {
+    "loadFailed": "Betöltés sikertelen",
+    "deleteConfirmSingle": "Törlöd ezt az üzenetet?",
+    "deleteConfirmBulk": "Törlöd a(z) {{count}} kijelölt üzenetet?",
+    "deleteSelected": "Kijelöltek törlése ({{count}})",
+    "empty": "Még nem küldtek üzenetet",
+    "replayTooltip": "Újra bemondatás (cél + időzítés választható)",
+    "noFileTooltip": "Nincs eltárolt fájl",
+    "replayAction": "Újra",
+    "detailsAction": "Részletek",
+    "prevPage": "Előző",
+    "nextPage": "Következő",
+    "voiceMessage": "Hangüzenet"
+  },
+  "detail": {
+    "title": "Üzenet részletei",
+    "from": "Feladó",
+    "created": "Létrehozva",
+    "scheduled": "Ütemezve",
+    "played": "Lejátszva",
+    "target": "Cél",
+    "textLabel": "Szöveg"
+  },
+  "replay": {
+    "title": "Üzenet újra-bemondatása",
+    "storedFileNote": "A tárolt hangfájl megy ki – a dingdong nem kerül rá újra.",
+    "noFileError": "Az üzenetnek nincs eltárolt fájlja.",
+    "replayFailed": "Újrabemondatás sikertelen",
+    "sending": "Küldés…",
+    "sendImmediate": "Azonnali",
+    "schedule": "Ütemezés"
+  }
+}

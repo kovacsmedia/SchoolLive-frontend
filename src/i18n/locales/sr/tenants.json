@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Непозната грешка",
+    "nameRequired": "Назив установе је обавезан.",
+    "backendError": "Грешка бекенда",
+    "deactivateFailed": "Деактивација није успела.",
+    "deleteFailed": "Брисање није успело."
+  },
+  "page": {
+    "subtitle": "Управљање установама на нивоу станара и њиховим подешавањима."
+  },
+  "search": {
+    "placeholder": "Претрага…"
+  },
+  "actions": {
+    "newTenant": "Нова установа",
+    "inactiveHidden": "Неактивне сакривене",
+    "inactiveVisible": "Прикажи неактивне"
+  },
+  "table": {
+    "nameHeader": "Установа",
+    "actionsHeader": "Радње",
+    "emptyTitle": "Нема установа",
+    "viewDetailsAction": "Детаљи",
+    "editAction": "Измени",
+    "deactivateAction": "Деактивирај"
+  },
+  "status": {
+    "active": "Активна",
+    "inactive": "Неактивна"
+  },
+  "modal": {
+    "creating": "Прављење…",
+    "create": "Направи",
+    "editTitle": "Измена: {{name}}",
+    "saving": "Чување…"
+  },
+  "confirm": {
+    "deactivateMessage": "Деактивирати ову установу?\n\n{{name}}",
+    "hardDeleteMessage": "Трајно обрисати ову установу? Ово се не може поништити!\nСви корисници, уређаји и подаци ће бити обрисани!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Телефон",
+    "email": "Е-пошта",
+    "address": "Адреса",
+    "eduId": "Образовни ИД",
+    "status": "Статус",
+    "domain": "Домен",
+    "director": "Директор",
+    "createdAt": "Направљено"
+  },
+  "detail": {
+    "closeAction": "Затвори"
+  },
+  "form": {
+    "nameLabel": "Назив установе *",
+    "namePlaceholder": "нпр. Основна школа „Вук Караџић”",
+    "domainLabel": "Домен / поддомен",
+    "domainPlaceholder": "нпр. skola1.schoollive.hu",
+    "activeLabel": "Активна установа",
+    "contactSectionTitle": "Контакт особа / Директор",
+    "directorNameLabel": "Име директора",
+    "directorNamePlaceholder": "нпр. Марко Марковић",
+    "phonePlaceholder": "+381 60 123 4567",
+    "emailPlaceholder": "direktor@skola.rs",
+    "otherSectionTitle": "Остали подаци",
+    "addressPlaceholder": "Школска 1, Београд",
+    "eduIdPlaceholder": "032456"
+  }
+}

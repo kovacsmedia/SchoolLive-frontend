@@ -199,3 +199,21 @@ export async function apiPost<T>(path: string, body?: unknown, init?: RequestIni
     ...init,
   });
 }
+
+export async function apiPatch<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
+  return apiFetch<T>(path, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    body: typeof body === "undefined" ? undefined : JSON.stringify(body),
+    ...init,
+  });
+}
+
+// Lokalizáció: a bejelentkezett user UI-nyelv preferenciájának perzisztálása.
+// Fire-and-forget hívásra szánva (a UI azonnal, hívás előtt vált nyelvet).
+export async function setLocale(locale: string): Promise<{ ok: true; locale: string }> {
+  return apiPatch<{ ok: true; locale: string }>("/auth/me/locale", { locale });
+}

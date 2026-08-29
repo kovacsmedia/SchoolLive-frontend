@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Nieznany błąd",
+    "nameRequired": "Nazwa placówki jest wymagana.",
+    "backendError": "Błąd backendu",
+    "deactivateFailed": "Nie udało się dezaktywować.",
+    "deleteFailed": "Nie udało się usunąć."
+  },
+  "page": {
+    "subtitle": "Zarządzanie placówkami na poziomie tenanta i ich ustawieniami."
+  },
+  "search": {
+    "placeholder": "Szukaj…"
+  },
+  "actions": {
+    "newTenant": "Nowa placówka",
+    "inactiveHidden": "Nieaktywne ukryte",
+    "inactiveVisible": "Pokaż nieaktywne"
+  },
+  "table": {
+    "nameHeader": "Placówka",
+    "actionsHeader": "Działania",
+    "emptyTitle": "Brak placówki",
+    "viewDetailsAction": "Szczegóły",
+    "editAction": "Edytuj",
+    "deactivateAction": "Dezaktywuj"
+  },
+  "status": {
+    "active": "Aktywna",
+    "inactive": "Nieaktywna"
+  },
+  "modal": {
+    "creating": "Tworzenie…",
+    "create": "Utwórz",
+    "editTitle": "Edycja: {{name}}",
+    "saving": "Zapisywanie…"
+  },
+  "confirm": {
+    "deactivateMessage": "Dezaktywować tę placówkę?\n\n{{name}}",
+    "hardDeleteMessage": "Trwale usunąć tę placówkę? Tej operacji nie można cofnąć!\nWszyscy użytkownicy, urządzenia i dane zostaną usunięte!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefon",
+    "email": "E-mail",
+    "address": "Adres",
+    "eduId": "Numer identyfikacyjny placówki",
+    "status": "Status",
+    "domain": "Domena",
+    "director": "Dyrektor",
+    "createdAt": "Utworzono"
+  },
+  "detail": {
+    "closeAction": "Zamknij"
+  },
+  "form": {
+    "nameLabel": "Nazwa placówki *",
+    "namePlaceholder": "np. Szkoła Podstawowa nr 1",
+    "domainLabel": "Domena / subdomena",
+    "domainPlaceholder": "np. sp1.schoollive.hu",
+    "activeLabel": "Aktywna placówka",
+    "contactSectionTitle": "Kontakt / Dyrektor",
+    "directorNameLabel": "Imię i nazwisko dyrektora",
+    "directorNamePlaceholder": "np. Jan Kowalski",
+    "phonePlaceholder": "+48 600 123 456",
+    "emailPlaceholder": "dyrektor@szkola.pl",
+    "otherSectionTitle": "Pozostałe dane",
+    "addressPlaceholder": "ul. Szkolna 1, 00-001 Warszawa",
+    "eduIdPlaceholder": "032456"
+  }
+}

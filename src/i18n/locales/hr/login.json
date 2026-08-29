@@ -1,0 +1,20 @@
+{
+  "heading": "Dobro došli! 👋",
+  "subtitle": "Prijavite se u školski sustav",
+  "already": {
+    "loggedInAs": "Prijavljeni ste kao",
+    "unknownUser": "nepoznato",
+    "continue": "Nastavi ovdje"
+  },
+  "form": {
+    "emailLabel": "E-mail adresa",
+    "emailPlaceholder": "npr. učitelj@skola.hr",
+    "passwordLabel": "Lozinka",
+    "submit": "Prijava →",
+    "submitBusy": "⏳ Prijava u tijeku…"
+  },
+  "backLink": "← Natrag na početnu",
+  "errors": {
+    "loginFailed": "Prijava nije uspjela."
+  }
+}

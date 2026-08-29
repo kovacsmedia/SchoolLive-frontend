@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Apăsați pentru a activa sunetul",
+    "startButton": "Pornește"
+  },
+  "pending": {
+    "title": "Player virtual",
+    "registering": "Înregistrarea dispozitivului este în curs…",
+    "errorLine1": "Conectarea la server a eșuat.",
+    "errorLine2": "Încercați din nou mai târziu sau deconectați-vă și reconectați-vă.",
+    "deviceIdLabel": "ID dispozitiv",
+    "statusConnecting": "Se conectează…",
+    "statusError": "Eroare de conexiune"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Sonerie în curs"
+  },
+  "hud": {
+    "defaultRadioTitle": "Radio școlar",
+    "defaultMessageTitle": "Mesaj"
+  },
+  "nextBell": {
+    "label": "Următoarea sonerie:",
+    "none": "Astăzi nu mai este nicio altă sonerie"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-stream conectat",
+    "snapOfflineTooltip": "Snap-stream offline",
+    "audioStreamOk": "Flux audio OK",
+    "audioStreamWaiting": "Flux audio în așteptare…",
+    "unmuteTooltip": "Anulează dezactivarea sunetului",
+    "muteTooltip": "Dezactivează sunetul"
+  }
+}

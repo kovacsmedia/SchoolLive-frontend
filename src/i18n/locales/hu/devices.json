@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Intézményi eszközök",
+    "subtitle": "Az összes hangszóró és kijelző egy helyen — valós idejű státusszal."
+  },
+  "buttons": {
+    "addDevice": "Új eszköz",
+    "groups": "Csoportok",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Frissítés"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Némítás KI – visszaállnak az egyedi hangerők",
+    "muteAllTooltipOff": "Némítás BE – minden eszköz hangereje 0 lesz",
+    "muteAllLabelOn": "Némítás BE",
+    "muteAllLabel": "Némítás",
+    "maxAllTooltipOn": "Max hangerő KI – visszaállnak az egyedi hangerők",
+    "maxAllTooltipOff": "Max hangerő BE – minden eszköz hangereje 10 lesz",
+    "maxAllLabelOn": "Max BE",
+    "maxAllLabel": "Max",
+    "globalMuteActiveTooltip": "Globális némítás aktív",
+    "globalMaxActiveTooltip": "Globális max hangerő aktív",
+    "tooltip": "Hangerő: {{vol}}/10",
+    "mutedSuffix": " (némítva)"
+  },
+  "activate": {
+    "esp32Title": "ESP32 eszköz aktiválása",
+    "pendingIdLabel": "Pending ID: {{id}}",
+    "deviceNameLabel": "Eszköznév *",
+    "deviceNameLabelShort": "Eszköznév",
+    "deviceNamePlaceholderEsp32": "pl. 14. terem hangszóró",
+    "deviceNamePlaceholderWebplayer": "pl. Portás tablet, Ebédlő kijelző",
+    "deviceNamePlaceholderNative": "pl. Porta Windows PC",
+    "deviceClassLabel": "Eszköztípus *",
+    "deviceClassLabelShort": "Eszköztípus",
+    "tenantLabel": "Intézmény *",
+    "tenantPlaceholder": "Válassz intézményt…",
+    "wifiSectionTitle": "WiFi konfiguráció",
+    "wifiSsidLabel": "WiFi SSID *",
+    "wifiSsidPlaceholder": "pl. Iskola-WiFi",
+    "wifiHiddenLabel": "Rejtett hálózat",
+    "wifiSecurityLabel": "Biztonsági típus",
+    "wifiPasswordLabel": "WiFi jelszó *",
+    "passwordPlaceholder": "Jelszó",
+    "wifiUserLabel": "Bejelentkezési név *",
+    "wifiUserPlaceholder": "pl. user@iskola.hu",
+    "openNetworkWarning": "Nyílt hálózat – nem javasolt éles környezetben",
+    "activating": "⏳ Aktiválás…",
+    "activateButton": "⚡ Aktivál",
+    "activateButtonWebplayer": "📱 Aktivál",
+    "activateButtonNative": "🖥️ Aktivál",
+    "webplayerTitle": "Virtuális lejátszó aktiválása",
+    "webplayerHint": "Egy WebPlayer eszközt aktiválsz. A böngésző virtuális hangszóróként fog működni.",
+    "nativeTitle": "Native Player aktiválása",
+    "nativeHint": "Windows / Linux / Android natív player aktiválása. Az eszköz a saját device key-jével csatlakozik.",
+    "successTitle": "Eszköz aktiválva: {{name}}",
+    "deviceKeyLabel": "Device key (csak egyszer látható!):"
+  },
+  "table": {
+    "title": "Eszközök listája",
+    "countLabel": "{{filtered}} / {{total}} eszköz",
+    "nameHeader": "Eszköznév",
+    "statusHeader": "Státusz",
+    "volumeHeader": "Hangerő",
+    "detailsHeader": "Részletek",
+    "emptyTitle": "Nincs megjeleníthető eszköz",
+    "emptyHint": "Adj hozzá eszközöket az „Új eszköz\" gombbal",
+    "detailsButtonTitle": "Részletek + sync + szerkesztés + törlés"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "pending": {
+    "title": "Aktiválásra váró eszközök",
+    "nativeSectionTitle": "Native Playerek (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Az eszköz még nem küldte el a kulcsát. Várj pár másodpercet.",
+    "keyReady": "Kulcs kész",
+    "keyWaiting": "Várakozás…",
+    "webplayerSectionTitle": "Virtuális lejátszók (WebPlayer)",
+    "lastSeen": "Utoljára: {{date}}",
+    "esp32Hint": "Az alábbi ESP32 eszközök provisioning módban várják az aktiválást.",
+    "esp32Empty": "Nincs aktiválásra váró ESP32 eszköz."
+  },
+  "details": {
+    "durationSeconds": "{{s}}mp",
+    "durationMinutes": "{{m}}p {{s}}mp",
+    "durationHours": "{{h}}ó {{m}}p",
+    "durationDays": "{{d}}n {{h}}ó",
+    "title": "Részletek: {{name}}",
+    "typeLabel": "Típus",
+    "hwModelLabel": "HW modell",
+    "ipLabel": "IP cím",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Utolsó aktivitás",
+    "resetTooltip": "Visszaállítás provisioning módba",
+    "resetButton": "Reset",
+    "resetConfirm": "Visszaállítod provisioning módba?\n{{name}}\n\nAz eszköz elveszti aktivált státuszát.",
+    "deleteConfirm": "Törlöd? ({{name}})"
+  },
+  "sync": {
+    "title": "Snap szinkron-eltolás",
+    "description": "Hallás-alapú finomhangolás: pozitív érték → eszköz <b>későbbre</b> csúszik (más eszközhöz képest hátrébb), negatív → <b>előrébb</b>. 10 ms-os lépések, ±2000 ms tartomány. A változás a következő hangchunk-tól érvényesül.",
+    "earlierTooltip": "-10 ms (előrébb csúsztatás)",
+    "laterTooltip": "+10 ms (hátrébb csúsztatás)",
+    "resetButton": "Reset 0-ra"
+  },
+  "channelMode": {
+    "title": "Mono csatorna-mód",
+    "description": "Mono DAC-nál: <b>Mix</b> = (L+R)/2, <b>Bal/Jobb</b> = csak az adott csatorna. Sztereó DAC-nál: <b>Sztereó</b> = pass-through, változatlan L/R kimenet.",
+    "left": "Bal",
+    "mix": "Mix",
+    "stereo": "Sztereó",
+    "right": "Jobb"
+  },
+  "editModal": {
+    "title": "Eszköz szerkesztése",
+    "typeNote": "Megjegyzés: a típust a backend jelenleg csak újraprovisioning útján módosítja — ez a mező későbbre tartogatott.",
+    "hwModelLabel": "Hardver modell",
+    "hwModelNotSet": "— Nincs beállítva —",
+    "saving": "⏳ Mentés…"
+  },
+  "groups": {
+    "title": "Eszköz csoportok",
+    "newGroupPlaceholder": "Új csoport neve…",
+    "createButton": "Létrehoz",
+    "empty": "Még nincs csoport.",
+    "renameSaveButton": "Ment",
+    "noMembers": "Nincs tag",
+    "memberCount": "{{count}} eszköz",
+    "membersButton": "Tagok",
+    "renameButton": "Átnevez",
+    "selectMembersLabel": "TAGOK KIVÁLASZTÁSA",
+    "deleteConfirm": "Törlöd ezt a csoportot?"
+  },
+  "ota": {
+    "modalTitle": "Firmware OTA kezelő",
+    "uploadSectionTitle": "Új firmware feltöltése",
+    "versionLabel": "Verzió *",
+    "targetDeviceLabel": "Céleszköz",
+    "targetAll": "Minden eszköz",
+    "notesLabel": "Megjegyzés",
+    "notesPlaceholder": "Release notes…",
+    "mandatoryLabel": "Kötelező frissítés",
+    "uploadInProgress": "Feltöltés folyamatban…",
+    "uploadDropHint": "Kattints a .bin fájl kiválasztásához",
+    "availableVersionsTitle": "Elérhető verziók",
+    "noReleases": "Még nincs feltöltött firmware.",
+    "mandatoryBadge": "Kötelező",
+    "deviceUpdateStatusTitle": "Eszközök frissítési állapota",
+    "noPhysicalDevices": "Nincs fizikai eszköz",
+    "uploadSuccess": "✅ {{version}} sikeresen feltöltve",
+    "deleteConfirm": "Törlöd a {{version}} verziót?",
+    "status": {
+      "upToDate": "Naprakész",
+      "pending": "Frissítés vár",
+      "downloading": "Letöltés…",
+      "installing": "Telepítés…",
+      "failed": "Sikertelen",
+      "rollback": "Visszagörgetés"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Kijelző",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Virtuális (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Hangszóró", "description": "Csak hanglejátszás" },
+    "display":   { "label": "Kijelző", "description": "Vizuális megjelenítés" },
+    "multi":     { "label": "Multi", "description": "Hang + kijelző" },
+    "multizone": { "label": "Multizone", "description": "8 zónás relés erősítő (8 eszközt hoz létre)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (leggyakoribb)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Nyílt hálózat (nem titkosított)"
+  },
+  "errors": {
+    "unknown": "Ismeretlen hiba",
+    "deviceNameRequired": "Az eszköznév nem lehet üres.",
+    "versionRequired": "Verziószám kötelező!",
+    "uploadFailed": "Feltöltés sikertelen",
+    "deleteFailed": "Törlés sikertelen",
+    "groupsLoadFailed": "Csoportok betöltése sikertelen",
+    "groupCreateFailed": "Létrehozás sikertelen",
+    "groupSaveFailed": "Mentés sikertelen",
+    "groupRenameFailed": "Átnevezés sikertelen",
+    "deviceNameRequiredLong": "Az eszköznév megadása kötelező.",
+    "deviceNameRequiredShort": "Eszköznév kötelező.",
+    "tenantRequired": "Intézmény kiválasztása kötelező.",
+    "wifiSsidRequired": "WiFi SSID megadása kötelező.",
+    "wifiPasswordRequired": "WiFi jelszó megadása kötelező.",
+    "wifiUserRequired": "WPA2 Enterprise esetén bejelentkezési név kötelező."
+  }
+}

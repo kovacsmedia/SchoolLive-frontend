@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Kattints a hang engedélyezéséhez",
+    "startButton": "Indítás"
+  },
+  "pending": {
+    "title": "Virtuális lejátszó",
+    "registering": "Eszköz regisztrálása folyamatban…",
+    "errorLine1": "Nem sikerült csatlakozni a kiszolgálóhoz.",
+    "errorLine2": "Próbáld újra később, vagy jelentkezz ki és vissza.",
+    "deviceIdLabel": "Eszköz azonosító",
+    "statusConnecting": "Csatlakozás…",
+    "statusError": "Kapcsolat hiba"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Csengetés folyamatban"
+  },
+  "hud": {
+    "defaultRadioTitle": "Iskolarádió",
+    "defaultMessageTitle": "Üzenet"
+  },
+  "nextBell": {
+    "label": "Következő csengetés:",
+    "none": "Nincs több csengetés ma"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-stream csatlakozva",
+    "snapOfflineTooltip": "Snap-stream offline",
+    "audioStreamOk": "Hang-stream OK",
+    "audioStreamWaiting": "Hang-stream várakozik…",
+    "unmuteTooltip": "Némítás feloldása",
+    "muteTooltip": "Némítás"
+  }
+}

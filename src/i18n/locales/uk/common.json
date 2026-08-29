@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Пристрої",
+    "messages": "Повідомлення",
+    "radio": "Шкільне радіо",
+    "bells": "Розклад дзвінків",
+    "users": "Користувачі",
+    "tenants": "Заклади"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Системний адміністратор",
+    "TENANT_ADMIN": "Адміністратор закладу",
+    "ORG_ADMIN": "Адміністратор організації",
+    "OPERATOR": "Оператор",
+    "TEACHER": "Вчитель",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "delete": "Видалити",
+    "edit": "Редагувати",
+    "close": "Закрити",
+    "confirm": "Підтвердити",
+    "loading": "Завантаження…",
+    "search": "Пошук",
+    "logout": "Вийти",
+    "back": "Назад",
+    "add": "Додати",
+    "send": "Надіслати"
+  },
+  "language": {
+    "label": "Мова",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

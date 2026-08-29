@@ -1,0 +1,20 @@
+{
+  "heading": "Witaj! 👋",
+  "subtitle": "Zaloguj się do systemu szkolnego",
+  "already": {
+    "loggedInAs": "Jesteś zalogowany jako",
+    "unknownUser": "nieznany",
+    "continue": "Przejdź dalej"
+  },
+  "form": {
+    "emailLabel": "Adres e-mail",
+    "emailPlaceholder": "np. nauczyciel@szkola.pl",
+    "passwordLabel": "Hasło",
+    "submit": "Zaloguj się →",
+    "submitBusy": "⏳ Logowanie…"
+  },
+  "backLink": "← Powrót do strony głównej",
+  "errors": {
+    "loginFailed": "Logowanie nie powiodło się."
+  }
+}

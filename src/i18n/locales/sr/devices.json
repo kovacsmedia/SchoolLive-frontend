@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Уређаји установе",
+    "subtitle": "Сви звучници и екрани на једном месту — са статусом у реалном времену."
+  },
+  "buttons": {
+    "addDevice": "Нови уређај",
+    "groups": "Групе",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Освежи"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Утишавање ИСКЉ – појединачне јачине звука ће бити враћене",
+    "muteAllTooltipOff": "Утишавање УКЉ – јачина звука свих уређаја биће 0",
+    "muteAllLabelOn": "Утишано УКЉ",
+    "muteAllLabel": "Утишај",
+    "maxAllTooltipOn": "Макс. јачина ИСКЉ – појединачне јачине звука ће бити враћене",
+    "maxAllTooltipOff": "Макс. јачина УКЉ – јачина звука свих уређаја биће 10",
+    "maxAllLabelOn": "Макс УКЉ",
+    "maxAllLabel": "Макс",
+    "globalMuteActiveTooltip": "Глобално утишавање активно",
+    "globalMaxActiveTooltip": "Глобална максимална јачина активна",
+    "tooltip": "Јачина звука: {{vol}}/10",
+    "mutedSuffix": " (утишано)"
+  },
+  "activate": {
+    "esp32Title": "Активирај ESP32 уређај",
+    "pendingIdLabel": "ID на чекању: {{id}}",
+    "deviceNameLabel": "Назив уређаја *",
+    "deviceNameLabelShort": "Назив уређаја",
+    "deviceNamePlaceholderEsp32": "нпр. звучник учионица 14",
+    "deviceNamePlaceholderWebplayer": "нпр. таблет на рецепцији, екран у трпезарији",
+    "deviceNamePlaceholderNative": "нпр. Windows рачунар на рецепцији",
+    "deviceClassLabel": "Тип уређаја *",
+    "deviceClassLabelShort": "Тип уређаја",
+    "tenantLabel": "Установа *",
+    "tenantPlaceholder": "Изаберите установу…",
+    "wifiSectionTitle": "WiFi конфигурација",
+    "wifiSsidLabel": "WiFi SSID *",
+    "wifiSsidPlaceholder": "нпр. Школа-WiFi",
+    "wifiHiddenLabel": "Скривена мрежа",
+    "wifiSecurityLabel": "Тип безбедности",
+    "wifiPasswordLabel": "WiFi лозинка *",
+    "passwordPlaceholder": "Лозинка",
+    "wifiUserLabel": "Корисничко име за пријаву *",
+    "wifiUserPlaceholder": "нпр. korisnik@skola.rs",
+    "openNetworkWarning": "Отворена мрежа – није препоручљиво у продукционом окружењу",
+    "activating": "⏳ Активирање…",
+    "activateButton": "⚡ Активирај",
+    "activateButtonWebplayer": "📱 Активирај",
+    "activateButtonNative": "🖥️ Активирај",
+    "webplayerTitle": "Активирај виртуелни плејер",
+    "webplayerHint": "Активирате WebPlayer уређај. Прегледач ће функционисати као виртуелни звучник.",
+    "nativeTitle": "Активирај Native Player",
+    "nativeHint": "Активација нативног Windows/Linux/Android плејера. Уређај се повезује сопственим кључем уређаја.",
+    "successTitle": "Уређај активиран: {{name}}",
+    "deviceKeyLabel": "Кључ уређаја (видљив само једном!):"
+  },
+  "table": {
+    "title": "Листа уређаја",
+    "countLabel": "{{filtered}} / {{total}} уређаја",
+    "nameHeader": "Назив уређаја",
+    "statusHeader": "Статус",
+    "volumeHeader": "Јачина звука",
+    "detailsHeader": "Детаљи",
+    "emptyTitle": "Нема уређаја за приказ",
+    "emptyHint": "Додајте уређаје дугметом „Нови уређај”",
+    "detailsButtonTitle": "Детаљи + синхронизација + измена + брисање"
+  },
+  "status": {
+    "online": "Онлајн",
+    "offline": "Офлајн"
+  },
+  "pending": {
+    "title": "Уређаји на чекању активације",
+    "nativeSectionTitle": "Native плејери (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Уређај још увек није послао свој кључ. Сачекајте неколико секунди.",
+    "keyReady": "Кључ спреман",
+    "keyWaiting": "Чекање…",
+    "webplayerSectionTitle": "Виртуелни плејери (WebPlayer)",
+    "lastSeen": "Последњи пут виђен: {{date}}",
+    "esp32Hint": "Следећи ESP32 уређаји су у режиму подешавања и чекају активацију.",
+    "esp32Empty": "Нема ESP32 уређаја на чекању активације."
+  },
+  "details": {
+    "durationSeconds": "{{s}}с",
+    "durationMinutes": "{{m}}мин {{s}}с",
+    "durationHours": "{{h}}ч {{m}}мин",
+    "durationDays": "{{d}}д {{h}}ч",
+    "title": "Детаљи: {{name}}",
+    "typeLabel": "Тип",
+    "hwModelLabel": "HW модел",
+    "ipLabel": "IP адреса",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Последња активност",
+    "resetTooltip": "Ресетуј у режим подешавања",
+    "resetButton": "Ресетуј",
+    "resetConfirm": "Ресетовати у режим подешавања?\n{{name}}\n\nУређај ће изгубити статус активације.",
+    "deleteConfirm": "Обрисати? ({{name}})"
+  },
+  "sync": {
+    "title": "Snap помак синхронизације",
+    "description": "Фино подешавање по слуху: позитивна вредност чини да уређај свира <b>касније</b> (више заостаје у односу на друге уређаје), негативна → <b>раније</b>. Кораци од 10 ms, опсег ±2000 ms. Промена ступа на снагу од следећег аудио дела.",
+    "earlierTooltip": "-10 ms (помери раније)",
+    "laterTooltip": "+10 ms (помери касније)",
+    "resetButton": "Ресетуј на 0"
+  },
+  "channelMode": {
+    "title": "Моно канални режим",
+    "description": "Код моно DAC-а: <b>Микс</b> = (Л+Д)/2, <b>Лево/Десно</b> = само тај канал. Код стерео DAC-а: <b>Стерео</b> = директан пролаз, непромењен Л/Д излаз.",
+    "left": "Лево",
+    "mix": "Микс",
+    "stereo": "Стерео",
+    "right": "Десно"
+  },
+  "editModal": {
+    "title": "Измени уређај",
+    "typeNote": "Напомена: тип тренутно мења бекенд само поновним подешавањем — ово поље је резервисано за касније.",
+    "hwModelLabel": "Хардверски модел",
+    "hwModelNotSet": "— Није подешено —",
+    "saving": "⏳ Чување…"
+  },
+  "groups": {
+    "title": "Групе уређаја",
+    "newGroupPlaceholder": "Назив нове групе…",
+    "createButton": "Направи",
+    "empty": "Још увек нема групе.",
+    "renameSaveButton": "Сачувај",
+    "noMembers": "Нема чланова",
+    "memberCount": "{{count}} уређаја",
+    "membersButton": "Чланови",
+    "renameButton": "Преименуј",
+    "selectMembersLabel": "ИЗБОР ЧЛАНОВА",
+    "deleteConfirm": "Обрисати ову групу?"
+  },
+  "ota": {
+    "modalTitle": "Управљање firmware OTA",
+    "uploadSectionTitle": "Отпреми нови firmware",
+    "versionLabel": "Верзија *",
+    "targetDeviceLabel": "Циљни уређај",
+    "targetAll": "Сви уређаји",
+    "notesLabel": "Напомена",
+    "notesPlaceholder": "Белешке о издању…",
+    "mandatoryLabel": "Обавезна надоградња",
+    "uploadInProgress": "Отпремање у току…",
+    "uploadDropHint": "Кликните да изаберете .bin фајл",
+    "availableVersionsTitle": "Доступне верзије",
+    "noReleases": "Још увек није отпремљен ниједан firmware.",
+    "mandatoryBadge": "Обавезно",
+    "deviceUpdateStatusTitle": "Статус ажурирања уређаја",
+    "noPhysicalDevices": "Нема физичког уређаја",
+    "uploadSuccess": "✅ {{version}} успешно отпремљена",
+    "deleteConfirm": "Обрисати верзију {{version}}?",
+    "status": {
+      "upToDate": "Ажурно",
+      "pending": "Чека надоградњу",
+      "downloading": "Преузимање…",
+      "installing": "Инсталирање…",
+      "failed": "Неуспешно",
+      "rollback": "Враћено"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 екран",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Виртуелни (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Звучник", "description": "Само репродукција звука" },
+    "display":   { "label": "Екран", "description": "Визуелни приказ" },
+    "multi":     { "label": "Multi", "description": "Звук + екран" },
+    "multizone": { "label": "Multizone", "description": "8-зонски релејни појачавач (ствара 8 уређаја)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (најчешће)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Отворена мрежа (нешифровано)"
+  },
+  "errors": {
+    "unknown": "Непозната грешка",
+    "deviceNameRequired": "Назив уређаја не може бити празан.",
+    "versionRequired": "Број верзије је обавезан!",
+    "uploadFailed": "Отпремање није успело",
+    "deleteFailed": "Брисање није успело",
+    "groupsLoadFailed": "Учитавање група није успело",
+    "groupCreateFailed": "Прављење није успело",
+    "groupSaveFailed": "Чување није успело",
+    "groupRenameFailed": "Преименовање није успело",
+    "deviceNameRequiredLong": "Назив уређаја је обавезан.",
+    "deviceNameRequiredShort": "Назив уређаја је обавезан.",
+    "tenantRequired": "Избор установе је обавезан.",
+    "wifiSsidRequired": "WiFi SSID је обавезан.",
+    "wifiPasswordRequired": "WiFi лозинка је обавезна.",
+    "wifiUserRequired": "За WPA2 Enterprise је потребно корисничко име."
+  }
+}

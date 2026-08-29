@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const FEATURES = [
-  { icon:"🔔", title:"Csengetési rend",   desc:"Automatikus, pontos jelzések az iskola napirendje szerint. Naptárba szervezett sablonokkal, ünnepnapokkal." },
-  { icon:"📢", title:"Azonnali üzenetek", desc:"Küldj szöveges hangüzenetet az épület bármely részébe másodpercek alatt, TTS hanggal." },
-  { icon:"📻", title:"Iskolarádió",        desc:"Zenét és műsorokat ütemezve, az egész épületbe egyszerre – közvetlenül a böngészőből vezérelve." },
-  { icon:"🔊", title:"Több eszköz",        desc:"Minden hangszóró és kijelző egy helyen, valós idejű státusszal, csoportokba rendezve." },
-  { icon:"🛡️", title:"Biztonságos",        desc:"Szerepkörök, hozzáférés-kezelés, intézményi szétválasztás, auditált műveletek." },
+  { icon:"🔔", key:"bells" },
+  { icon:"📢", key:"messages" },
+  { icon:"📻", key:"radio" },
+  { icon:"🔊", key:"devices" },
+  { icon:"🛡️", key:"security" },
 ];
 
 type ContactForm = { name: string; institution: string; email: string; phone: string };
 
 export default function Landing() {
+  const { t } = useTranslation(["landing", "common"]);
   const [contactOpen, setContactOpen] = useState(false);
   const [form, setForm]               = useState<ContactForm>({ name:"", institution:"", email:"", phone:"" });
   const [sending, setSending]         = useState(false);
@@ -30,10 +32,10 @@ export default function Landing() {
         body: JSON.stringify(form),
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Hiba történt.");
+      if (!resp.ok) throw new Error(data.error || t("errors.generic"));
       setSent(true);
     } catch (err: any) {
-      setSendError(err.message || "Az e-mail küldése nem sikerült.");
+      setSendError(err.message || t("errors.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -218,32 +220,30 @@ export default function Landing() {
           <source srcSet="/brand/schoollive-logo.svg"  media="(prefers-color-scheme:light)" type="image/svg+xml" />
           <img src="/brand/schoollive-logo.svg" alt="SchoolLive" loading="eager" decoding="async" />
         </picture>
-        <Link to="/login" className="lnd-nav-btn">Bejelentkezés →</Link>
+        <Link to="/login" className="lnd-nav-btn">{t("nav.login")}</Link>
       </nav>
 
       {/* Hero */}
       <section className="lnd-hero">
         <div>
-          <div className="lnd-hero-tag">🏫 Iskolai kommunikációs rendszer</div>
-          <h1>Egyszerűbb iskolai <span>kommunikáció</span></h1>
+          <div className="lnd-hero-tag">{t("hero.tag")}</div>
+          <h1>{t("hero.titlePrefix")} <span>{t("hero.titleHighlight")}</span></h1>
           <p>
-            A SchoolLive segít, hogy az iskolai üzenetek mindig időben, érthetően és
-            megbízhatóan eljussanak oda, ahol szükség van rájuk — kevesebb félreértés,
-            gyorsabb reagálás, nyugodtabb mindennapok.
+            {t("hero.description")}
           </p>
           <div className="lnd-actions">
-            <Link to="/login" className="lnd-btn-main">🚀 Belépés a rendszerbe</Link>
-            <a href="https://github.com/kovacsmedia" target="_blank" rel="noreferrer" className="lnd-btn-ghost">Tudj meg többet ↗</a>
+            <Link to="/login" className="lnd-btn-main">{t("hero.ctaPrimary")}</Link>
+            <a href="https://github.com/kovacsmedia" target="_blank" rel="noreferrer" className="lnd-btn-ghost">{t("hero.ctaSecondary")}</a>
           </div>
         </div>
 
         <div className="lnd-hero-right">
           {FEATURES.map(f => (
-            <div key={f.title} className="lnd-feature-card">
+            <div key={f.key} className="lnd-feature-card">
               <div className="lnd-feature-icon">{f.icon}</div>
               <div>
-                <div className="lnd-feature-title">{f.title}</div>
-                <div className="lnd-feature-desc">{f.desc}</div>
+                <div className="lnd-feature-title">{f.key === "bells" ? t("common:nav.bells") : t(`landing:features.${f.key}.title`)}</div>
+                <div className="lnd-feature-desc">{t(`landing:features.${f.key}.desc`)}</div>
               </div>
             </div>
           ))}
@@ -254,11 +254,11 @@ export default function Landing() {
       <section className="lnd-cta">
         <div className="lnd-cta-card">
           <div>
-            <h2>🎯 Szeretné kipróbálni az Ön intézményében is?</h2>
-            <p>Kérjen ingyenes próbalehetőséget — díjmentes bevezető, személyes bemutatóval!</p>
+            <h2>{t("cta.title")}</h2>
+            <p>{t("cta.description")}</p>
           </div>
           <button className="lnd-contact-btn" onClick={() => setContactOpen(true)}>
-            📩 Kapcsolatfelvétel
+            {t("cta.contactButton")}
           </button>
         </div>
       </section>
@@ -270,16 +270,16 @@ export default function Landing() {
             {sent ? (
               <div className="lnd-success">
                 <div className="si">✅</div>
-                <h3>Köszönjük az érdeklődést!</h3>
-                <p>Üzenetét megkaptuk, hamarosan felvesszük Önnel a kapcsolatot.</p>
+                <h3>{t("contactModal.success.title")}</h3>
+                <p>{t("contactModal.success.message")}</p>
                 <button className="lnd-contact-btn" onClick={closeContact} style={{ width:"100%" }}>
-                  Bezárás
+                  {t("common:actions.close")}
                 </button>
               </div>
             ) : (
               <>
-                <h2>📩 Kapcsolatfelvétel</h2>
-                <p>Töltse ki az alábbi űrlapot, és hamarosan felvesszük Önnel a kapcsolatot!</p>
+                <h2>{t("contactModal.title")}</h2>
+                <p>{t("contactModal.subtitle")}</p>
 
                 {sendError && (
                   <div className="lnd-error"><span>⚠️</span><span>{sendError}</span></div>
@@ -287,31 +287,31 @@ export default function Landing() {
 
                 <form onSubmit={submitContact}>
                   <div className="lnd-field">
-                    <label className="lnd-label">Az Ön neve *</label>
-                    <input className="lnd-input" type="text" required placeholder="pl. Kiss János"
+                    <label className="lnd-label">{t("contactModal.fields.name.label")}</label>
+                    <input className="lnd-input" type="text" required placeholder={t("contactModal.fields.name.placeholder")}
                       value={form.name} onChange={e => setField("name", e.target.value)} disabled={sending} />
                   </div>
                   <div className="lnd-field">
-                    <label className="lnd-label">Intézménye</label>
-                    <input className="lnd-input" type="text" placeholder="pl. Ilosvai Selymes Péter Általános Iskola"
+                    <label className="lnd-label">{t("contactModal.fields.institution.label")}</label>
+                    <input className="lnd-input" type="text" placeholder={t("contactModal.fields.institution.placeholder")}
                       value={form.institution} onChange={e => setField("institution", e.target.value)} disabled={sending} />
                   </div>
                   <div className="lnd-field">
-                    <label className="lnd-label">E-mail cím *</label>
-                    <input className="lnd-input" type="email" required placeholder="pl. kiss.janos@iskola.hu"
+                    <label className="lnd-label">{t("contactModal.fields.email.label")}</label>
+                    <input className="lnd-input" type="email" required placeholder={t("contactModal.fields.email.placeholder")}
                       value={form.email} onChange={e => setField("email", e.target.value)} disabled={sending} />
                   </div>
                   <div className="lnd-field">
-                    <label className="lnd-label">Telefonszám</label>
-                    <input className="lnd-input" type="tel" placeholder="pl. +36 30 123 4567"
+                    <label className="lnd-label">{t("contactModal.fields.phone.label")}</label>
+                    <input className="lnd-input" type="tel" placeholder={t("contactModal.fields.phone.placeholder")}
                       value={form.phone} onChange={e => setField("phone", e.target.value)} disabled={sending} />
                   </div>
                   <div className="lnd-modal-actions">
                     <button type="button" className="lnd-modal-cancel" onClick={closeContact} disabled={sending}>
-                      Mégse
+                      {t("common:actions.cancel")}
                     </button>
                     <button type="submit" className="lnd-modal-submit" disabled={sending}>
-                      {sending ? "⏳ Küldés…" : "📨 Elküldés"}
+                      {sending ? t("contactModal.sending") : t("contactModal.submit")}
                     </button>
                   </div>
                 </form>
@@ -322,7 +322,7 @@ export default function Landing() {
       )}
 
       <footer className="lnd-footer">
-        © {new Date().getFullYear()} SchoolLive · Iskolai kommunikációs rendszer
+        © {new Date().getFullYear()} SchoolLive · {t("footer.tagline")}
       </footer>
     </div>
   );

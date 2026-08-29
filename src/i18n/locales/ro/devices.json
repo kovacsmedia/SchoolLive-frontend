@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Dispozitivele instituției",
+    "subtitle": "Toate difuzoarele și display-urile într-un singur loc — cu status în timp real."
+  },
+  "buttons": {
+    "addDevice": "Dispozitiv nou",
+    "groups": "Grupuri",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Reîmprospătează"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Silențios OPRIT – volumele individuale vor fi restaurate",
+    "muteAllTooltipOff": "Silențios PORNIT – volumul tuturor dispozitivelor va fi 0",
+    "muteAllLabelOn": "Silențios PORNIT",
+    "muteAllLabel": "Silențios",
+    "maxAllTooltipOn": "Volum maxim OPRIT – volumele individuale vor fi restaurate",
+    "maxAllTooltipOff": "Volum maxim PORNIT – volumul tuturor dispozitivelor va fi 10",
+    "maxAllLabelOn": "Maxim PORNIT",
+    "maxAllLabel": "Maxim",
+    "globalMuteActiveTooltip": "Silențios global activ",
+    "globalMaxActiveTooltip": "Volum maxim global activ",
+    "tooltip": "Volum: {{vol}}/10",
+    "mutedSuffix": " (silențios)"
+  },
+  "activate": {
+    "esp32Title": "Activează dispozitivul ESP32",
+    "pendingIdLabel": "ID în așteptare: {{id}}",
+    "deviceNameLabel": "Numele dispozitivului *",
+    "deviceNameLabelShort": "Numele dispozitivului",
+    "deviceNamePlaceholderEsp32": "ex. difuzor sala 14",
+    "deviceNamePlaceholderWebplayer": "ex. tabletă recepție, display cantină",
+    "deviceNamePlaceholderNative": "ex. PC Windows recepție",
+    "deviceClassLabel": "Tipul dispozitivului *",
+    "deviceClassLabelShort": "Tipul dispozitivului",
+    "tenantLabel": "Instituție *",
+    "tenantPlaceholder": "Alegeți o instituție…",
+    "wifiSectionTitle": "Configurare WiFi",
+    "wifiSsidLabel": "SSID WiFi *",
+    "wifiSsidPlaceholder": "ex. Școala-WiFi",
+    "wifiHiddenLabel": "Rețea ascunsă",
+    "wifiSecurityLabel": "Tip de securitate",
+    "wifiPasswordLabel": "Parolă WiFi *",
+    "passwordPlaceholder": "Parolă",
+    "wifiUserLabel": "Nume de autentificare *",
+    "wifiUserPlaceholder": "ex. utilizator@scoala.ro",
+    "openNetworkWarning": "Rețea deschisă – nerecomandat în producție",
+    "activating": "⏳ Se activează…",
+    "activateButton": "⚡ Activează",
+    "activateButtonWebplayer": "📱 Activează",
+    "activateButtonNative": "🖥️ Activează",
+    "webplayerTitle": "Activează playerul virtual",
+    "webplayerHint": "Activați un dispozitiv WebPlayer. Browserul va funcționa ca un difuzor virtual.",
+    "nativeTitle": "Activează Native Player",
+    "nativeHint": "Activarea unui player nativ Windows/Linux/Android. Dispozitivul se conectează cu propria cheie de dispozitiv.",
+    "successTitle": "Dispozitiv activat: {{name}}",
+    "deviceKeyLabel": "Cheia dispozitivului (vizibilă o singură dată!):"
+  },
+  "table": {
+    "title": "Lista dispozitivelor",
+    "countLabel": "{{filtered}} / {{total}} dispozitive",
+    "nameHeader": "Numele dispozitivului",
+    "statusHeader": "Status",
+    "volumeHeader": "Volum",
+    "detailsHeader": "Detalii",
+    "emptyTitle": "Niciun dispozitiv de afișat",
+    "emptyHint": "Adăugați dispozitive cu butonul „Dispozitiv nou”",
+    "detailsButtonTitle": "Detalii + sincronizare + editare + ștergere"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "pending": {
+    "title": "Dispozitive în așteptarea activării",
+    "nativeSectionTitle": "Native Playere (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Dispozitivul nu și-a trimis încă cheia. Așteptați câteva secunde.",
+    "keyReady": "Cheie pregătită",
+    "keyWaiting": "Se așteaptă…",
+    "webplayerSectionTitle": "Playere virtuale (WebPlayer)",
+    "lastSeen": "Ultima dată văzut: {{date}}",
+    "esp32Hint": "Dispozitivele ESP32 de mai jos sunt în modul de provisioning, în așteptarea activării.",
+    "esp32Empty": "Niciun dispozitiv ESP32 în așteptarea activării."
+  },
+  "details": {
+    "durationSeconds": "{{s}}s",
+    "durationMinutes": "{{m}}m {{s}}s",
+    "durationHours": "{{h}}h {{m}}m",
+    "durationDays": "{{d}}z {{h}}h",
+    "title": "Detalii: {{name}}",
+    "typeLabel": "Tip",
+    "hwModelLabel": "Model HW",
+    "ipLabel": "Adresă IP",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Ultima activitate",
+    "resetTooltip": "Resetează la modul de provisioning",
+    "resetButton": "Resetare",
+    "resetConfirm": "Resetați la modul de provisioning?\n{{name}}\n\nDispozitivul își va pierde statusul de activare.",
+    "deleteConfirm": "Ștergeți? ({{name}})"
+  },
+  "sync": {
+    "title": "Decalaj de sincronizare Snap",
+    "description": "Ajustare fină după auz: o valoare pozitivă face dispozitivul să redea <b>mai târziu</b> (mai întârziat față de celelalte dispozitive), negativă → <b>mai devreme</b>. Pași de 10 ms, interval ±2000 ms. Modificarea are efect din următorul fragment audio.",
+    "earlierTooltip": "-10 ms (deplasare mai devreme)",
+    "laterTooltip": "+10 ms (deplasare mai târziu)",
+    "resetButton": "Resetează la 0"
+  },
+  "channelMode": {
+    "title": "Mod canal mono",
+    "description": "La un DAC mono: <b>Mix</b> = (S+D)/2, <b>Stânga/Dreapta</b> = doar canalul respectiv. La un DAC stereo: <b>Stereo</b> = trecere directă, ieșire S/D neschimbată.",
+    "left": "Stânga",
+    "mix": "Mix",
+    "stereo": "Stereo",
+    "right": "Dreapta"
+  },
+  "editModal": {
+    "title": "Editează dispozitivul",
+    "typeNote": "Notă: tipul este momentan modificat de backend doar prin re-provisioning — acest câmp este rezervat pentru mai târziu.",
+    "hwModelLabel": "Model hardware",
+    "hwModelNotSet": "— Nesetat —",
+    "saving": "⏳ Se salvează…"
+  },
+  "groups": {
+    "title": "Grupuri de dispozitive",
+    "newGroupPlaceholder": "Numele grupului nou…",
+    "createButton": "Creează",
+    "empty": "Încă niciun grup.",
+    "renameSaveButton": "Salvează",
+    "noMembers": "Niciun membru",
+    "memberCount": "{{count}} dispozitive",
+    "membersButton": "Membri",
+    "renameButton": "Redenumește",
+    "selectMembersLabel": "SELECTAȚI MEMBRII",
+    "deleteConfirm": "Ștergeți acest grup?"
+  },
+  "ota": {
+    "modalTitle": "Manager firmware OTA",
+    "uploadSectionTitle": "Încarcă firmware nou",
+    "versionLabel": "Versiune *",
+    "targetDeviceLabel": "Dispozitiv țintă",
+    "targetAll": "Toate dispozitivele",
+    "notesLabel": "Notă",
+    "notesPlaceholder": "Note de lansare…",
+    "mandatoryLabel": "Actualizare obligatorie",
+    "uploadInProgress": "Încărcare în curs…",
+    "uploadDropHint": "Faceți clic pentru a alege un fișier .bin",
+    "availableVersionsTitle": "Versiuni disponibile",
+    "noReleases": "Niciun firmware încărcat încă.",
+    "mandatoryBadge": "Obligatoriu",
+    "deviceUpdateStatusTitle": "Statusul actualizării dispozitivelor",
+    "noPhysicalDevices": "Niciun dispozitiv fizic",
+    "uploadSuccess": "✅ {{version}} încărcat cu succes",
+    "deleteConfirm": "Ștergeți versiunea {{version}}?",
+    "status": {
+      "upToDate": "La zi",
+      "pending": "Actualizare în așteptare",
+      "downloading": "Se descarcă…",
+      "installing": "Se instalează…",
+      "failed": "Eșuat",
+      "rollback": "Revenit"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Display",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Virtual (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Difuzor", "description": "Doar redare audio" },
+    "display":   { "label": "Display", "description": "Afișaj vizual" },
+    "multi":     { "label": "Multi", "description": "Audio + display" },
+    "multizone": { "label": "Multizone", "description": "Amplificator releu cu 8 zone (creează 8 dispozitive)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (cel mai comun)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Rețea deschisă (necriptată)"
+  },
+  "errors": {
+    "unknown": "Eroare necunoscută",
+    "deviceNameRequired": "Numele dispozitivului nu poate fi gol.",
+    "versionRequired": "Numărul versiunii este obligatoriu!",
+    "uploadFailed": "Încărcarea a eșuat",
+    "deleteFailed": "Ștergerea a eșuat",
+    "groupsLoadFailed": "Grupurile nu au putut fi încărcate",
+    "groupCreateFailed": "Crearea a eșuat",
+    "groupSaveFailed": "Salvarea a eșuat",
+    "groupRenameFailed": "Redenumirea a eșuat",
+    "deviceNameRequiredLong": "Numele dispozitivului este obligatoriu.",
+    "deviceNameRequiredShort": "Numele dispozitivului este obligatoriu.",
+    "tenantRequired": "Selectarea unei instituții este obligatorie.",
+    "wifiSsidRequired": "SSID-ul WiFi este obligatoriu.",
+    "wifiPasswordRequired": "Parola WiFi este obligatorie.",
+    "wifiUserRequired": "Pentru WPA2 Enterprise este necesar un nume de autentificare."
+  }
+}

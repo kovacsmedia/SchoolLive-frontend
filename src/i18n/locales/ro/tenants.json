@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Eroare necunoscută",
+    "nameRequired": "Numele instituției este obligatoriu.",
+    "backendError": "Eroare de backend",
+    "deactivateFailed": "Dezactivarea a eșuat.",
+    "deleteFailed": "Ștergerea a eșuat."
+  },
+  "page": {
+    "subtitle": "Gestionarea instituțiilor la nivel de tenant și a setărilor acestora."
+  },
+  "search": {
+    "placeholder": "Căutare…"
+  },
+  "actions": {
+    "newTenant": "Instituție nouă",
+    "inactiveHidden": "Inactive ascunse",
+    "inactiveVisible": "Afișează inactive"
+  },
+  "table": {
+    "nameHeader": "Instituție",
+    "actionsHeader": "Acțiuni",
+    "emptyTitle": "Nicio instituție",
+    "viewDetailsAction": "Detalii",
+    "editAction": "Editează",
+    "deactivateAction": "Dezactivează"
+  },
+  "status": {
+    "active": "Activă",
+    "inactive": "Inactivă"
+  },
+  "modal": {
+    "creating": "Se creează…",
+    "create": "Creează",
+    "editTitle": "Editare: {{name}}",
+    "saving": "Se salvează…"
+  },
+  "confirm": {
+    "deactivateMessage": "Dezactivați această instituție?\n\n{{name}}",
+    "hardDeleteMessage": "Ștergeți definitiv această instituție? Această acțiune nu poate fi anulată!\nToți utilizatorii, dispozitivele și datele vor fi șterse!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefon",
+    "email": "E-mail",
+    "address": "Adresă",
+    "eduId": "ID educațional",
+    "status": "Status",
+    "domain": "Domeniu",
+    "director": "Director",
+    "createdAt": "Creat"
+  },
+  "detail": {
+    "closeAction": "Închide"
+  },
+  "form": {
+    "nameLabel": "Numele instituției *",
+    "namePlaceholder": "ex. Școala Gimnazială Nr. 1",
+    "domainLabel": "Domeniu / subdomeniu",
+    "domainPlaceholder": "ex. scoala1.schoollive.hu",
+    "activeLabel": "Instituție activă",
+    "contactSectionTitle": "Persoană de contact / Director",
+    "directorNameLabel": "Numele directorului",
+    "directorNamePlaceholder": "ex. Ion Popescu",
+    "phonePlaceholder": "+40 712 345 678",
+    "emailPlaceholder": "director@scoala.ro",
+    "otherSectionTitle": "Alte date",
+    "addressPlaceholder": "Str. Școlii nr. 1, București",
+    "eduIdPlaceholder": "032456"
+  }
+}

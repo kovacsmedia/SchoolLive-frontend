@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Urządzenia",
+    "messages": "Wiadomości",
+    "radio": "Radio szkolne",
+    "bells": "Plan dzwonków",
+    "users": "Użytkownicy",
+    "tenants": "Placówki"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Administrator systemu",
+    "TENANT_ADMIN": "Administrator placówki",
+    "ORG_ADMIN": "Administrator organizacji",
+    "OPERATOR": "Operator",
+    "TEACHER": "Nauczyciel",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "close": "Zamknij",
+    "confirm": "Potwierdź",
+    "loading": "Ładowanie…",
+    "search": "Szukaj",
+    "logout": "Wyloguj się",
+    "back": "Wstecz",
+    "add": "Dodaj",
+    "send": "Wyślij"
+  },
+  "language": {
+    "label": "Język",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

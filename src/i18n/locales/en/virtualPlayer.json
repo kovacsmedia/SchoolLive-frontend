@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Tap to enable sound",
+    "startButton": "Start"
+  },
+  "pending": {
+    "title": "Virtual Player",
+    "registering": "Registering device…",
+    "errorLine1": "Could not connect to the server.",
+    "errorLine2": "Try again later, or log out and back in.",
+    "deviceIdLabel": "Device ID",
+    "statusConnecting": "Connecting…",
+    "statusError": "Connection error"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Bell ringing"
+  },
+  "hud": {
+    "defaultRadioTitle": "School Radio",
+    "defaultMessageTitle": "Message"
+  },
+  "nextBell": {
+    "label": "Next bell:",
+    "none": "No more bells today"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap stream connected",
+    "snapOfflineTooltip": "Snap stream offline",
+    "audioStreamOk": "Audio stream OK",
+    "audioStreamWaiting": "Audio stream waiting…",
+    "unmuteTooltip": "Unmute",
+    "muteTooltip": "Mute"
+  }
+}

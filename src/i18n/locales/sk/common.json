@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Zariadenia",
+    "messages": "Správy",
+    "radio": "Školský rozhlas",
+    "bells": "Rozvrh zvonenia",
+    "users": "Používatelia",
+    "tenants": "Inštitúcie"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Správca systému",
+    "TENANT_ADMIN": "Správca inštitúcie",
+    "ORG_ADMIN": "Správca organizácie",
+    "OPERATOR": "Operátor",
+    "TEACHER": "Učiteľ",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Uložiť",
+    "cancel": "Zrušiť",
+    "delete": "Vymazať",
+    "edit": "Upraviť",
+    "close": "Zavrieť",
+    "confirm": "Potvrdiť",
+    "loading": "Načítava sa…",
+    "search": "Hľadať",
+    "logout": "Odhlásiť sa",
+    "back": "Späť",
+    "add": "Pridať",
+    "send": "Odoslať"
+  },
+  "language": {
+    "label": "Jazyk",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

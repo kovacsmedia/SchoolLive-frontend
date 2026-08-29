@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Uređaji",
+    "messages": "Poruke",
+    "radio": "Školski radio",
+    "bells": "Raspored zvona",
+    "users": "Korisnici",
+    "tenants": "Ustanove"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Administrator sustava",
+    "TENANT_ADMIN": "Administrator ustanove",
+    "ORG_ADMIN": "Administrator organizacije",
+    "OPERATOR": "Operater",
+    "TEACHER": "Učitelj",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Spremi",
+    "cancel": "Odustani",
+    "delete": "Izbriši",
+    "edit": "Uredi",
+    "close": "Zatvori",
+    "confirm": "Potvrdi",
+    "loading": "Učitavanje…",
+    "search": "Pretraži",
+    "logout": "Odjava",
+    "back": "Natrag",
+    "add": "Dodaj",
+    "send": "Pošalji"
+  },
+  "language": {
+    "label": "Jezik",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

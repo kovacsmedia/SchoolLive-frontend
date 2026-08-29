@@ -1,0 +1,20 @@
+{
+  "heading": "Bine ai venit! 👋",
+  "subtitle": "Conectează-te la sistemul școlar",
+  "already": {
+    "loggedInAs": "Ești conectat ca",
+    "unknownUser": "necunoscut",
+    "continue": "Continuă aici"
+  },
+  "form": {
+    "emailLabel": "Adresă de e-mail",
+    "emailPlaceholder": "ex. profesor@scoala.ro",
+    "passwordLabel": "Parolă",
+    "submit": "Conectare →",
+    "submitBusy": "⏳ Se conectează…"
+  },
+  "backLink": "← Înapoi la pagina principală",
+  "errors": {
+    "loginFailed": "Autentificare eșuată."
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "heading": "Добродошли! 👋",
+  "subtitle": "Пријавите се у школски систем",
+  "already": {
+    "loggedInAs": "Пријављени сте као",
+    "unknownUser": "непознато",
+    "continue": "Настави овде"
+  },
+  "form": {
+    "emailLabel": "Имејл адреса",
+    "emailPlaceholder": "нпр. наставник@школа.рс",
+    "passwordLabel": "Лозинка",
+    "submit": "Пријави се →",
+    "submitBusy": "⏳ Пријављивање…"
+  },
+  "backLink": "← Назад на почетну страну",
+  "errors": {
+    "loginFailed": "Пријава није успела."
+  }
+}

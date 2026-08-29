@@ -1,0 +1,20 @@
+{
+  "heading": "Ласкаво просимо! 👋",
+  "subtitle": "Увійдіть до шкільної системи",
+  "already": {
+    "loggedInAs": "Ви увійшли як",
+    "unknownUser": "невідомий",
+    "continue": "Продовжити тут"
+  },
+  "form": {
+    "emailLabel": "Електронна адреса",
+    "emailPlaceholder": "напр. вчитель@школа.ua",
+    "passwordLabel": "Пароль",
+    "submit": "Увійти →",
+    "submitBusy": "⏳ Вхід…"
+  },
+  "backLink": "← Назад на головну",
+  "errors": {
+    "loginFailed": "Помилка входу."
+  }
+}

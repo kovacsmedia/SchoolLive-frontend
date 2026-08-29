@@ -1,0 +1,20 @@
+{
+  "heading": "Üdvözlünk! 👋",
+  "subtitle": "Jelentkezz be az iskolai rendszerbe",
+  "already": {
+    "loggedInAs": "Be vagy jelentkezve mint",
+    "unknownUser": "ismeretlen",
+    "continue": "Tovább ide"
+  },
+  "form": {
+    "emailLabel": "E-mail cím",
+    "emailPlaceholder": "pl. tanár@iskola.hu",
+    "passwordLabel": "Jelszó",
+    "submit": "Belépés →",
+    "submitBusy": "⏳ Bejelentkezés…"
+  },
+  "backLink": "← Vissza a főoldalra",
+  "errors": {
+    "loginFailed": "Sikertelen bejelentkezés."
+  }
+}

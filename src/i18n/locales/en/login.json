@@ -1,0 +1,20 @@
+{
+  "heading": "Welcome! 👋",
+  "subtitle": "Sign in to the school system",
+  "already": {
+    "loggedInAs": "You are logged in as",
+    "unknownUser": "unknown",
+    "continue": "Continue here"
+  },
+  "form": {
+    "emailLabel": "Email address",
+    "emailPlaceholder": "e.g. teacher@school.com",
+    "passwordLabel": "Password",
+    "submit": "Sign in →",
+    "submitBusy": "⏳ Signing in…"
+  },
+  "backLink": "← Back to homepage",
+  "errors": {
+    "loginFailed": "Login failed."
+  }
+}

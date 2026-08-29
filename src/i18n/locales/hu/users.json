@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Intézményi felhasználók és jogosultságok kezelése."
+  },
+  "actions": {
+    "addUser": "＋ Új felhasználó",
+    "deactivate": "⏸ Deaktivál",
+    "create": "✅ Létrehoz",
+    "creating": "⏳ Létrehozás…",
+    "saving": "⏳ Mentés…"
+  },
+  "table": {
+    "emailHeader": "E-mail",
+    "nameHeader": "Név",
+    "statusHeader": "Státusz",
+    "roleHeader": "Szerepkör",
+    "createdAtHeader": "Létrehozva",
+    "lastLoginHeader": "Utolsó belépés",
+    "actionsHeader": "Műveletek",
+    "noResults": "Nincs találat"
+  },
+  "status": {
+    "active": "✓ Aktív",
+    "inactive": "✗ Inaktív"
+  },
+  "modals": {
+    "createTitle": "Új felhasználó",
+    "editTitle": "Szerkesztés: {{email}}",
+    "messagesTitle": "Üzenetek: {{email}}"
+  },
+  "form": {
+    "emailLabel": "E-mail cím *",
+    "emailPlaceholder": "pl. tanar@iskola.hu",
+    "displayNameLabel": "Megjelenített név",
+    "displayNamePlaceholder": "pl. Kiss Péter",
+    "displayNameHint": "Opcionális",
+    "roleLabel": "Szerepkör",
+    "statusLabel": "Státusz",
+    "activeCheckbox": "Aktív felhasználó",
+    "passwordLabel": "Jelszó",
+    "passwordPlaceholder": "Minimum 6 karakter",
+    "passwordHintEdit": "Ha üres, nem változik.",
+    "passwordHintCreate": "Kötelező új felhasználónál."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Admin",
+      "description": "Tenant admin: teljes körű tenant jogosultság."
+    },
+    "EDITOR": {
+      "label": "Szerkesztő",
+      "description": "Üzenetküldés, ütemezett jelzések kezelése."
+    },
+    "CONTRIBUTOR": {
+      "label": "Közreműködő",
+      "description": "Azonnali üzenetek küldése."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Player nézet jogosultsága."
+    }
+  },
+  "messages": {
+    "empty": "Még nem küldött üzenetet ez a felhasználó.",
+    "count": "{{count}} üzenet"
+  },
+  "confirm": {
+    "deactivateMessage": "Biztosan deaktiválod ezt a felhasználót?\n{{email}}\n\nA fiók megmarad, de a felhasználó nem tud bejelentkezni.",
+    "deleteMessage": "⚠️ VÉGLEGES TÖRLÉS ⚠️\n\nBiztosan törlöd ezt a felhasználót?\n{{email}}\n\nEz a művelet nem visszavonható!"
+  },
+  "errors": {
+    "emailRequired": "E-mail megadása kötelező.",
+    "passwordRequired": "Jelszó megadása kötelező.",
+    "emailRequiredShort": "E-mail kötelező.",
+    "backendNotOk": "A backend nem ok státusszal válaszolt.",
+    "createFailed": "Nem sikerült létrehozni. ",
+    "updateFailed": "Nem sikerült módosítani. ",
+    "deactivateFailed": "Nem sikerült deaktiválni. ",
+    "deleteFailed": "Nem sikerült törölni. ",
+    "unknown": "Ismeretlen hiba"
+  }
+}

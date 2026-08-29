@@ -1,0 +1,14 @@
+{
+  "menuAria": "Menu",
+  "statusTime": "Time:",
+  "statusBell": "Bell:",
+  "statusMessage": "Message:",
+  "statusRadio": "Radio:",
+  "chooseTenantPlaceholder": "Select institution…",
+  "inactiveSuffix": " (inactive)",
+  "chooseTenantBadge": "⚠️ Select an institution",
+  "chooseTenantTitle": "Select an institution!",
+  "chooseTenantBody": "In administrator mode, select an institution in the top bar to access its data.",
+  "tenantsLoadError": "Failed to load",
+  "defaultUserName": "User"
+}

@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Neue Nachricht erstellen. Frühere Nachrichten sind in einem separaten Fenster verfügbar.",
+    "historyButton": "Frühere Nachrichten"
+  },
+  "success": {
+    "sent": "Die Nachricht wurde erfolgreich gesendet!",
+    "newMessage": "Neue Nachricht"
+  },
+  "composer": {
+    "ttsTab": "Sprachausgabe (TTS)",
+    "recordTab": "Sprachaufnahme",
+    "textLabel": "Nachrichtentext",
+    "textPlaceholder": "Nachrichtentext eingeben…",
+    "voiceLabel": "Stimme"
+  },
+  "voices": {
+    "anna": "Anna (weiblich)",
+    "berta": "Berta (weiblich)",
+    "imre": "Imre (männlich)"
+  },
+  "translate": {
+    "button": "Übersetzen",
+    "title": "Übersetzen",
+    "hrNote": "serbische Stimme",
+    "emptyText": "Der Text darf nicht leer sein!",
+    "failed": "Übersetzung fehlgeschlagen"
+  },
+  "templates": {
+    "savedLabel": "Gespeicherte Vorlagen",
+    "saveLabel": "Als Vorlage speichern",
+    "namePlaceholder": "Vorlagenname…",
+    "saving": "Speichern…",
+    "saved": "Vorlage gespeichert!",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "nameAndTextRequired": "Bitte Name und Text angeben!"
+  },
+  "record": {
+    "idleHint": "Klicken Sie auf die Schaltfläche, um die Aufnahme zu starten.",
+    "start": "Aufnahme starten",
+    "recordingHint": "Aufnahme läuft…",
+    "stop": "Aufnahme beenden",
+    "doneHint": "Aufnahme fertig – hören Sie sie sich an!",
+    "newRecording": "Neue Aufnahme",
+    "accepted": "Übernommen",
+    "fillDetails": "Details unten ausfüllen",
+    "micDenied": "Mikrofonzugriff verweigert. Bitte im Browser erlauben.",
+    "micUnavailable": "Mikrofon nicht verfügbar: {{error}}",
+    "noRecording": "Keine Aufnahme vorhanden!",
+    "uploadFailed": "Hochladen fehlgeschlagen"
+  },
+  "introSound": {
+    "label": "Ton vor der Nachricht",
+    "defaultOption": "Standard (Dingdong)",
+    "uploadTitle": "Neuen Intro-Ton hochladen (max. 7s)",
+    "uploading": "Wird hochgeladen…",
+    "uploadButton": "Hochladen",
+    "deleteTitle": "Ausgewählten Ton löschen",
+    "deleteConfirm": "Diesen Ton löschen?",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "maxSizeError": "Die Datei darf maximal 200 KB groß sein (ausreichend für 7s MP3).",
+    "uploadFailed": "Hochladen fehlgeschlagen",
+    "hint": "Maximal 7 Sekunden. Bleibt es leer, ertönt der Standard-„Dingdong“."
+  },
+  "target": {
+    "label": "Wiedergabegeräte",
+    "all": "Alle",
+    "device": "Einzeln",
+    "group": "Gruppe",
+    "noDevices": "Kein Gerät verfügbar",
+    "chooseGroupPlaceholder": "Gruppe auswählen…"
+  },
+  "schedule": {
+    "label": "Wiedergabezeitpunkt",
+    "immediate": "Sofort",
+    "nextBell": "Nächste Pause",
+    "customTime": "Uhrzeit",
+    "nextBreakAt": "Nächste Pause: {{time}}",
+    "noMoreBreaksToday": "Heute gibt es keine weitere Pause mehr."
+  },
+  "errors": {
+    "textRequired": "Der Text darf nicht leer sein!",
+    "chooseTarget": "Bitte ein Ziel auswählen!",
+    "noMoreBreaksToday": "Heute gibt es keine weitere Pause mehr.",
+    "enterTime": "Bitte eine Uhrzeit angeben!",
+    "timePassed": "Der angegebene Zeitpunkt liegt bereits in der Vergangenheit!",
+    "lessonOverlapConfirm": "⚠️ Zeitpunkt während des Unterrichts! Möchten Sie wirklich fortfahren?",
+    "sendFailed": "Senden fehlgeschlagen"
+  },
+  "send": {
+    "generating": "Wird erzeugt…",
+    "uploading": "Wird hochgeladen…"
+  },
+  "history": {
+    "loadFailed": "Laden fehlgeschlagen",
+    "deleteConfirmSingle": "Diese Nachricht löschen?",
+    "deleteConfirmBulk": "Die {{count}} ausgewählten Nachrichten löschen?",
+    "deleteSelected": "Ausgewählte löschen ({{count}})",
+    "empty": "Es wurde noch keine Nachricht gesendet",
+    "replayTooltip": "Erneut abspielen (Ziel + Zeitpunkt wählbar)",
+    "noFileTooltip": "Keine gespeicherte Datei",
+    "replayAction": "Erneut",
+    "detailsAction": "Details",
+    "prevPage": "Zurück",
+    "nextPage": "Weiter",
+    "voiceMessage": "Sprachnachricht"
+  },
+  "detail": {
+    "title": "Nachrichtendetails",
+    "from": "Absender",
+    "created": "Erstellt",
+    "scheduled": "Geplant",
+    "played": "Abgespielt",
+    "target": "Ziel",
+    "textLabel": "Text"
+  },
+  "replay": {
+    "title": "Nachricht erneut abspielen",
+    "storedFileNote": "Die gespeicherte Audiodatei wird gesendet – der Dingdong wird nicht erneut hinzugefügt.",
+    "noFileError": "Für diese Nachricht ist keine Datei gespeichert.",
+    "replayFailed": "Erneutes Abspielen fehlgeschlagen",
+    "sending": "Wird gesendet…",
+    "sendImmediate": "Sofort",
+    "schedule": "Planen"
+  }
+}

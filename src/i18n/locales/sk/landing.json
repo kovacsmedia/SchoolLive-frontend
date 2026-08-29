@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "Vyskytla sa chyba.",
+    "sendFailed": "Odoslanie e-mailu zlyhalo."
+  },
+  "nav": {
+    "login": "Prihlásenie →"
+  },
+  "hero": {
+    "tag": "🏫 Systém školskej komunikácie",
+    "titlePrefix": "Jednoduchšia školská",
+    "titleHighlight": "komunikácia",
+    "description": "SchoolLive pomáha, aby sa školské správy vždy dostali včas, zrozumiteľne a spoľahlivo tam, kde sú potrebné — menej nedorozumení, rýchlejšia reakcia, pokojnejšia každodennosť.",
+    "ctaPrimary": "🚀 Vstup do systému",
+    "ctaSecondary": "Zistiť viac ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatické, presné zvonenia podľa školského rozvrhu. S kalendárovo usporiadanými šablónami a sviatkami." },
+    "messages": { "title": "Okamžité správy", "desc": "Odošlite textovú alebo hlasovú správu do ktorejkoľvek časti budovy v priebehu sekúnd, s TTS hlasom." },
+    "radio":    { "title": "Školský rozhlas", "desc": "Hudba a programy podľa plánu naraz v celej budove — priamo z prehliadača." },
+    "devices":  { "title": "Viac zariadení", "desc": "Všetky reproduktory a displeje na jednom mieste, s aktuálnym stavom v reálnom čase, usporiadané do skupín." },
+    "security": { "title": "Bezpečné", "desc": "Role, správa prístupov, oddelenie inštitúcií, auditované operácie." }
+  },
+  "cta": {
+    "title": "🎯 Chceli by ste to vyskúšať aj vo vašej inštitúcii?",
+    "description": "Vyžiadajte si bezplatnú skúšobnú verziu — bezplatné zavedenie s osobnou prezentáciou!",
+    "contactButton": "📩 Kontaktujte nás"
+  },
+  "contactModal": {
+    "title": "📩 Kontaktujte nás",
+    "subtitle": "Vyplňte nižšie uvedený formulár a čoskoro sa vám ozveme!",
+    "sending": "⏳ Odosielanie…",
+    "submit": "📨 Odoslať",
+    "success": {
+      "title": "Ďakujeme za váš záujem!",
+      "message": "Vašu správu sme dostali, čoskoro sa vám ozveme."
+    },
+    "fields": {
+      "name":        { "label": "Vaše meno *", "placeholder": "napr. Ján Novák" },
+      "institution": { "label": "Vaša inštitúcia", "placeholder": "napr. Základná škola Jána Amosa Komenského" },
+      "email":       { "label": "E-mailová adresa *", "placeholder": "napr. jan.novak@skola.sk" },
+      "phone":       { "label": "Telefónne číslo", "placeholder": "napr. +421 900 123 456" }
+    }
+  },
+  "footer": {
+    "tagline": "Systém školskej komunikácie"
+  }
+}

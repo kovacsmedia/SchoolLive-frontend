@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Verwaltung von Kalender, Vorlagen und Tondateien",
+    "endEditing": "Bearbeitung beenden",
+    "lockActive": "Bearbeitungssperre aktiv",
+    "loadingCalendar": "Kalender wird geladen...",
+    "tabs": {
+      "calendar": "Kalender",
+      "templates": "Vorlagen",
+      "sounds": "Tondateien"
+    }
+  },
+  "calendar": {
+    "today": "Heute",
+    "loadHolidaysButton": "Feiertage laden",
+    "hint": "Auf einen Tag klicken, um ihn zu bearbeiten. Umschalt: Bereich auswählen, Strg/Cmd: mehrere Tage auswählen.",
+    "holidayTitle": "Schulfreier Tag",
+    "normalTitle": "Schultag",
+    "holidayBadge": "Frei",
+    "weekendBadge": "Wochenende",
+    "weekdays": {
+      "mon": "Mo",
+      "tue": "Di",
+      "wed": "Mi",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "So"
+    },
+    "months": {
+      "january": "Januar",
+      "february": "Februar",
+      "march": "März",
+      "april": "April",
+      "may": "Mai",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "August",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "Dezember"
+    },
+    "dayPanel": {
+      "multipleSelected": "{{count}} Tage ausgewählt",
+      "titleSuffix": "bearbeiten",
+      "multiHint": "(für alle ausgewählten Tage gelten dieselben Einstellungen)",
+      "holidayCheckbox": "Schulfrei (kein Klingeln)",
+      "templateDefaultOption": "Standardvorlage",
+      "noteLabel": "Notiz",
+      "notePlaceholder": "z. B. Verkürzter Unterricht"
+    }
+  },
+  "templates": {
+    "heading": "Klingelplan-Vorlagen",
+    "newButton": "Neue Vorlage",
+    "defaultInfo": {
+      "prefix": "Die",
+      "highlight": "Standardvorlage",
+      "suffix": "wird als Offline-Fallback auf das Gerät heruntergeladen."
+    },
+    "noDefaultWarning": "Keine Standardvorlage festgelegt!",
+    "defaultBadge": "Standard",
+    "lockedBadge": "Gesperrt",
+    "bellsCount": "{{count}} Signale",
+    "viewButton": "Ansehen",
+    "setDefaultTitle": "Als Offline-Standard festlegen",
+    "setDefaultShort": "Standard",
+    "newTemplateTitle": "Neue Vorlage",
+    "nameLabel": "Vorlagenname",
+    "namePlaceholder": "z. B. Verkürzter Tag",
+    "tableHeaders": {
+      "time": "Uhrzeit",
+      "type": "Typ",
+      "sound": "Ton"
+    },
+    "bellType": {
+      "main": "Haupt",
+      "signal": "Signal"
+    },
+    "commitButton": "✓ Fertig",
+    "commitRowTitle": "Zeile übernehmen und einfügen",
+    "discardRowTitle": "Zeile verwerfen",
+    "addBellButton": "Signal hinzufügen",
+    "pendingHint": {
+      "prefix": "Uhrzeit festlegen, dann",
+      "suffix": "zum Einfügen drücken"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Speicherplatznutzung",
+    "available": "Verfügbar: {{available}}",
+    "uploadButton": "MP3 hochladen",
+    "uploadingButton": "Wird hochgeladen...",
+    "noFreeSpace": "Kein freier Speicherplatz!",
+    "defaultBadge": "Standard",
+    "previewButton": "Anhören",
+    "previewTitle": "Vorschau",
+    "closePlayerTitle": "Player schließen"
+  },
+  "confirm": {
+    "loadHolidays": "Die Feiertage für {{year}} laden?",
+    "deleteTemplate": "Die Vorlage „{{name}}“ löschen?",
+    "setDefaultTemplate": "Die Vorlage „{{name}}“ als Standard festlegen?",
+    "saveDay": "Änderungen speichern?",
+    "discardChanges": "Es gibt ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
+    "deleteSound": "Die Tondatei „{{filename}}“ löschen?"
+  },
+  "success": {
+    "daysSaved": "{{count}} Tage gespeichert.",
+    "holidaysLoaded": "{{count}} Feiertage geladen.",
+    "templateSaved": "Vorlage gespeichert.",
+    "templateDeleted": "Vorlage gelöscht.",
+    "templateSetDefault": "„{{name}}“ als Standard festgelegt.",
+    "soundUploaded": "Tondatei hochgeladen!",
+    "soundDeleted": "Tondatei gelöscht!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Vorlagen konnten nicht geladen werden.",
+    "loadCalendarFailed": "Kalender konnte nicht geladen werden.",
+    "loadSoundsFailed": "Tondateien konnten nicht geladen werden.",
+    "lockConflict": "Jemand anderes bearbeitet den Klingelplan bereits.",
+    "lockFailed": "Bearbeitungssperre konnte nicht erlangt werden.",
+    "saveFailed": "Speichern nicht möglich.",
+    "loadHolidaysFailed": "Feiertage konnten nicht geladen werden.",
+    "pendingBellUnfinished": "Schließen Sie das Hinzufügen des aktuellen Signals ab (✓ Fertig oder ✕).",
+    "templateNameRequired": "Der Vorlagenname ist erforderlich.",
+    "deleteFailed": "Löschen nicht möglich.",
+    "setDefaultFailed": "Konnte nicht als Standard festgelegt werden.",
+    "notEnoughSpace": "Nicht genug Speicherplatz! Verfügbar: {{available}}, benötigt: {{needed}}",
+    "uploadFailed": "Upload-Fehler"
+  },
+  "shared": {
+    "saveButton": "Speichern",
+    "savingButton": "Speichern..."
+  }
+}

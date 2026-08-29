@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Sastavljanje nove poruke. Prethodne su dostupne u zasebnom prozoru.",
+    "historyButton": "Prethodne poruke"
+  },
+  "success": {
+    "sent": "Poruka je uspješno poslana!",
+    "newMessage": "Nova poruka"
+  },
+  "composer": {
+    "ttsTab": "Čitanje teksta (TTS)",
+    "recordTab": "Glasovni zapis",
+    "textLabel": "Tekst poruke",
+    "textPlaceholder": "Unesite tekst poruke…",
+    "voiceLabel": "Glas"
+  },
+  "voices": {
+    "anna": "Anna (ženski)",
+    "berta": "Berta (ženski)",
+    "imre": "Imre (muški)"
+  },
+  "translate": {
+    "button": "Prijevod",
+    "title": "Prijevod",
+    "hrNote": "srpski glas",
+    "emptyText": "Tekst ne smije biti prazan!",
+    "failed": "Prijevod nije uspio"
+  },
+  "templates": {
+    "savedLabel": "Spremljeni predlošci",
+    "saveLabel": "Spremi kao predložak",
+    "namePlaceholder": "Naziv predloška…",
+    "saving": "Spremanje…",
+    "saved": "Predložak spremljen!",
+    "saveFailed": "Spremanje nije uspjelo",
+    "nameAndTextRequired": "Unesite naziv i tekst!"
+  },
+  "record": {
+    "idleHint": "Kliknite na gumb za početak snimanja.",
+    "start": "Započni snimanje",
+    "recordingHint": "Snimanje u tijeku…",
+    "stop": "Završi snimanje",
+    "doneHint": "Snimka je spremna – poslušajte je!",
+    "newRecording": "Nova snimka",
+    "accepted": "Prihvaćeno",
+    "fillDetails": "ispunite detalje ispod",
+    "micDenied": "Pristup mikrofonu odbijen. Dopustite pristup u pregledniku.",
+    "micUnavailable": "Mikrofon nije dostupan: {{error}}",
+    "noRecording": "Nema snimljenog zvuka!",
+    "uploadFailed": "Prijenos nije uspio"
+  },
+  "introSound": {
+    "label": "Zvuk prije poruke",
+    "defaultOption": "Zadano (dingdong)",
+    "uploadTitle": "Prenesi novi uvodni zvuk (maks. 7s)",
+    "uploading": "Prijenos…",
+    "uploadButton": "Prenesi",
+    "deleteTitle": "Izbriši odabrani zvuk",
+    "deleteConfirm": "Izbrisati ovaj zvuk?",
+    "deleteFailed": "Brisanje nije uspjelo",
+    "maxSizeError": "Datoteka može imati najviše 200 KB (dovoljno za 7s mp3).",
+    "uploadFailed": "Prijenos nije uspio",
+    "hint": "Najviše 7 sekundi. Ako ostavite prazno, oglasit će se zadani „dingdong”."
+  },
+  "target": {
+    "label": "Uređaji za reprodukciju",
+    "all": "Svi",
+    "device": "Pojedinačno",
+    "group": "Grupa",
+    "noDevices": "Nema dostupnog uređaja",
+    "chooseGroupPlaceholder": "Odaberite grupu…"
+  },
+  "schedule": {
+    "label": "Vrijeme reprodukcije",
+    "immediate": "Odmah",
+    "nextBell": "Sljedeći odmor",
+    "customTime": "Vrijeme",
+    "nextBreakAt": "Sljedeći odmor: {{time}}",
+    "noMoreBreaksToday": "Danas više nema odmora."
+  },
+  "errors": {
+    "textRequired": "Tekst ne smije biti prazan!",
+    "chooseTarget": "Odaberite cilj!",
+    "noMoreBreaksToday": "Danas više nema odmora.",
+    "enterTime": "Unesite vrijeme!",
+    "timePassed": "Navedeno vrijeme je već prošlo!",
+    "lessonOverlapConfirm": "⚠️ Vrijeme je tijekom nastave! Jeste li sigurni da želite nastaviti?",
+    "sendFailed": "Slanje nije uspjelo"
+  },
+  "send": {
+    "generating": "Generiranje…",
+    "uploading": "Prijenos…"
+  },
+  "history": {
+    "loadFailed": "Učitavanje nije uspjelo",
+    "deleteConfirmSingle": "Izbrisati ovu poruku?",
+    "deleteConfirmBulk": "Izbrisati {{count}} odabranih poruka?",
+    "deleteSelected": "Izbriši odabrane ({{count}})",
+    "empty": "Još nije poslana nijedna poruka",
+    "replayTooltip": "Ponovna reprodukcija (cilj i vrijeme mogu se odabrati)",
+    "noFileTooltip": "Nema spremljene datoteke",
+    "replayAction": "Ponovno",
+    "detailsAction": "Detalji",
+    "prevPage": "Prethodna",
+    "nextPage": "Sljedeća",
+    "voiceMessage": "Glasovna poruka"
+  },
+  "detail": {
+    "title": "Detalji poruke",
+    "from": "Pošiljatelj",
+    "created": "Stvoreno",
+    "scheduled": "Zakazano",
+    "played": "Reproducirano",
+    "target": "Cilj",
+    "textLabel": "Tekst"
+  },
+  "replay": {
+    "title": "Ponovna reprodukcija poruke",
+    "storedFileNote": "Šalje se spremljena audio datoteka – dingdong se ne dodaje ponovno.",
+    "noFileError": "Za ovu poruku nije spremljena datoteka.",
+    "replayFailed": "Ponovna reprodukcija nije uspjela",
+    "sending": "Slanje…",
+    "sendImmediate": "Odmah",
+    "schedule": "Zakaži"
+  }
+}

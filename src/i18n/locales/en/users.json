@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Manage institution users and permissions."
+  },
+  "actions": {
+    "addUser": "＋ New user",
+    "deactivate": "⏸ Deactivate",
+    "create": "✅ Create",
+    "creating": "⏳ Creating…",
+    "saving": "⏳ Saving…"
+  },
+  "table": {
+    "emailHeader": "Email",
+    "nameHeader": "Name",
+    "statusHeader": "Status",
+    "roleHeader": "Role",
+    "createdAtHeader": "Created",
+    "lastLoginHeader": "Last login",
+    "actionsHeader": "Actions",
+    "noResults": "No results"
+  },
+  "status": {
+    "active": "✓ Active",
+    "inactive": "✗ Inactive"
+  },
+  "modals": {
+    "createTitle": "New user",
+    "editTitle": "Edit: {{email}}",
+    "messagesTitle": "Messages: {{email}}"
+  },
+  "form": {
+    "emailLabel": "Email address *",
+    "emailPlaceholder": "e.g. teacher@school.edu",
+    "displayNameLabel": "Display name",
+    "displayNamePlaceholder": "e.g. John Smith",
+    "displayNameHint": "Optional",
+    "roleLabel": "Role",
+    "statusLabel": "Status",
+    "activeCheckbox": "Active user",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Minimum 6 characters",
+    "passwordHintEdit": "Leave empty to keep unchanged.",
+    "passwordHintCreate": "Required for new users."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Admin",
+      "description": "Tenant admin: full tenant-level permissions."
+    },
+    "EDITOR": {
+      "label": "Editor",
+      "description": "Send messages, manage scheduled signals."
+    },
+    "CONTRIBUTOR": {
+      "label": "Contributor",
+      "description": "Send instant messages."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Player view permission."
+    }
+  },
+  "messages": {
+    "empty": "This user hasn't sent any messages yet.",
+    "count": "{{count}} messages"
+  },
+  "confirm": {
+    "deactivateMessage": "Are you sure you want to deactivate this user?\n{{email}}\n\nThe account will remain but the user won't be able to log in.",
+    "deleteMessage": "⚠️ PERMANENT DELETION ⚠️\n\nAre you sure you want to delete this user?\n{{email}}\n\nThis action cannot be undone!"
+  },
+  "errors": {
+    "emailRequired": "Email is required.",
+    "passwordRequired": "Password is required.",
+    "emailRequiredShort": "Email required.",
+    "backendNotOk": "The backend did not respond with an ok status.",
+    "createFailed": "Failed to create. ",
+    "updateFailed": "Failed to update. ",
+    "deactivateFailed": "Failed to deactivate. ",
+    "deleteFailed": "Failed to delete. ",
+    "unknown": "Unknown error"
+  }
+}

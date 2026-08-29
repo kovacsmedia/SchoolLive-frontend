@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Správa používateľov a oprávnení inštitúcie."
+  },
+  "actions": {
+    "addUser": "＋ Nový používateľ",
+    "deactivate": "⏸ Deaktivovať",
+    "create": "✅ Vytvoriť",
+    "creating": "⏳ Vytváranie…",
+    "saving": "⏳ Ukladanie…"
+  },
+  "table": {
+    "emailHeader": "E-mail",
+    "nameHeader": "Meno",
+    "statusHeader": "Stav",
+    "roleHeader": "Rola",
+    "createdAtHeader": "Vytvorené",
+    "lastLoginHeader": "Posledné prihlásenie",
+    "actionsHeader": "Akcie",
+    "noResults": "Žiadne výsledky"
+  },
+  "status": {
+    "active": "✓ Aktívny",
+    "inactive": "✗ Neaktívny"
+  },
+  "modals": {
+    "createTitle": "Nový používateľ",
+    "editTitle": "Úprava: {{email}}",
+    "messagesTitle": "Správy: {{email}}"
+  },
+  "form": {
+    "emailLabel": "E-mailová adresa *",
+    "emailPlaceholder": "napr. ucitel@skola.sk",
+    "displayNameLabel": "Zobrazované meno",
+    "displayNamePlaceholder": "napr. Ján Novák",
+    "displayNameHint": "Voliteľné",
+    "roleLabel": "Rola",
+    "statusLabel": "Stav",
+    "activeCheckbox": "Aktívny používateľ",
+    "passwordLabel": "Heslo",
+    "passwordPlaceholder": "Minimálne 6 znakov",
+    "passwordHintEdit": "Ak necháte prázdne, nezmení sa.",
+    "passwordHintCreate": "Povinné pri novom používateľovi."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Admin",
+      "description": "Tenant admin: úplné oprávnenia v rámci inštitúcie."
+    },
+    "EDITOR": {
+      "label": "Editor",
+      "description": "Odosielanie správ, správa naplánovaných signálov."
+    },
+    "CONTRIBUTOR": {
+      "label": "Prispievateľ",
+      "description": "Odosielanie okamžitých správ."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Oprávnenie na zobrazenie Player."
+    }
+  },
+  "messages": {
+    "empty": "Tento používateľ zatiaľ neodoslal žiadnu správu.",
+    "count": "{{count}} správ"
+  },
+  "confirm": {
+    "deactivateMessage": "Naozaj chcete deaktivovať tohto používateľa?\n{{email}}\n\nÚčet zostane zachovaný, ale používateľ sa nebude môcť prihlásiť.",
+    "deleteMessage": "⚠️ TRVALÉ VYMAZANIE ⚠️\n\nNaozaj chcete vymazať tohto používateľa?\n{{email}}\n\nTáto akcia sa nedá vrátiť späť!"
+  },
+  "errors": {
+    "emailRequired": "E-mail je povinný.",
+    "passwordRequired": "Heslo je povinné.",
+    "emailRequiredShort": "E-mail je povinný.",
+    "backendNotOk": "Backend neodpovedal so stavom ok.",
+    "createFailed": "Vytvorenie zlyhalo. ",
+    "updateFailed": "Úprava zlyhala. ",
+    "deactivateFailed": "Deaktivácia zlyhala. ",
+    "deleteFailed": "Vymazanie zlyhalo. ",
+    "unknown": "Neznáma chyba"
+  }
+}

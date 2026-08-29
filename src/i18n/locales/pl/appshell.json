@@ -1,0 +1,14 @@
+{
+  "menuAria": "Menu",
+  "statusTime": "Godzina:",
+  "statusBell": "Dzwonek:",
+  "statusMessage": "Wiadomość:",
+  "statusRadio": "Radio:",
+  "chooseTenantPlaceholder": "Wybierz placówkę…",
+  "inactiveSuffix": " (nieaktywna)",
+  "chooseTenantBadge": "⚠️ Wybierz placówkę",
+  "chooseTenantTitle": "Wybierz placówkę!",
+  "chooseTenantBody": "W trybie administratora wybierz placówkę na górnym pasku, aby uzyskać dostęp do danych.",
+  "tenantsLoadError": "Nie udało się załadować",
+  "defaultUserName": "Użytkownik"
+}

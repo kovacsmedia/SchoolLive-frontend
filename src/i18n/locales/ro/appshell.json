@@ -1,0 +1,14 @@
+{
+  "menuAria": "Meniu",
+  "statusTime": "Ora:",
+  "statusBell": "Sonerie:",
+  "statusMessage": "Mesaj:",
+  "statusRadio": "Radio:",
+  "chooseTenantPlaceholder": "Selectați instituția…",
+  "inactiveSuffix": " (inactiv)",
+  "chooseTenantBadge": "⚠️ Selectați o instituție",
+  "chooseTenantTitle": "Selectați o instituție!",
+  "chooseTenantBody": "În modul administrator, selectați o instituție din bara de sus pentru a accesa datele.",
+  "tenantsLoadError": "Încărcare eșuată",
+  "defaultUserName": "Utilizator"
+}

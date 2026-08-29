@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Unbekannter Fehler",
+    "nameRequired": "Der Name der Institution ist erforderlich.",
+    "backendError": "Backend-Fehler",
+    "deactivateFailed": "Deaktivieren fehlgeschlagen.",
+    "deleteFailed": "Löschen fehlgeschlagen."
+  },
+  "page": {
+    "subtitle": "Verwaltung von Institutionen und deren Einstellungen auf Tenant-Ebene."
+  },
+  "search": {
+    "placeholder": "Suchen…"
+  },
+  "actions": {
+    "newTenant": "Neue Institution",
+    "inactiveHidden": "Inaktive ausgeblendet",
+    "inactiveVisible": "Inaktive anzeigen"
+  },
+  "table": {
+    "nameHeader": "Institution",
+    "actionsHeader": "Aktionen",
+    "emptyTitle": "Keine Institution",
+    "viewDetailsAction": "Details",
+    "editAction": "Bearbeiten",
+    "deactivateAction": "Deaktivieren"
+  },
+  "status": {
+    "active": "Aktiv",
+    "inactive": "Inaktiv"
+  },
+  "modal": {
+    "creating": "Wird erstellt…",
+    "create": "Erstellen",
+    "editTitle": "Bearbeiten: {{name}}",
+    "saving": "Speichern…"
+  },
+  "confirm": {
+    "deactivateMessage": "Diese Institution deaktivieren?\n\n{{name}}",
+    "hardDeleteMessage": "Diese Institution endgültig löschen? Das kann nicht rückgängig gemacht werden!\nAlle Benutzer, Geräte und Daten werden gelöscht!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefon",
+    "email": "E-Mail",
+    "address": "Adresse",
+    "eduId": "Bildungs-ID",
+    "status": "Status",
+    "domain": "Domain",
+    "director": "Schulleiter",
+    "createdAt": "Erstellt"
+  },
+  "detail": {
+    "closeAction": "Schließen"
+  },
+  "form": {
+    "nameLabel": "Name der Institution *",
+    "namePlaceholder": "z. B. Grundschule Musterstadt",
+    "domainLabel": "Domain / Subdomain",
+    "domainPlaceholder": "z. B. musterstadt.schoollive.hu",
+    "activeLabel": "Aktive Institution",
+    "contactSectionTitle": "Ansprechpartner / Schulleiter",
+    "directorNameLabel": "Name des Schulleiters",
+    "directorNamePlaceholder": "z. B. Max Mustermann",
+    "phonePlaceholder": "+49 30 123456",
+    "emailPlaceholder": "schulleiter@schule.de",
+    "otherSectionTitle": "Weitere Angaben",
+    "addressPlaceholder": "Musterstraße 1, 12345 Musterstadt",
+    "eduIdPlaceholder": "032456"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Upravljanje korisnicima i ovlastima ustanove."
+  },
+  "actions": {
+    "addUser": "＋ Novi korisnik",
+    "deactivate": "⏸ Deaktiviraj",
+    "create": "✅ Kreiraj",
+    "creating": "⏳ Kreiranje…",
+    "saving": "⏳ Spremanje…"
+  },
+  "table": {
+    "emailHeader": "E-mail",
+    "nameHeader": "Ime",
+    "statusHeader": "Status",
+    "roleHeader": "Uloga",
+    "createdAtHeader": "Stvoreno",
+    "lastLoginHeader": "Zadnja prijava",
+    "actionsHeader": "Radnje",
+    "noResults": "Nema rezultata"
+  },
+  "status": {
+    "active": "✓ Aktivan",
+    "inactive": "✗ Neaktivan"
+  },
+  "modals": {
+    "createTitle": "Novi korisnik",
+    "editTitle": "Uređivanje: {{email}}",
+    "messagesTitle": "Poruke: {{email}}"
+  },
+  "form": {
+    "emailLabel": "E-mail adresa *",
+    "emailPlaceholder": "npr. ucitelj@skola.hr",
+    "displayNameLabel": "Prikazano ime",
+    "displayNamePlaceholder": "npr. Ivan Horvat",
+    "displayNameHint": "Neobavezno",
+    "roleLabel": "Uloga",
+    "statusLabel": "Status",
+    "activeCheckbox": "Aktivan korisnik",
+    "passwordLabel": "Lozinka",
+    "passwordPlaceholder": "Minimalno 6 znakova",
+    "passwordHintEdit": "Ako ostavite prazno, neće se promijeniti.",
+    "passwordHintCreate": "Obavezno za novog korisnika."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Administrator",
+      "description": "Administrator zakupca: puna ovlaštenja unutar ustanove."
+    },
+    "EDITOR": {
+      "label": "Urednik",
+      "description": "Slanje poruka, upravljanje zakazanim signalima."
+    },
+    "CONTRIBUTOR": {
+      "label": "Suradnik",
+      "description": "Slanje trenutnih poruka."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Ovlaštenje za prikaz Player."
+    }
+  },
+  "messages": {
+    "empty": "Ovaj korisnik još nije poslao nijednu poruku.",
+    "count": "{{count}} poruka"
+  },
+  "confirm": {
+    "deactivateMessage": "Jeste li sigurni da želite deaktivirati ovog korisnika?\n{{email}}\n\nRačun će ostati, ali korisnik se neće moći prijaviti.",
+    "deleteMessage": "⚠️ TRAJNO BRISANJE ⚠️\n\nJeste li sigurni da želite izbrisati ovog korisnika?\n{{email}}\n\nOva se radnja ne može poništiti!"
+  },
+  "errors": {
+    "emailRequired": "E-mail adresa je obavezna.",
+    "passwordRequired": "Lozinka je obavezna.",
+    "emailRequiredShort": "E-mail je obavezan.",
+    "backendNotOk": "Backend nije odgovorio statusom ok.",
+    "createFailed": "Kreiranje nije uspjelo. ",
+    "updateFailed": "Ažuriranje nije uspjelo. ",
+    "deactivateFailed": "Deaktivacija nije uspjela. ",
+    "deleteFailed": "Brisanje nije uspjelo. ",
+    "unknown": "Nepoznata pogreška"
+  }
+}

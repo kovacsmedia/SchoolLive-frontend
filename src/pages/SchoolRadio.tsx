@@ -1,5 +1,6 @@
 // src/pages/SchoolRadio.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { stripAccents } from "../lib/text";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
@@ -215,11 +216,17 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-const STATUS_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  PENDING: { bg: "#eff6ff", color: "#1d4ed8", label: "Vár" },
-  DISPATCHED: { bg: "#f0fdf4", color: "#15803d", label: "Elküldve" },
-  CANCELLED: { bg: "#f9fafb", color: "#6b7280", label: "Törölve" },
+// A "label" mezőt (felhasználónak látszó szöveg) a render-ben, t()-vel
+// állítjuk elő (lásd statusLabelKey), mert ez a konstans a komponensen
+// kívül van, hooks (useTranslation) nélkül.
+const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
+  PENDING: { bg: "#eff6ff", color: "#1d4ed8" },
+  DISPATCHED: { bg: "#f0fdf4", color: "#15803d" },
+  CANCELLED: { bg: "#f9fafb", color: "#6b7280" },
 };
+function statusLabelKey(status: string): string {
+  return status === "DISPATCHED" ? "status.dispatched" : status === "CANCELLED" ? "status.cancelled" : "status.pending";
+}
 
 function getTeachingHours(bells: BellEntry[], onDay: Date): Array<{ start: Date; end: Date }> {
   const pairs: Array<{ start: Date; end: Date }> = [];
@@ -470,6 +477,7 @@ const CSS = `
 `;
 
 export default function SchoolRadio() {
+  const { t } = useTranslation(["radio", "common"]);
   const { state } = useAuth();
   const role = state.status === "authed" ? ((state.user as any)?.role ?? "") : "";
   const canSetTenantDefault = role === "TENANT_ADMIN" || role === "SUPER_ADMIN";
@@ -654,7 +662,7 @@ export default function SchoolRadio() {
       setDevices(targetsRes.devices ?? []);
       setGroups(targetsRes.groups ?? []);
     } catch (e: any) {
-      setError(e?.message ?? "Betöltés sikertelen");
+      setError(e?.message ?? t("errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -762,7 +770,7 @@ export default function SchoolRadio() {
     } catch (e:any) {
       // 3 sec-ig piros, aztán reset (mint a stream-nél)
       setFileStatus({ [file.id]: "error" });
-      setError(e?.message ?? "Azonnali lejátszás sikertelen");
+      setError(e?.message ?? t("errors.playNowFailed"));
       window.setTimeout(() => {
         setFileStatus(prev => {
           if (prev[file.id] !== "error") return prev;
@@ -780,15 +788,15 @@ export default function SchoolRadio() {
     const stream = station.streams[idx];
     const url = (stream?.url ?? "").trim();
     if (!url) {
-      setStreamError(`A(z) "${station.name}" kiválasztott stream URL-je üres. Szerkeszd az állomást.`);
+      setStreamError(t("errors.emptyStreamUrl", { name: station.name }));
       return;
     }
     if (!/^https?:\/\//i.test(url)) {
-      setStreamError("Érvénytelen URL (http/https kell).");
+      setStreamError(t("errors.invalidUrl"));
       return;
     }
     if (streamTargetType !== "ALL" && !streamTargetId) {
-      setStreamError("Válassz egy célt (eszközt/csoportot).");
+      setStreamError(t("errors.chooseTarget"));
       return;
     }
     // Egyszerre csak egy állomás játszhat – előzőek státuszát töröljük,
@@ -815,7 +823,7 @@ export default function SchoolRadio() {
     } catch (e:any) {
       // Pirosba villantjuk a gombot 3 másodpercig, majd resetelünk.
       setStreamStatus({ [station.id]: "error" });
-      setStreamError(e?.message ?? "Stream indítása sikertelen");
+      setStreamError(e?.message ?? t("errors.streamStartFailed"));
       window.setTimeout(() => {
         setStreamStatus(prev => {
           if (prev[station.id] !== "error") return prev;
@@ -830,6 +838,9 @@ export default function SchoolRadio() {
   function openNewStation() {
     setStationError(null);
     setStationForm({
+      // "Főadás" itt alapértelmezett adat-mező (a stream lista első eleme),
+      // nem UI-szöveg – a felhasználó szabadon átírhatja, ezért nem t()-vel
+      // fordított kulcs (lásd a fájl elején a data-vs-UI-szöveg elhatárolást).
       mode: "new", id: "", name: "", genre: "",
       streams: [{ label: "Főadás", url: "" }],
     });
@@ -848,8 +859,8 @@ export default function SchoolRadio() {
     const streams = stationForm.streams
       .map(s => ({ label: s.label.trim(), url: s.url.trim() }))
       .filter(s => s.label.length > 0);
-    if (!name) { setStationError("A név kötelező."); return; }
-    if (streams.length === 0) { setStationError("Legalább egy stream-et add meg (a label kötelező)."); return; }
+    if (!name) { setStationError(t("errors.nameRequired")); return; }
+    if (streams.length === 0) { setStationError(t("errors.atLeastOneStream")); return; }
     if (stationForm.mode === "new") {
       const newId = (name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "radio")
                     + "-" + Math.random().toString(36).slice(2, 6);
@@ -862,12 +873,12 @@ export default function SchoolRadio() {
   function removeStation(id: string) {
     const r = netRadios.find(x => x.id === id);
     if (!r) return;
-    if (!window.confirm(`Törlöd a(z) "${r.name}" rádióállomást?`)) return;
+    if (!window.confirm(t("confirm.deleteStation", { name: r.name }))) return;
     setNetRadios(prev => prev.filter(x => x.id !== id));
     setStreamPick(prev => { const c = { ...prev }; delete c[id]; return c; });
   }
   function restoreDefaultStations() {
-    if (!window.confirm("Visszaállítod a rádiólistát az alapértelmezettre? A saját bejegyzések elvesznek.")) return;
+    if (!window.confirm(t("confirm.restoreDefaults"))) return;
     setNetRadios(NET_RADIOS_INITIAL);
     setStreamPick({});
   }
@@ -886,7 +897,7 @@ export default function SchoolRadio() {
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (e:any) {
-      alert("Lementés sikertelen: " + (e?.message ?? "ismeretlen"));
+      alert(t("errors.exportFailed", { message: e?.message ?? t("errors.unknown") }));
     }
   }
 
@@ -898,11 +909,11 @@ export default function SchoolRadio() {
       try {
         const parsed = JSON.parse(String(reader.result || "[]"));
         const list = normalizeNetRadios(parsed);
-        if (list.length === 0) { alert("A fájl üres vagy érvénytelen formátum."); return; }
-        if (!window.confirm(`Visszatöltöd a listát? Az aktuális (${netRadios.length} állomás) felülíródik. Új lista: ${list.length} állomás.`)) return;
+        if (list.length === 0) { alert(t("errors.importEmptyOrInvalid")); return; }
+        if (!window.confirm(t("confirm.importReplace", { current: netRadios.length, next: list.length }))) return;
         setNetRadios(list); setStreamPick({});
       } catch (e:any) {
-        alert("Olvasási hiba: " + (e?.message ?? "ismeretlen"));
+        alert(t("errors.readError", { message: e?.message ?? t("errors.unknown") }));
       } finally {
         if (importInputRef.current) importInputRef.current.value = "";
       }
@@ -915,7 +926,7 @@ export default function SchoolRadio() {
   // betölteni, ha még nincs lokális szerkesztett adatuk.
   const [defaultBusy, setDefaultBusy] = useState(false);
   async function setAsTenantDefault() {
-    if (!window.confirm(`Beállítod a jelenlegi listát az intézmény alapértelmezettjének? Minden új felhasználó / új böngésző ezt fogja látni először (${netRadios.length} állomás).`)) return;
+    if (!window.confirm(t("confirm.setTenantDefault", { count: netRadios.length }))) return;
     setDefaultBusy(true);
     try {
       await apiFetch("/admin/tenants/me/netradio-presets", {
@@ -923,9 +934,9 @@ export default function SchoolRadio() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ presets: netRadios }),
       });
-      alert("Alapértelmezett lista elmentve.");
+      alert(t("info.tenantDefaultSaved"));
     } catch (e:any) {
-      alert("Mentés sikertelen: " + (e?.message ?? "ismeretlen"));
+      alert(t("errors.saveFailed", { message: e?.message ?? t("errors.unknown") }));
     } finally {
       setDefaultBusy(false);
     }
@@ -985,8 +996,8 @@ export default function SchoolRadio() {
       recRadioTimer.current = setInterval(() => setRecRadioSeconds(s => s + 1), 1000);
     } catch (e:any) {
       setRecRadioError(e?.name === "NotAllowedError"
-        ? "Mikrofon hozzáférés megtagadva."
-        : "Mikrofon nem érhető el: " + e.message);
+        ? t("errors.micDenied")
+        : t("errors.micUnavailable", { message: e.message }));
     }
   }
   function stopRecRadio() {
@@ -1019,10 +1030,10 @@ export default function SchoolRadio() {
         body: fd,
       });
       const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data.error || "Feltöltés sikertelen");
+      if (!resp.ok) throw new Error(data.error || t("errors.uploadFailed"));
       const rf = data.radioFile ?? data.file ?? data;
       const fileUrl: string  = rf.fileUrl;
-      const title:   string  = rf.originalName ?? "Saját felvétel";
+      const title:   string  = rf.originalName ?? t("recording.defaultTitle");
       const dur:     number|null = rf.durationSec ?? null;
       setPlItems(prev => [...prev, {
         id: uid(),
@@ -1036,7 +1047,7 @@ export default function SchoolRadio() {
       await loadAll();
       resetRecRadio();
     } catch (e:any) {
-      setRecRadioError(e?.message ?? "Feltöltés sikertelen");
+      setRecRadioError(e?.message ?? t("errors.uploadFailed"));
     } finally {
       setRecRadioUploading(false);
     }
@@ -1046,7 +1057,7 @@ export default function SchoolRadio() {
   async function handleUpload(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!["mp3", "wav", "ogg", "m4a", "aac"].includes(ext)) {
-      setError("Csak hangfájl tölthető fel (.mp3, .wav, .ogg, .m4a, .aac)");
+      setError(t("errors.invalidFileType"));
       return;
     }
 
@@ -1067,7 +1078,7 @@ export default function SchoolRadio() {
           xhr.status < 300
             ? resolve()
             : reject(new Error(JSON.parse(xhr.responseText)?.error ?? `HTTP ${xhr.status}`));
-        xhr.onerror = () => reject(new Error("Hálózati hiba"));
+        xhr.onerror = () => reject(new Error(t("errors.networkError")));
 
         const token =
           sessionStorage.getItem("accessToken") ??
@@ -1084,7 +1095,7 @@ export default function SchoolRadio() {
 
       await loadAll();
     } catch (e: any) {
-      setError("Feltöltés sikertelen: " + e.message);
+      setError(t("errors.uploadFailedWithMessage", { message: e.message }));
     } finally {
       setUploading(false);
       setUploadPct(0);
@@ -1095,8 +1106,8 @@ export default function SchoolRadio() {
   async function deleteFile(file: RadioFile) {
     const warn =
       file._count.schedules > 0
-        ? `⚠️ Ezzel ${file._count.schedules} ütemezés IS TÖRLŐDIK!\n\nBiztos törlöd: "${file.originalName}"?`
-        : `Törlöd: "${file.originalName}"?`;
+        ? t("confirm.deleteFileWithSchedules", { count: file._count.schedules, name: file.originalName })
+        : t("confirm.deleteFile", { name: file.originalName });
 
     if (!window.confirm(warn)) return;
 
@@ -1105,18 +1116,18 @@ export default function SchoolRadio() {
       if (selectedFile?.id === file.id) setSelectedFile(null);
       await loadAll();
     } catch (e: any) {
-      setError(e?.message ?? "Törlés sikertelen");
+      setError(e?.message ?? t("errors.deleteFailed"));
     }
   }
 
   // ── Ütemezés törlés ───────────────────────────────────────────────────────
   async function deleteSchedule(id: string) {
-    if (!window.confirm("Törlöd ezt az ütemezést?")) return;
+    if (!window.confirm(t("confirm.deleteSchedule"))) return;
     try {
       await apiFetch(`/radio/schedules/${id}`, { method: "DELETE" });
       await loadAll();
     } catch (e: any) {
-      setError(e?.message ?? "Törlés sikertelen");
+      setError(e?.message ?? t("errors.deleteFailed"));
     }
   }
 
@@ -1126,25 +1137,25 @@ export default function SchoolRadio() {
     setFormError(null);
 
     if (!fileId) {
-      setFormError("Válassz hangfájlt!");
+      setFormError(t("errors.chooseFile"));
       return;
     }
     if (!formDate || !formTime) {
-      setFormError("Adj meg dátumot és időt!");
+      setFormError(t("errors.chooseDateTime"));
       return;
     }
     if (formTarget !== "ALL" && !formTargetId) {
-      setFormError("Válassz célt!");
+      setFormError(t("errors.chooseTarget"));
       return;
     }
 
     const scheduledAt = new Date(`${formDate}T${formTime}:00`);
     if (isNaN(scheduledAt.getTime())) {
-      setFormError("Érvénytelen dátum/idő");
+      setFormError(t("errors.invalidDateTime"));
       return;
     }
     if (scheduledAt < new Date()) {
-      setFormError("Az időpont a múltban van!");
+      setFormError(t("errors.pastDateTime"));
       return;
     }
 
@@ -1152,7 +1163,7 @@ export default function SchoolRadio() {
 
     // Tanítási óra ütközés
     if (checkTeachingHourOverlap(scheduledAt, durSec, mainBells)) {
-      if (!window.confirm("⚠️ A rádióműsor tanítási órát érint!\n\nBiztosan így szeretnéd ütemezni?")) return;
+      if (!window.confirm(t("confirm.teachingHourOverlap"))) return;
     }
 
     // Szünetbe nem fér el – trim ajánlat
@@ -1164,11 +1175,10 @@ export default function SchoolRadio() {
         const breakSec = (nextLesson.start.getTime() - scheduledAt.getTime()) / 1000;
         if (durSec > breakSec) {
           const wantTrim = window.confirm(
-            `⚠️ A hangfájl (${fmtDuration(durSec)}) nem fér bele a szünetbe (${fmtDuration(
-              Math.floor(breakSec)
-            )})!\n\n` +
-              `Levágjuk a végét, hogy beleférjen (5mp fade-out átmenettel)? Az eredeti fájl megmarad.\n\n` +
-              `Igen → levágott verzió ütemezése\nNem → az eredeti hosszú fájl ütemezése`
+            t("confirm.trimToFitBreak", {
+              fileDur: fmtDuration(durSec),
+              breakDur: fmtDuration(Math.floor(breakSec)),
+            })
           );
 
           if (wantTrim) {
@@ -1202,7 +1212,7 @@ export default function SchoolRadio() {
                 return;
               }
             } catch (e: any) {
-              setFormError("Vágás sikertelen: " + (e?.message ?? ""));
+              setFormError(t("errors.trimFailed", { message: e?.message ?? "" }));
               setFormBusy(false);
               return;
             }
@@ -1233,8 +1243,8 @@ export default function SchoolRadio() {
       const data = (e as any)?.data ?? {};
       setFormError(
         data?.conflict
-          ? `Időütközés: "${data.conflict.originalName}" körül már foglalt`
-          : (e?.message ?? "Létrehozás sikertelen")
+          ? t("errors.timeConflict", { name: data.conflict.originalName })
+          : (e?.message ?? t("errors.createFailed"))
       );
     } finally {
       setFormBusy(false);
@@ -1247,12 +1257,12 @@ export default function SchoolRadio() {
   // a formon nyitja meg a célt, és innen indíthatod azonnal vagy időzítve.
   async function submitImmediateFromForm() {
     setFormError(null);
-    if (!formFileId) { setFormError("Válassz hangfájlt!"); return; }
+    if (!formFileId) { setFormError(t("errors.chooseFile")); return; }
     if (formTarget !== "ALL" && !formTargetId) {
-      setFormError("Válassz célt!"); return;
+      setFormError(t("errors.chooseTarget")); return;
     }
     const file = files.find(f => f.id === formFileId);
-    if (!file) { setFormError("A fájl már nem létezik."); return; }
+    if (!file) { setFormError(t("errors.fileNoLongerExists")); return; }
     setFormBusy(true);
     try {
       await playFileNow(file);
@@ -1261,7 +1271,7 @@ export default function SchoolRadio() {
       setFormFileId("");
       setFormError(null);
     } catch (e: any) {
-      setFormError(e?.message ?? "Azonnali lejátszás sikertelen");
+      setFormError(e?.message ?? t("errors.playNowFailed"));
     } finally {
       setFormBusy(false);
     }
@@ -1288,7 +1298,7 @@ export default function SchoolRadio() {
       id: itemId,
       source: "youtube",
       url,
-      title: "Betöltés…",
+      title: t("common:actions.loading"),
       durationSec: null,
       status: "fetching",
     };
@@ -1306,7 +1316,7 @@ export default function SchoolRadio() {
               title: info?.title ?? url,
               durationSec: info?.durationSec ?? null,
               status: info ? "ready" : "error",
-              errorMsg: info ? undefined : "Nem sikerült betölteni az adatokat",
+              errorMsg: info ? undefined : t("errors.ytInfoFailed"),
             }
           : i
       )
@@ -1365,7 +1375,7 @@ export default function SchoolRadio() {
       );
       setDriveFiles(res.files ?? []);
     } catch (e: any) {
-      setPlError(e?.message ?? "Drive betöltési hiba");
+      setPlError(e?.message ?? t("errors.driveLoadFailed"));
     } finally {
       setDriveFetching(false);
     }
@@ -1382,7 +1392,7 @@ export default function SchoolRadio() {
   async function handlePlUpload(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!["mp3", "wav", "ogg", "m4a", "aac"].includes(ext)) {
-      setPlError("Csak hangfájl adható hozzá");
+      setPlError(t("errors.audioOnly"));
       return;
     }
 
@@ -1408,7 +1418,7 @@ export default function SchoolRadio() {
             reject(new Error(JSON.parse(xhr.responseText)?.error ?? `HTTP ${xhr.status}`));
           }
         };
-        xhr.onerror = () => reject(new Error("Hálózati hiba"));
+        xhr.onerror = () => reject(new Error(t("errors.networkError")));
 
         const token =
           sessionStorage.getItem("accessToken") ??
@@ -1451,11 +1461,11 @@ export default function SchoolRadio() {
   async function buildPlaylist() {
     const readyItems = plItems.filter((i) => i.status === "ready");
     if (readyItems.length === 0) {
-      setPlError("Adj hozzá legalább egy kész elemet!");
+      setPlError(t("errors.needOneReadyItem"));
       return;
     }
     if (!plName.trim()) {
-      setPlError("Adj nevet az összeállításnak!");
+      setPlError(t("errors.needPlaylistName"));
       return;
     }
 
@@ -1499,17 +1509,17 @@ export default function SchoolRadio() {
             await loadAll();
           } else if (s.status === "ERROR") {
             clearInterval(poll);
-            setPlError("Összeállítás sikertelen. Ellenőrizd a linkeket!");
+            setPlError(t("errors.buildFailed"));
             setPlBusy(false);
           }
         } catch {
           clearInterval(poll);
-          setPlError("Hiba az állapotlekérdezéskor");
+          setPlError(t("errors.buildStatusFetchError"));
           setPlBusy(false);
         }
       }, 3000);
     } catch (e: any) {
-      setPlError(e?.message ?? "Build hiba");
+      setPlError(e?.message ?? t("errors.buildError"));
       setPlBusy(false);
     }
   }
@@ -1560,8 +1570,8 @@ export default function SchoolRadio() {
       {/* Header */}
       <div className="sr-hdr">
         <div>
-          <div className="sr-title">📻 Iskolai Rádió</div>
-          <div className="sr-subtitle">Hanganyag feltöltése és ütemezett lejátszása az épület hangszóróin.</div>
+          <div className="sr-title">📻 {t("header.title")}</div>
+          <div className="sr-subtitle">{t("header.subtitle")}</div>
         </div>
 
         <div className="sr-hdr-right">
@@ -1585,7 +1595,7 @@ export default function SchoolRadio() {
                 {effective ? (
                   <span>{effective.icon} <strong>{shortName}</strong></span>
                 ) : (
-                  <span>Nem játszik semmi</span>
+                  <span>{t("header.nothingPlaying")}</span>
                 )}
               </div>
             );
@@ -1595,9 +1605,9 @@ export default function SchoolRadio() {
             className="sr-btn sr-btn-ghost"
             type="button"
             onClick={() => setHistoryOpen(true)}
-            title="Jövőbeli és korábbi lejátszások egy ablakban"
+            title={t("header.scheduledPlaybacksTooltip")}
           >
-            📥 Időzített lejátszások{schedules.length > 0 ? ` (${schedules.length})` : ""}
+            📥 {t("header.scheduledPlaybacks")}{schedules.length > 0 ? ` (${schedules.length})` : ""}
           </button>
 
           <button
@@ -1605,7 +1615,7 @@ export default function SchoolRadio() {
             disabled={stopBusy}
             type="button"
             onClick={async () => {
-              if (!window.confirm("Leállítod az összes lejátszót?")) return;
+              if (!window.confirm(t("confirm.stopAll"))) return;
               setStopBusy(true);
               // Azonnali UI feedback – a header-state-eket nem várjuk be a
               // backend válaszra, hogy a felhasználó rögtön lássa: STOP ment.
@@ -1617,19 +1627,19 @@ export default function SchoolRadio() {
                 await apiFetch("/radio/stop-all", { method: "POST" });
                 await loadAll();
               } catch (e: any) {
-                alert("Hiba: " + (e?.message ?? "ismeretlen"));
+                alert(t("errors.genericError", { message: e?.message ?? t("errors.unknown") }));
               } finally {
                 setStopBusy(false);
               }
             }}
           >
-            🛑 {stopBusy ? "Leállítás…" : "RÁDIÓ STOP"}
+            🛑 {stopBusy ? t("header.stopping") : t("header.radioStop")}
           </button>
 
           {/* Stream-volume slider – CSAK a rádió/play-now streamre hat.
               A csengetésre és üzenetekre nincs hatása. A volume a backend
               ffmpeg pre-gain filteren át érvényesül; új lejátszáskor él. */}
-          <div className="sr-stream-vol" title={`Stream hangerő: ${streamVolume}/10`}>
+          <div className="sr-stream-vol" title={t("header.streamVolumeTooltip", { value: streamVolume })}>
             <span className="sr-stream-vol-icon">
               {streamVolume === 0 ? "🔇" : streamVolume <= 3 ? "🔈" : streamVolume <= 7 ? "🔉" : "🔊"}
             </span>
@@ -1676,13 +1686,13 @@ export default function SchoolRadio() {
                 className={`sr-tab${sourceTab === "library" ? " active" : ""}`}
                 type="button"
                 onClick={() => setSourceTab("library")}>
-                🎵 Hangfájl könyvtár
+                🎵 {t("tabs.library")}
               </button>
               <button
                 className={`sr-tab${sourceTab === "netradio" ? " active" : ""}`}
                 type="button"
                 onClick={() => setSourceTab("netradio")}>
-                📻 Internetrádió
+                📻 {t("tabs.netradio")}
               </button>
             </div>
 
@@ -1690,26 +1700,24 @@ export default function SchoolRadio() {
             {sourceTab === "netradio" && (
               <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}}>
                 <div style={{fontSize:12,color:"var(--sl-muted)"}}>
-                  Görgesd át a listát, válaszd ki az állomást és — ha van —
-                  egy alstreamet, majd nyomd a ▶ gombot. A célt és a stream URL-eket
-                  alább, illetve a Szerkesztés gombbal módosíthatod.
+                  {t("netradio.description")}
                 </div>
 
                 {/* Cél választó (közös az összes állomásra) */}
                 <div>
-                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 Cél</div>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                    {(["ALL","DEVICE","GROUP"] as const).map(t => (
-                      <button key={t} type="button"
-                        className={`sr-btn ${streamTargetType===t?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
-                        onClick={() => { setStreamTargetType(t); setStreamTargetId(""); }}>
-                        {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
+                    {(["ALL","DEVICE","GROUP"] as const).map(opt => (
+                      <button key={opt} type="button"
+                        className={`sr-btn ${streamTargetType===opt?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
+                        onClick={() => { setStreamTargetType(opt); setStreamTargetId(""); }}>
+                        {opt==="ALL"?`📡 ${t("target.all")}`:opt==="DEVICE"?`🔊 ${t("target.device")}`:`👥 ${t("target.group")}`}
                       </button>
                     ))}
                     {streamTargetType==="DEVICE" && (
                       <select className="sr-select" style={{flex:1,minWidth:140}}
                         value={streamTargetId} onChange={e => setStreamTargetId(e.target.value)}>
-                        <option value="">— Eszköz —</option>
+                        <option value="">— {t("target.devicePlaceholder")} —</option>
                         {devices.map(d => (
                           <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
                         ))}
@@ -1718,7 +1726,7 @@ export default function SchoolRadio() {
                     {streamTargetType==="GROUP" && (
                       <select className="sr-select" style={{flex:1,minWidth:140}}
                         value={streamTargetId} onChange={e => setStreamTargetId(e.target.value)}>
-                        <option value="">— Csoport —</option>
+                        <option value="">— {t("target.groupPlaceholder")} —</option>
                         {groups.map(g => (
                           <option key={g.id} value={g.id}>{g.name}</option>
                         ))}
@@ -1736,7 +1744,7 @@ export default function SchoolRadio() {
                   {netRadios.length === 0 ? (
                     <div className="sr-empty" style={{padding:"24px 16px"}}>
                       <div className="sr-empty-icon">📻</div>
-                      <div style={{fontSize:13,fontWeight:700}}>Üres a rádiólista – használd a "Visszaállítás alapra" gombot.</div>
+                      <div style={{fontSize:13,fontWeight:700}}>{t("netradio.emptyList")}</div>
                     </div>
                   ) : netRadios.map((r, i) => {
                     const pickIdx = streamPick[r.id] ?? 0;
@@ -1763,7 +1771,7 @@ export default function SchoolRadio() {
                           onChange={e => setStreamPick(prev => ({ ...prev, [r.id]: Number(e.target.value) }))}>
                           {r.streams.map((s, idx) => (
                             <option key={idx} value={idx}>
-                              {s.label}{!s.url ? " (URL hiányzik)" : ""}
+                              {s.label}{!s.url ? ` (${t("netradio.urlMissing")})` : ""}
                             </option>
                           ))}
                         </select>
@@ -1773,22 +1781,22 @@ export default function SchoolRadio() {
                           onClick={() => void playStation(r)}
                           disabled={status === "connecting" || !r.streams[safeIdx]?.url}
                           title={
-                            status === "connecting" ? "Stream megnyitása folyamatban..." :
-                            status === "playing"    ? "Szól – újraküldéshez nyomd meg" :
-                            status === "error"      ? "A stream nem nyitható meg" :
-                            "Azonnali adásba küldés"
+                            status === "connecting" ? t("netradio.playTooltip.connecting") :
+                            status === "playing"    ? t("netradio.playTooltip.playing") :
+                            status === "error"      ? t("netradio.playTooltip.error") :
+                            t("netradio.playTooltip.idle")
                           }>
                           {stateLabel}
                         </button>
                         <div className="sr-radio-actions">
                           <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                             onClick={() => openEditStation(r)}
-                            title="Szerkesztés (név, műfaj, alstreamek)">
+                            title={t("netradio.editTooltip")}>
                             ✏️
                           </button>
                           <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
                             onClick={() => removeStation(r.id)}
-                            title="Törlés">
+                            title={t("common:actions.delete")}>
                             🗑
                           </button>
                         </div>
@@ -1800,11 +1808,11 @@ export default function SchoolRadio() {
                 {/* Footer: új / mentés / visszatöltés / default / restore */}
                 <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                   <button type="button" className="sr-btn sr-btn-primary sr-btn-sm" onClick={openNewStation}>
-                    ＋ Új állomás
+                    ＋ {t("netradio.addStation")}
                   </button>
                   <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={exportNetRadios}
-                    title="A jelenlegi listát .json fájlba menti">
-                    📥 Lementés (.json)
+                    title={t("netradio.exportTooltip")}>
+                    📥 {t("netradio.exportButton")}
                   </button>
                   <input
                     ref={importInputRef}
@@ -1817,27 +1825,26 @@ export default function SchoolRadio() {
                     }} />
                   <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                     onClick={() => importInputRef.current?.click()}
-                    title="Korábban exportált .json fájl visszatöltése">
-                    📤 Visszatöltés
+                    title={t("netradio.importTooltip")}>
+                    📤 {t("netradio.importButton")}
                   </button>
                   {canSetTenantDefault && (
                     <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                       onClick={() => void setAsTenantDefault()}
                       disabled={defaultBusy}
-                      title="Az intézmény minden új felhasználója ezt a listát látja először">
-                      {defaultBusy ? "⏳ Mentés…" : "⭐ Alapértelmezetté tesz"}
+                      title={t("netradio.setDefaultTooltip")}>
+                      {defaultBusy ? `⏳ ${t("busy.saving")}` : `⭐ ${t("netradio.setDefaultButton")}`}
                     </button>
                   )}
                   <div style={{flex:1}} />
                   <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={restoreDefaultStations}
-                    title="A lista visszaáll az induló 16 állomásra (a saját bejegyzések elvesznek)">
-                    🔄 Visszaállítás alapra
+                    title={t("netradio.restoreTooltip")}>
+                    🔄 {t("netradio.restoreButton")}
                   </button>
                 </div>
 
                 <div style={{fontSize:11,color:"var(--sl-muted)"}}>
-                  💡 Az alstream URL-eket a myonlineradio.hu-n érdemes ellenőrizni.
-                  A lista a böngészőben tárolódik (intézményenként és eszközönként){canSetTenantDefault ? " – az ⭐ gombbal az egész intézmény alapértelmezetté teheted." : "."}
+                  💡 {t("netradio.footerHint")}{canSetTenantDefault ? t("netradio.footerHintAdminSuffix") : "."}
                 </div>
               </div>
             )}
@@ -1874,7 +1881,7 @@ export default function SchoolRadio() {
               />
               <div className="sr-upload-icon">{uploading ? "⏳" : "🎵"}</div>
               <div className="sr-upload-txt">
-                {uploading ? `Feltöltés… ${uploadPct}%` : "Húzd ide vagy kattints a feltöltéshez"}
+                {uploading ? t("library.uploading", { pct: uploadPct }) : t("library.uploadPrompt")}
               </div>
               <div className="sr-upload-sub">MP3, WAV, OGG, M4A, AAC</div>
             </div>
@@ -1890,20 +1897,20 @@ export default function SchoolRadio() {
                 kiválasztás közös. A user explicit látja, hova fog menni a
                 lejátszás. */}
             <div style={{padding:"10px 16px 12px",borderBottom:"1px solid var(--sl-border)",background:"var(--sl-bg)"}}>
-              <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 Cél (azonnali ▶ és ütemezett 📅 is)</div>
+              <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("library.targetLabel")}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                {(["ALL","DEVICE","GROUP"] as const).map(t => (
-                  <button key={t} type="button"
-                    className={`sr-btn ${formTarget===t?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
-                    onClick={() => { setFormTarget(t); setFormTargetId(""); }}>
-                    {t==="ALL"?"📡 Összes":t==="DEVICE"?"🔊 Egyedi":"👥 Csoport"}
+                {(["ALL","DEVICE","GROUP"] as const).map(tt => (
+                  <button key={tt} type="button"
+                    className={`sr-btn ${formTarget===tt?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
+                    onClick={() => { setFormTarget(tt); setFormTargetId(""); }}>
+                    {tt==="ALL"?`📡 ${t("target.all")}`:tt==="DEVICE"?`🔊 ${t("target.device")}`:`👥 ${t("target.group")}`}
                   </button>
                 ))}
                 {formTarget==="DEVICE" && (
                   <select className="sr-select" style={{flex:1,minWidth:140}}
                     value={formTargetId}
                     onChange={e => setFormTargetId(e.target.value)}>
-                    <option value="">— Eszköz —</option>
+                    <option value="">— {t("target.devicePlaceholder")} —</option>
                     {devices.map(d => (
                       <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
                     ))}
@@ -1913,7 +1920,7 @@ export default function SchoolRadio() {
                   <select className="sr-select" style={{flex:1,minWidth:140}}
                     value={formTargetId}
                     onChange={e => setFormTargetId(e.target.value)}>
-                    <option value="">— Csoport —</option>
+                    <option value="">— {t("target.groupPlaceholder")} —</option>
                     {groups.map(g => (
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
@@ -1925,7 +1932,7 @@ export default function SchoolRadio() {
             {files.length === 0 && !loading ? (
               <div className="sr-empty">
                 <div className="sr-empty-icon">🎵</div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Még nincs feltöltött hangfájl</div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>{t("library.emptyLibrary")}</div>
               </div>
             ) : (
               <div className="sr-files-scroll">
@@ -1960,10 +1967,10 @@ export default function SchoolRadio() {
                           fst === "connecting" ? "⏳" :
                           fst === "error"      ? "✕" : "▶";
                         const title =
-                          fst === "connecting" ? "Lejátszás indítása folyamatban..." :
-                          fst === "playing"    ? "Most szól – újraindításhoz nyomd meg" :
-                          fst === "error"      ? "A lejátszás nem sikerült" :
-                          "Azonnali lejátszás (az aktuálisan kiválasztott célon)";
+                          fst === "connecting" ? t("library.playTooltip.connecting") :
+                          fst === "playing"    ? t("library.playTooltip.playing") :
+                          fst === "error"      ? t("library.playTooltip.error") :
+                          t("library.playTooltip.idle");
                         return (
                           <button
                             className={`sr-btn sr-btn-primary sr-btn-sm${cls}`}
@@ -1978,7 +1985,7 @@ export default function SchoolRadio() {
                       })()}
                       <button
                         className="sr-btn sr-btn-ghost sr-btn-sm"
-                        title="Ütemezés"
+                        title={t("schedule.tooltip")}
                         onClick={() => {
                           const n = new Date();
                           setFormFileId(f.id);
@@ -1995,7 +2002,7 @@ export default function SchoolRadio() {
 
                       <button
                         className="sr-btn sr-btn-danger sr-btn-sm"
-                        title="Törlés"
+                        title={t("common:actions.delete")}
                         onClick={() => void deleteFile(f)}
                         type="button"
                       >
@@ -2028,7 +2035,7 @@ export default function SchoolRadio() {
           {formOpen && (
             <div className="sr-panel">
               <div className="sr-panel-hdr">
-                <div className="sr-panel-title">📅 Új ütemezés</div>
+                <div className="sr-panel-title">📅 {t("schedule.newTitle")}</div>
                 <button
                   className="sr-btn sr-btn-ghost sr-btn-sm"
                   type="button"
@@ -2050,9 +2057,9 @@ export default function SchoolRadio() {
                 )}
 
                 <div>
-                  <label className="sr-label">Hangfájl</label>
+                  <label className="sr-label">{t("schedule.fileLabel")}</label>
                   <select className="sr-select" value={formFileId} onChange={(e) => setFormFileId(e.target.value)}>
-                    <option value="">Válassz hangfájlt…</option>
+                    <option value="">{t("schedule.selectFilePlaceholder")}</option>
                     {files.map((f) => (
                       <option key={f.id} value={f.id}>
                         {f.originalName} ({fmtDuration(f.durationSec)})
@@ -2063,7 +2070,7 @@ export default function SchoolRadio() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <label className="sr-label">Dátum</label>
+                    <label className="sr-label">{t("schedule.dateLabel")}</label>
                     <input
                       type="date"
                       className="sr-input"
@@ -2073,7 +2080,7 @@ export default function SchoolRadio() {
                     />
                   </div>
                   <div>
-                    <label className="sr-label">Kezdési idő</label>
+                    <label className="sr-label">{t("schedule.startTimeLabel")}</label>
                     <input
                       type="time"
                       className="sr-input"
@@ -2092,26 +2099,26 @@ export default function SchoolRadio() {
                         {previewEnd && <span style={{ color: "#475569" }}> → {previewEnd}</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
-                        Hossz: {fmtDuration(previewFile.durationSec)}
+                        {t("schedule.durationLabel", { duration: fmtDuration(previewFile.durationSec) })}
                       </div>
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <div className="sr-label">Lejátszó eszközök</div>
+                  <div className="sr-label">{t("schedule.targetDevicesLabel")}</div>
 
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                    {(["ALL", "DEVICE", "GROUP"] as const).map((t) => (
+                    {(["ALL", "DEVICE", "GROUP"] as const).map((tt) => (
                       <div
-                        key={t}
-                        className={`sr-chip${formTarget === t ? " active" : ""}`}
+                        key={tt}
+                        className={`sr-chip${formTarget === tt ? " active" : ""}`}
                         onClick={() => {
-                          setFormTarget(t);
+                          setFormTarget(tt);
                           setFormTargetId("");
                         }}
                       >
-                        {t === "ALL" ? "📡 Összes" : t === "DEVICE" ? "🔊 Egyedi" : "👥 Csoport"}
+                        {tt === "ALL" ? `📡 ${t("target.all")}` : tt === "DEVICE" ? `🔊 ${t("target.device")}` : `👥 ${t("target.group")}`}
                       </div>
                     ))}
                   </div>
@@ -2119,7 +2126,7 @@ export default function SchoolRadio() {
                   {formTarget === "DEVICE" && (
                     <div className="sr-device-list">
                       {devices.length === 0 ? (
-                        <div style={{ fontSize: 13, color: "var(--sl-muted)", padding: 8 }}>Nincs elérhető eszköz</div>
+                        <div style={{ fontSize: 13, color: "var(--sl-muted)", padding: 8 }}>{t("schedule.noDevicesAvailable")}</div>
                       ) : (
                         devices.map((d) => (
                           <div
@@ -2140,7 +2147,7 @@ export default function SchoolRadio() {
 
                   {formTarget === "GROUP" && (
                     <select className="sr-select" value={formTargetId} onChange={(e) => setFormTargetId(e.target.value)}>
-                      <option value="">Válassz csoportot…</option>
+                      <option value="">{t("target.chooseGroupPlaceholder")}</option>
                       {groups.map((g) => (
                         <option key={g.id} value={g.id}>
                           {g.name}
@@ -2160,7 +2167,7 @@ export default function SchoolRadio() {
                     }}
                     disabled={formBusy}
                   >
-                    Mégse
+                    {t("common:actions.cancel")}
                   </button>
 
                   {/* ▶ Azonnali – a fájl rögtön szól, dátum/idő nem kell */}
@@ -2169,9 +2176,9 @@ export default function SchoolRadio() {
                     type="button"
                     onClick={() => void submitImmediateFromForm()}
                     disabled={formBusy || !formFileId}
-                    title="A fájl rögtön szól, dátum/idő nem kell"
+                    title={t("schedule.immediateTooltip")}
                     style={{background:"linear-gradient(135deg,#16a34a,#15803d)"}}>
-                    {formBusy ? "⏳…" : "▶ Azonnali"}
+                    {formBusy ? "⏳…" : t("schedule.immediateButton")}
                   </button>
 
                   <button
@@ -2180,7 +2187,7 @@ export default function SchoolRadio() {
                     onClick={() => void submitSchedule()}
                     disabled={formBusy}
                   >
-                    {formBusy ? "⏳ Mentés…" : "📅 Ütemezés hozzáadása"}
+                    {formBusy ? t("schedule.saving") : t("schedule.addButton")}
                   </button>
                 </div>
               </div>
@@ -2206,23 +2213,23 @@ export default function SchoolRadio() {
                 setFormOpen(true);
               }}
             >
-              ＋ Új ütemezés
+              ＋ {t("schedule.newScheduleButton")}
             </button>
           )}
 
           {/* ═══ Playlist összeállító ═══ */}
           <div className="sr-panel">
             <div className="sr-panel-hdr">
-              <div className="sr-panel-title">🎼 Lejátszási lista készítő</div>
+              <div className="sr-panel-title">🎼 {t("playlist.title")}</div>
               {plItems.length > 0 && (
                 <button
                   className="sr-btn sr-btn-danger sr-btn-sm"
                   type="button"
                   onClick={() => {
-                    if (window.confirm("Törlöd az összeállítást?")) setPlItems([]);
+                    if (window.confirm(t("playlist.deleteConfirm"))) setPlItems([]);
                   }}
                 >
-                  🗑 Töröl
+                  🗑 {t("common:actions.delete")}
                 </button>
               )}
             </div>
@@ -2230,19 +2237,19 @@ export default function SchoolRadio() {
             {/* Tabs */}
             <div className="sr-tabs">
               {([
-                { id: "list", label: `📋 Lista (${plItems.length})` },
-                { id: "yt-search", label: "🔍 YouTube keresés" },
-                { id: "yt-url", label: "🔗 YouTube link" },
-                { id: "gdrive", label: "📁 Google Drive" },
-                { id: "recording", label: "🎙️ Hangfelvétel" },
-              ] as const).map((t) => (
+                { id: "list", label: `📋 ${t("playlist.tabs.list")} (${plItems.length})` },
+                { id: "yt-search", label: `🔍 ${t("playlist.tabs.youtubeSearch")}` },
+                { id: "yt-url", label: `🔗 ${t("playlist.tabs.youtubeLink")}` },
+                { id: "gdrive", label: `📁 ${t("playlist.tabs.googleDrive")}` },
+                { id: "recording", label: `🎙️ ${t("playlist.tabs.recording")}` },
+              ] as const).map((tab) => (
                 <button
-                  key={t.id}
-                  className={`sr-tab${plTab === t.id ? " active" : ""}`}
+                  key={tab.id}
+                  className={`sr-tab${plTab === tab.id ? " active" : ""}`}
                   type="button"
-                  onClick={() => setPlTab(t.id)}
+                  onClick={() => setPlTab(tab.id)}
                 >
-                  {t.label}
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -2265,9 +2272,9 @@ export default function SchoolRadio() {
                 {plItems.length === 0 ? (
                   <div className="sr-empty" style={{ padding: "28px 20px" }}>
                     <div className="sr-empty-icon">🎼</div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>Üres lista</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{t("playlist.emptyTitle")}</div>
                     <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>
-                      Adj hozzá dalokat a többi fülről
+                      {t("playlist.emptyHint")}
                     </div>
                   </div>
                 ) : (
@@ -2294,7 +2301,7 @@ export default function SchoolRadio() {
                               item.source === "youtube" ? "yt" : item.source === "gdrive" ? "gd" : item.source === "recording" ? "rec" : "up"
                             }`}
                           >
-                            {item.source === "youtube" ? "▶ YouTube" : item.source === "gdrive" ? "📁 Drive" : item.source === "recording" ? "🎙️ Felvétel" : "🎵 Feltöltés"}
+                            {item.source === "youtube" ? "▶ YouTube" : item.source === "gdrive" ? `📁 ${t("playlist.sourceDrive")}` : item.source === "recording" ? `🎙️ ${t("playlist.sourceRecording")}` : `🎵 ${t("playlist.sourceUpload")}`}
                           </span>
                           <span className="sr-pl-dur">{fmtDuration(item.durationSec)}</span>
                           {item.errorMsg && <span style={{ fontSize: 10, color: "#dc2626" }}>{item.errorMsg}</span>}
@@ -2367,7 +2374,7 @@ export default function SchoolRadio() {
                     style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
                     onClick={() => plFileInputRef.current?.click()}
                   >
-                    ＋ Hangfájl feltöltése a listához
+                    ＋ {t("playlist.uploadToListButton")}
                   </button>
                 </div>
               </div>
@@ -2380,7 +2387,7 @@ export default function SchoolRadio() {
                   <input
                     className="sr-input"
                     style={{ flex: 1 }}
-                    placeholder="Keresés YouTube-on…"
+                    placeholder={t("playlist.youtubeSearchPlaceholder")}
                     value={ytQuery}
                     onChange={(e) => setYtQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchYt()}
@@ -2421,14 +2428,14 @@ export default function SchoolRadio() {
                       disabled={!ytSelResult}
                       onClick={addYtSearchResult}
                     >
-                      ＋ Hozzáadás a listához
+                      ＋ {t("playlist.addToListButton")}
                     </button>
                   </>
                 )}
 
                 {ytResults.length === 0 && !ytSearching && ytQuery && (
                   <div style={{ textAlign: "center", fontSize: 13, color: "var(--sl-muted)", padding: "12px 0" }}>
-                    Nincs találat
+                    {t("playlist.noResults")}
                   </div>
                 )}
               </div>
@@ -2438,7 +2445,7 @@ export default function SchoolRadio() {
             {plTab === "yt-url" && (
               <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
-                  Illeszd be a YouTube videó linkjét. A cím és hossz automatikusan betöltődik.
+                  {t("playlist.youtubeUrlHint")}
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
@@ -2454,11 +2461,11 @@ export default function SchoolRadio() {
                     className="sr-btn sr-btn-ghost sr-btn-sm"
                     type="button"
                     onClick={async () => {
-                      const t = await navigator.clipboard.readText().catch(() => "");
-                      if (t) setYtPasteUrl(t);
+                      const clip = await navigator.clipboard.readText().catch(() => "");
+                      if (clip) setYtPasteUrl(clip);
                     }}
                   >
-                    📋 Beilleszt
+                    📋 {t("playlist.pasteButton")}
                   </button>
                 </div>
 
@@ -2469,7 +2476,7 @@ export default function SchoolRadio() {
                   disabled={ytFetching || !ytPasteUrl.trim()}
                   onClick={addYtUrl}
                 >
-                  {ytFetching ? "⏳ Betöltés…" : "＋ Hozzáadás"}
+                  {ytFetching ? t("common:actions.loading") : `＋ ${t("common:actions.add")}`}
                 </button>
               </div>
             )}
@@ -2478,7 +2485,7 @@ export default function SchoolRadio() {
             {plTab === "gdrive" && (
               <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
-                  Google Drive fájl vagy mappa linkjét illeszd be. Hangfájlokat automatikusan listázza.
+                  {t("playlist.googleDriveHint")}
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
@@ -2493,8 +2500,8 @@ export default function SchoolRadio() {
                     className="sr-btn sr-btn-ghost sr-btn-sm"
                     type="button"
                     onClick={async () => {
-                      const t = await navigator.clipboard.readText().catch(() => "");
-                      if (t) setDriveUrl(t);
+                      const clip = await navigator.clipboard.readText().catch(() => "");
+                      if (clip) setDriveUrl(clip);
                     }}
                   >
                     📋
@@ -2508,13 +2515,13 @@ export default function SchoolRadio() {
                   disabled={driveFetching || !driveUrl.trim()}
                   onClick={fetchDrive}
                 >
-                  {driveFetching ? "⏳ Betöltés…" : "🔍 Fájlok lekérése"}
+                  {driveFetching ? t("common:actions.loading") : t("playlist.driveFetchButton")}
                 </button>
 
                 {driveFiles.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sl-muted)" }}>
-                      {driveFiles.length} hangfájl találva:
+                      {t("playlist.driveFilesFound", { count: driveFiles.length })}
                     </div>
                     {driveFiles.map((f, i) => (
                       <div
@@ -2556,18 +2563,17 @@ export default function SchoolRadio() {
             {plTab === "recording" && (
               <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
                 <div style={{fontSize:12,color:"var(--sl-muted)"}}>
-                  Vegyél fel egy bemondott szövegrészt, és add hozzá a lejátszási listához.
-                  A felvétel feltöltődik a könyvtárba, és onnan kerül a lista végére.
+                  {t("playlist.recordingHint")}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"22px 16px",border:"1.5px solid var(--sl-border)",borderRadius:14,background:"var(--sl-bg)"}}>
                   {recRadioState === "idle" && (
                     <>
                       <div style={{fontSize:50,lineHeight:1}}>🎙️</div>
                       <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>
-                        Kattints a gombra a felvétel megkezdéséhez.
+                        {t("playlist.recordingStartHint")}
                       </div>
                       <button className="sr-btn sr-btn-primary" type="button" onClick={() => void startRecRadio()}>
-                        ⏺ Felvétel indítása
+                        ⏺ {t("playlist.recordingStartButton")}
                       </button>
                       {recRadioError && (
                         <div className="sr-alert sr-alert-error" style={{margin:0}}>
@@ -2582,23 +2588,23 @@ export default function SchoolRadio() {
                       <div style={{fontSize:30,fontWeight:900,fontFamily:"monospace",color:"#ef4444"}}>
                         {String(Math.floor(recRadioSeconds/60)).padStart(2,"0")}:{String(recRadioSeconds%60).padStart(2,"0")}
                       </div>
-                      <div style={{fontSize:12,fontWeight:700,color:"#ef4444"}}>● Felvétel folyamatban…</div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#ef4444"}}>● {t("playlist.recordingInProgress")}</div>
                       <button className="sr-btn sr-btn-danger" type="button" onClick={stopRecRadio}>
-                        ⏹ Felvétel befejezése
+                        ⏹ {t("playlist.recordingStopButton")}
                       </button>
                     </>
                   )}
                   {recRadioState === "recorded" && recRadioAudioUrl && (
                     <>
                       <div style={{fontSize:50,lineHeight:1}}>✅</div>
-                      <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>Felvétel kész – hallgasd meg!</div>
+                      <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>{t("playlist.recordingDoneHint")}</div>
                       <audio controls src={recRadioAudioUrl} style={{width:"100%",maxWidth:380}} />
                       <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
                         <button className="sr-btn sr-btn-ghost" type="button" onClick={resetRecRadio} disabled={recRadioUploading}>
-                          🔄 Új felvétel
+                          🔄 {t("playlist.newRecordingButton")}
                         </button>
                         <button className="sr-btn sr-btn-primary" type="button" onClick={() => void addRecordingToPlaylist()} disabled={recRadioUploading}>
-                          {recRadioUploading ? "⏳ Feltöltés…" : "＋ Hozzáad a listához"}
+                          {recRadioUploading ? t("playlist.uploading") : `＋ ${t("playlist.addRecordingToListButton")}`}
                         </button>
                       </div>
                       {recRadioError && (
@@ -2616,7 +2622,7 @@ export default function SchoolRadio() {
             {plItems.filter((i) => i.status === "ready").length > 0 && (
               <>
                 <div className="sr-total-bar">
-                  <span>📋 {plItems.filter((i) => i.status === "ready").length} dal • Teljes hossz:</span>
+                  <span>📋 {t("playlist.totalBar", { count: plItems.filter((i) => i.status === "ready").length })}</span>
                   <span>{fmtDuration(plTotalSec)}</span>
                 </div>
 
@@ -2624,7 +2630,7 @@ export default function SchoolRadio() {
                   <input
                     className="sr-input"
                     style={{ flex: 1 }}
-                    placeholder="Összeállítás neve (pl. Szünet – dec. 5.)"
+                    placeholder={t("playlist.namePlaceholder")}
                     value={plName}
                     onChange={(e) => setPlName(stripAccents(e.target.value))}
                   />
@@ -2633,7 +2639,7 @@ export default function SchoolRadio() {
                     type="button"
                     disabled={plBusy}
                     onClick={buildPlaylist}>
-                    {plBusy ? "⏳ Készül…" : "🔨 Összeállít"}
+                    {plBusy ? t("playlist.building") : t("playlist.buildButton")}
                   </button>
                 </div>
               </>
@@ -2642,11 +2648,11 @@ export default function SchoolRadio() {
             {/* Kész összeállítás */}
             {plBuiltUrl && plBuiltName && (
               <div className="sr-built-result">
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>✅ {plBuiltName} – elkészült!</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>✅ {t("playlist.builtDone", { name: plBuiltName })}</div>
                 <audio controls src={plBuiltUrl} style={{ width: "100%", height: 32, borderRadius: 8 }} preload="metadata" />
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <a href={plBuiltUrl} download={plBuiltName + ".mp3"} className="sr-btn sr-btn-ghost sr-btn-sm">
-                    ⬇ Letöltés
+                    ⬇ {t("playlist.downloadButton")}
                   </a>
 
                   {plBuiltFileId && (
@@ -2663,7 +2669,7 @@ export default function SchoolRadio() {
                         setFormOpen(true);
                       }}
                     >
-                      📅 Ütemezés
+                      📅 {t("schedule.scheduleButton")}
                     </button>
                   )}
 
@@ -2677,7 +2683,7 @@ export default function SchoolRadio() {
                       setPlName("");
                     }}
                   >
-                    🔄 Új összeállítás
+                    🔄 {t("playlist.newCompositionButton")}
                   </button>
                 </div>
               </div>
@@ -2692,7 +2698,7 @@ export default function SchoolRadio() {
           <div className="sr-overlay-modal" style={{maxWidth:560}} onClick={e => e.stopPropagation()}>
             <div className="sr-overlay-hdr">
               <div className="sr-overlay-title">
-                {stationForm.mode === "new" ? "＋ Új rádióállomás" : "✏️ Állomás szerkesztése"}
+                {stationForm.mode === "new" ? `＋ ${t("stationModal.newTitle")}` : `✏️ ${t("stationModal.editTitle")}`}
               </div>
               <button className="sr-overlay-close" type="button" onClick={() => setStationForm(null)}>✕</button>
             </div>
@@ -2701,32 +2707,32 @@ export default function SchoolRadio() {
                 <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{stationError}</span></div>
               )}
               <div>
-                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Név</div>
+                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>{t("stationModal.nameLabel")}</div>
                 <input className="sr-input" style={{width:"100%"}}
                   value={stationForm.name}
                   onChange={e => setStationForm(s => s ? { ...s, name: stripAccents(e.target.value) } : s)}
-                  placeholder="pl. Radio 88 (ékezetek nélkül)" autoFocus />
+                  placeholder={t("stationModal.namePlaceholder")} autoFocus />
               </div>
               <div>
-                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>Műfaj</div>
+                <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5}}>{t("stationModal.genreLabel")}</div>
                 <input className="sr-input" style={{width:"100%"}}
                   value={stationForm.genre}
                   onChange={e => setStationForm(s => s ? { ...s, genre: stripAccents(e.target.value) } : s)}
-                  placeholder="pl. rock, retro, jazz" />
+                  placeholder={t("stationModal.genrePlaceholder")} />
               </div>
               <div>
                 <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",textTransform:"uppercase",letterSpacing:0.3,marginBottom:5,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span>Alstreamek (legalább 1)</span>
+                  <span>{t("stationModal.substreamsLabel")}</span>
                   <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                     onClick={() => setStationForm(s => s ? { ...s, streams: [...s.streams, { label: "", url: "" }] } : s)}>
-                    ＋ Hozzáad
+                    ＋ {t("common:actions.add")}
                   </button>
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {stationForm.streams.map((s, idx) => (
                     <div key={idx} className="sr-stream-row">
                       <input className="sr-input"
-                        placeholder="Label (pl. Foadas, Rock, Jazz)"
+                        placeholder={t("stationModal.streamLabelPlaceholder")}
                         value={s.label}
                         onChange={e => setStationForm(f => f ? {
                           ...f, streams: f.streams.map((x,i) => i===idx ? { ...x, label: stripAccents(e.target.value) } : x),
@@ -2742,22 +2748,22 @@ export default function SchoolRadio() {
                           ...f, streams: f.streams.filter((_,i) => i!==idx),
                         } : f)}
                         disabled={stationForm.streams.length <= 1}
-                        title={stationForm.streams.length <= 1 ? "Legalább egy stream kell" : "Stream törlése"}>
+                        title={stationForm.streams.length <= 1 ? t("stationModal.needAtLeastOneStream") : t("stationModal.deleteStreamTooltip")}>
                         🗑
                       </button>
                     </div>
                   ))}
                 </div>
                 <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:6}}>
-                  💡 A myonlineradio.hu-n megnézheted a publikus stream URL-eket és alcsatornákat.
+                  💡 {t("stationModal.myonlineradioHint")}
                 </div>
               </div>
               <div style={{display:"flex",justifyContent:"flex-end",gap:10,paddingTop:4}}>
                 <button type="button" className="sr-btn sr-btn-ghost" onClick={() => setStationForm(null)}>
-                  Mégse
+                  {t("common:actions.cancel")}
                 </button>
                 <button type="button" className="sr-btn sr-btn-primary" onClick={submitStation}>
-                  {stationForm.mode === "new" ? "＋ Hozzáadás" : "💾 Mentés"}
+                  {stationForm.mode === "new" ? `＋ ${t("common:actions.add")}` : t("common:actions.save")}
                 </button>
               </div>
             </div>
@@ -2770,7 +2776,7 @@ export default function SchoolRadio() {
         <div className="sr-overlay" onClick={() => setHistoryOpen(false)}>
           <div className="sr-overlay-modal" onClick={e => e.stopPropagation()}>
             <div className="sr-overlay-hdr">
-              <div className="sr-overlay-title">📥 Időzített lejátszások</div>
+              <div className="sr-overlay-title">📥 {t("history.overlayTitle")}</div>
               <button className="sr-overlay-close" type="button" onClick={() => setHistoryOpen(false)}>✕</button>
             </div>
             <div className="sr-overlay-body">
@@ -2778,13 +2784,13 @@ export default function SchoolRadio() {
               {upcomingSchedules.length === 0 ? (
                 <div className="sr-empty" style={{padding:"24px 16px"}}>
                   <div className="sr-empty-icon">⏰</div>
-                  <div style={{fontSize:13,fontWeight:700}}>Nincs közelgő ütemezés</div>
+                  <div style={{fontSize:13,fontWeight:700}}>{t("history.noUpcoming")}</div>
                 </div>
               ) : (
                 upcomingSchedules.map(s => {
                   const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
                   const targetLabel =
-                    s.targetType === "ALL" ? "📡 Összes" : s.targetType === "DEVICE" ? "🔊 Egyedi" : "👥 Csoport";
+                    s.targetType === "ALL" ? `📡 ${t("target.all")}` : s.targetType === "DEVICE" ? `🔊 ${t("target.device")}` : `👥 ${t("target.group")}`;
                   const isWarn = checkTeachingHourOverlap(new Date(s.scheduledAt), s.radioFile.durationSec, mainBells);
                   return (
                     <div key={s.id} className="sr-sched-item">
@@ -2792,7 +2798,7 @@ export default function SchoolRadio() {
                         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                           <span className="sr-sched-time">{fmtDateTimeFull(s.scheduledAt)}</span>
                           {endTime && <span className="sr-sched-end">→ {endTime}</span>}
-                          {isWarn && <span className="sr-lesson-warn">⚠️ Tanítási óra</span>}
+                          {isWarn && <span className="sr-lesson-warn">⚠️ {t("history.lessonWarning")}</span>}
                         </div>
                         <div className="sr-sched-file" title={s.radioFile.originalName}>
                           🎵 {s.radioFile.originalName}
@@ -2811,27 +2817,27 @@ export default function SchoolRadio() {
               )}
 
               {/* Elválasztó */}
-              <div className="sr-section-divider">Elhangzott lejátszások</div>
+              <div className="sr-section-divider">{t("history.pastSectionTitle")}</div>
 
               {/* Múltbeli (legutóbbi felül) */}
               {pastSchedules.length === 0 ? (
                 <div className="sr-empty" style={{padding:"18px 16px"}}>
                   <div className="sr-empty-icon">🕐</div>
-                  <div style={{fontSize:13,fontWeight:700}}>Még nem volt lejátszás</div>
+                  <div style={{fontSize:13,fontWeight:700}}>{t("history.noPast")}</div>
                 </div>
               ) : (
                 pastSchedules.map(s => {
                   const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.PENDING;
                   const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
                   const targetLabel =
-                    s.targetType === "ALL" ? "📡 Összes" : s.targetType === "DEVICE" ? "🔊 Egyedi" : "👥 Csoport";
+                    s.targetType === "ALL" ? `📡 ${t("target.all")}` : s.targetType === "DEVICE" ? `🔊 ${t("target.device")}` : `👥 ${t("target.group")}`;
                   return (
                     <div key={s.id} className="sr-sched-item sr-sched-past">
                       <div>
                         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                           <span className="sr-sched-time" style={{color:"var(--sl-muted)",fontSize:13}}>{fmtDateTimeFull(s.scheduledAt)}</span>
                           {endTime && <span className="sr-sched-end">→ {endTime}</span>}
-                          <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"44"}}>{badge.label}</span>
+                          <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"44"}}>{t(statusLabelKey(s.status))}</span>
                         </div>
                         <div className="sr-sched-file" title={s.radioFile.originalName}>
                           🎵 {s.radioFile.originalName}
@@ -2844,7 +2850,7 @@ export default function SchoolRadio() {
                       <button
                         className="sr-btn sr-btn-primary sr-btn-sm"
                         type="button"
-                        title="Újraütemezés"
+                        title={t("history.rescheduleTooltip")}
                         onClick={() => {
                           const n = new Date();
                           setFormFileId(s.radioFileId);
@@ -2853,7 +2859,7 @@ export default function SchoolRadio() {
                           setFormOpen(true);
                           setHistoryOpen(false);
                         }}>
-                        🔁 Újra
+                        🔁 {t("history.replayButton")}
                       </button>
                     </div>
                   );

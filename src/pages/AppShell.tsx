@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
+import { applyLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../i18n";
+import { setLocale as apiSetLocale } from "../lib/api";
 
 type TenantListItem = { id:string; name:string; domain?:string|null; isActive?:boolean|null; };
 type TenantsResponse = { ok:true; tenants:TenantListItem[]; };
@@ -12,18 +15,13 @@ function safeSet(s:Storage,k:string,v:string){try{s.setItem(k,v)}catch{}}
 function safeRemove(s:Storage,k:string){try{s.removeItem(k)}catch{}}
 
 const NAV_ITEMS = [
-  {to:"/app/devices",  label:"Eszközök",       icon:"🔊", roles:["all"]},
-  {to:"/app/messages", label:"Üzenetek",        icon:"📢", roles:["all"]},
-  {to:"/app/radio",    label:"Iskolai Rádió",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
-  {to:"/app/bells",    label:"Csengetési rend", icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
-  {to:"/app/users",    label:"Felhasználók",    icon:"👥", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
-  {to:"/app/tenants",  label:"Intézmények",     icon:"🏫", roles:["SUPER_ADMIN"]},
+  {to:"/app/devices",  nsKey:"nav.devices", icon:"🔊", roles:["all"]},
+  {to:"/app/messages", nsKey:"nav.messages", icon:"📢", roles:["all"]},
+  {to:"/app/radio",    nsKey:"nav.radio",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
+  {to:"/app/bells",    nsKey:"nav.bells",   icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
+  {to:"/app/users",    nsKey:"nav.users",   icon:"👥", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
+  {to:"/app/tenants",  nsKey:"nav.tenants", icon:"🏫", roles:["SUPER_ADMIN"]},
 ];
-
-const ROLE_LABELS:Record<string,string> = {
-  SUPER_ADMIN:"Rendszergazda", TENANT_ADMIN:"Intézmény-adminisztrátor",
-  ORG_ADMIN:"Szervezeti adminisztrátor", OPERATOR:"Operátor", TEACHER:"Pedagógus", PLAYER:"Player",
-};
 
 const THEME = `
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
@@ -268,6 +266,7 @@ export default function AppShell() {
   const { logout, state } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
+  const { t, i18n } = useTranslation(["appshell", "common"]);
 
   const isAuthed     = state.status === "authed";
   const role         = isAuthed ? (state.user as any)?.role || "" : "";
@@ -287,7 +286,7 @@ export default function AppShell() {
     } catch { return ""; }
   })() : "";
   const userName  = isAuthed
-    ? (state.user as any)?.name || (state.user as any)?.displayName || (state.user as any)?.email || "Felhasználó" : "";
+    ? (state.user as any)?.name || (state.user as any)?.displayName || (state.user as any)?.email || t("appshell:defaultUserName") : "";
 
   const [navOpen, setNavOpen] = useState(false);
   const [tenants, setTenants] = useState<TenantListItem[]>([]);
@@ -332,7 +331,7 @@ export default function AppShell() {
         const list = Array.isArray(res.tenants) ? res.tenants : [];
         setTenants(list);
         if (activeTenantId && !list.some(t => t.id === activeTenantId)) setActiveTenantId("");
-      } catch (e: any) { if (!cancelled) setTenantsError(e?.message ?? "Betöltés sikertelen"); }
+      } catch (e: any) { if (!cancelled) setTenantsError(e?.message ?? t("appshell:tenantsLoadError")); }
       finally { if (!cancelled) setTenantsLoading(false); }
     })();
     return () => { cancelled = true; };
@@ -364,7 +363,7 @@ export default function AppShell() {
               onClick={e => { e.preventDefault(); navigate(item.to); onNavigate?.(); }}
             >
               <span className="asl-nav-icon">{item.icon}</span>
-              <span style={{ flex:1 }}>{item.label}</span>
+              <span style={{ flex:1 }}>{t(`common:${item.nsKey}`)}</span>
               {active && <span className="asl-nav-dot" />}
             </a>
           );
@@ -373,16 +372,37 @@ export default function AppShell() {
     );
   }
 
+  function onChangeLocale(next: string) {
+    if (!SUPPORTED_LOCALES.includes(next as SupportedLocale)) return;
+    applyLocale(next);
+    apiSetLocale(next).catch(() => {
+      // fire-and-forget – a UI-t nem blokkoljuk, ha a perzisztálás elhasal
+      // (pl. átmeneti hálózati hiba), a nyelv akkor is átvált lokálisan
+    });
+  }
+
   const UserCard = () => (
     <>
       <div className="asl-user-card">
         <div className="asl-avatar">{avatarLetter}</div>
         <div style={{ minWidth:0 }}>
           <div className="asl-uname">{userName}</div>
-          <div className="asl-urole">{ROLE_LABELS[role] || role}</div>
+          <div className="asl-urole">{t(`common:roles.${role}`, { defaultValue: role })}</div>
         </div>
       </div>
-      <button className="asl-logout" onClick={onLogout} type="button">🚪 Kijelentkezés</button>
+      <div className="asl-tenant-pill" style={{ width:"100%", justifyContent:"center", marginBottom:9 }}>
+        <span style={{ fontSize:15 }}>🌐</span>
+        <select
+          value={i18n.language}
+          onChange={e => onChangeLocale(e.target.value)}
+          aria-label={t("common:language.label")}
+        >
+          {SUPPORTED_LOCALES.map(code => (
+            <option key={code} value={code}>{t(`common:language.${code}`)}</option>
+          ))}
+        </select>
+      </div>
+      <button className="asl-logout" onClick={onLogout} type="button">🚪 {t("common:actions.logout")}</button>
     </>
   );
 
@@ -402,7 +422,7 @@ export default function AppShell() {
           </Link>
           {institutionLabel
             ? <div className="asl-inst-badge" title={institutionLabel}>🏫 {institutionLabel}</div>
-            : isSuperAdmin ? <div className="asl-inst-badge warn">⚠️ Válassz intézményt</div> : null
+            : isSuperAdmin ? <div className="asl-inst-badge warn">{t("appshell:chooseTenantBadge")}</div> : null
           }
         </div>
         <div className="asl-nav-area"><NavLinks /></div>
@@ -439,19 +459,19 @@ export default function AppShell() {
       <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
         <header className="asl-topbar">
           <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-            <button className="asl-burger" onClick={() => setNavOpen(true)} aria-label="Menü" type="button">☰</button>
-            <StatusPill icon="🕐" label="Idő:" value={timeStr} />
-            <StatusPill icon="🔔" label="Csengő:" value={nextBell} />
-            <StatusPill icon="📢" label="Üzenet:" value={nextMessage} />
-            <StatusPill icon="📻" label="Rádió:" value={nextRadio} />
+            <button className="asl-burger" onClick={() => setNavOpen(true)} aria-label={t("appshell:menuAria")} type="button">☰</button>
+            <StatusPill icon="🕐" label={t("appshell:statusTime")} value={timeStr} />
+            <StatusPill icon="🔔" label={t("appshell:statusBell")} value={nextBell} />
+            <StatusPill icon="📢" label={t("appshell:statusMessage")} value={nextMessage} />
+            <StatusPill icon="📻" label={t("appshell:statusRadio")} value={nextRadio} />
           </div>
           {isSuperAdmin && (
             <div className="asl-tenant-pill">
               <span style={{ fontSize:15 }}>🏫</span>
               <select value={activeTenantId} onChange={e => setActiveTenantId(e.target.value)} disabled={tenantsLoading||!!tenantsError}>
-                <option value="">{tenantsLoading ? "Betöltés…" : "Válassz intézményt…"}</option>
-                {tenants.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}{t.isActive===false?" (inaktív)":""}</option>
+                <option value="">{tenantsLoading ? t("common:actions.loading") : t("appshell:chooseTenantPlaceholder")}</option>
+                {tenants.map(tn => (
+                  <option key={tn.id} value={tn.id}>{tn.name}{tn.isActive===false?t("appshell:inactiveSuffix"):""}</option>
                 ))}
               </select>
               {tenantsError && <span style={{ fontSize:12, color:"var(--sl-red)" }}>⚠</span>}
@@ -464,8 +484,8 @@ export default function AppShell() {
             <div className="asl-guard-wrap">
               <div className="asl-guard-card">
                 <div className="gi">🏫</div>
-                <h2>Válassz intézményt!</h2>
-                <p>Rendszergazda módban a felső sávban válassz ki egy intézményt, hogy hozzáférhess az adatokhoz.</p>
+                <h2>{t("appshell:chooseTenantTitle")}</h2>
+                <p>{t("appshell:chooseTenantBody")}</p>
               </div>
             </div>
           ) : <Outlet />}

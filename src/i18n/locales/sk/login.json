@@ -1,0 +1,20 @@
+{
+  "heading": "Vitaj! 👋",
+  "subtitle": "Prihlás sa do školského systému",
+  "already": {
+    "loggedInAs": "Si prihlásený ako",
+    "unknownUser": "neznámy",
+    "continue": "Pokračovať sem"
+  },
+  "form": {
+    "emailLabel": "E-mailová adresa",
+    "emailPlaceholder": "napr. učiteľ@škola.sk",
+    "passwordLabel": "Heslo",
+    "submit": "Prihlásiť sa →",
+    "submitBusy": "⏳ Prihlasovanie…"
+  },
+  "backLink": "← Späť na úvodnú stránku",
+  "errors": {
+    "loginFailed": "Prihlásenie zlyhalo."
+  }
+}

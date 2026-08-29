@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 
 type LocationState = { from?: string; };
-function formatAuthError(err: any): string {
+function formatAuthError(err: any, fallbackMsg: string): string {
   const s = err?.status;
   const d = err?.data;
   const m = (d && typeof d === "object" && (d.error || d.message)) || err?.message;
-  return s ? `${m || "Sikertelen bejelentkezés."} (HTTP ${s})` : (m || "Sikertelen bejelentkezés.");
+  return s ? `${m || fallbackMsg} (HTTP ${s})` : (m || fallbackMsg);
 }
 
 export default function Login() {
+  const { t } = useTranslation(["login", "common"]);
   const { login, logout, state } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,7 +40,7 @@ export default function Login() {
       await login(email.trim(), password);
       setDidSubmit(true);
     }
-    catch (err: any) { setError(formatAuthError(err)); }
+    catch (err: any) { setError(formatAuthError(err, t("errors.loginFailed"))); }
     finally { setBusy(false); }
   }
 
@@ -135,15 +137,15 @@ export default function Login() {
             <source srcSet="/brand/schoollive-logo.svg"  media="(prefers-color-scheme:light)" type="image/svg+xml" />
             <img className="lg-logo" src="/brand/schoollive-logo.svg" alt="SchoolLive" loading="eager" decoding="async" />
           </picture>
-          <h1 className="lg-heading">Üdvözlünk! 👋</h1>
-          <p className="lg-sub">Jelentkezz be az iskolai rendszerbe</p>
+          <h1 className="lg-heading">{t("heading")}</h1>
+          <p className="lg-sub">{t("subtitle")}</p>
 
           {error && <div className="lg-error"><span>⚠️</span><span>{error}</span></div>}
 
           {isAlreadyAuthed && (
             <div className="lg-already">
               <div>
-                Be vagy jelentkezve mint <strong>{currentUserEmail || "ismeretlen"}</strong>
+                {t("already.loggedInAs")} <strong>{currentUserEmail || t("already.unknownUser")}</strong>
                 {currentUserRole && <> ({currentUserRole})</>}.
               </div>
               <div className="lg-already-row">
@@ -152,14 +154,14 @@ export default function Login() {
                   className="lg-already-btn primary"
                   onClick={() => navigate(from, { replace: true })}
                 >
-                  Tovább ide
+                  {t("already.continue")}
                 </button>
                 <button
                   type="button"
                   className="lg-already-btn"
                   onClick={() => logout()}
                 >
-                  Kijelentkezés
+                  {t("common:actions.logout")}
                 </button>
               </div>
             </div>
@@ -167,14 +169,14 @@ export default function Login() {
 
           <form onSubmit={onSubmit}>
             <div className="lg-field">
-              <label className="lg-label" htmlFor="lg-email">E-mail cím</label>
+              <label className="lg-label" htmlFor="lg-email">{t("form.emailLabel")}</label>
               <input id="lg-email" className="lg-input" type="email"
                 value={email} onChange={e => setEmail(e.target.value)}
                 autoComplete="username" inputMode="email" required disabled={busy}
-                placeholder="pl. tanár@iskola.hu" />
+                placeholder={t("form.emailPlaceholder")} />
             </div>
             <div className="lg-field">
-              <label className="lg-label" htmlFor="lg-pw">Jelszó</label>
+              <label className="lg-label" htmlFor="lg-pw">{t("form.passwordLabel")}</label>
               <div className="lg-input-wrap">
                 <input id="lg-pw" className="lg-input" type={showPw?"text":"password"}
                   value={password} onChange={e => setPassword(e.target.value)}
@@ -186,10 +188,10 @@ export default function Login() {
               </div>
             </div>
             <button className="lg-btn" type="submit" disabled={busy}>
-              {busy ? "⏳ Bejelentkezés…" : "Belépés →"}
+              {busy ? t("form.submitBusy") : t("form.submit")}
             </button>
           </form>
-          <Link className="lg-back" to="/">← Vissza a főoldalra</Link>
+          <Link className="lg-back" to="/">{t("backLink")}</Link>
       </div>
 
     </div>

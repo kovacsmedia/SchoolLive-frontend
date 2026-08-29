@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Gestionarea utilizatorilor și permisiunilor instituției."
+  },
+  "actions": {
+    "addUser": "＋ Utilizator nou",
+    "deactivate": "⏸ Dezactivează",
+    "create": "✅ Creează",
+    "creating": "⏳ Se creează…",
+    "saving": "⏳ Se salvează…"
+  },
+  "table": {
+    "emailHeader": "E-mail",
+    "nameHeader": "Nume",
+    "statusHeader": "Status",
+    "roleHeader": "Rol",
+    "createdAtHeader": "Creat",
+    "lastLoginHeader": "Ultima autentificare",
+    "actionsHeader": "Acțiuni",
+    "noResults": "Niciun rezultat"
+  },
+  "status": {
+    "active": "✓ Activ",
+    "inactive": "✗ Inactiv"
+  },
+  "modals": {
+    "createTitle": "Utilizator nou",
+    "editTitle": "Editare: {{email}}",
+    "messagesTitle": "Mesaje: {{email}}"
+  },
+  "form": {
+    "emailLabel": "Adresă de e-mail *",
+    "emailPlaceholder": "ex. profesor@scoala.ro",
+    "displayNameLabel": "Nume afișat",
+    "displayNamePlaceholder": "ex. Ion Popescu",
+    "displayNameHint": "Opțional",
+    "roleLabel": "Rol",
+    "statusLabel": "Status",
+    "activeCheckbox": "Utilizator activ",
+    "passwordLabel": "Parolă",
+    "passwordPlaceholder": "Minimum 6 caractere",
+    "passwordHintEdit": "Dacă rămâne gol, nu se schimbă.",
+    "passwordHintCreate": "Obligatoriu pentru un utilizator nou."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Admin",
+      "description": "Admin de tenant: permisiuni complete la nivel de tenant."
+    },
+    "EDITOR": {
+      "label": "Editor",
+      "description": "Trimiterea mesajelor, gestionarea semnalelor programate."
+    },
+    "CONTRIBUTOR": {
+      "label": "Colaborator",
+      "description": "Trimiterea mesajelor instantanee."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Permisiune pentru vizualizarea Player."
+    }
+  },
+  "messages": {
+    "empty": "Acest utilizator nu a trimis încă niciun mesaj.",
+    "count": "{{count}} mesaje"
+  },
+  "confirm": {
+    "deactivateMessage": "Sigur doriți să dezactivați acest utilizator?\n{{email}}\n\nContul va rămâne, dar utilizatorul nu se va putea autentifica.",
+    "deleteMessage": "⚠️ ȘTERGERE DEFINITIVĂ ⚠️\n\nSigur doriți să ștergeți acest utilizator?\n{{email}}\n\nAceastă acțiune nu poate fi anulată!"
+  },
+  "errors": {
+    "emailRequired": "Adresa de e-mail este obligatorie.",
+    "passwordRequired": "Parola este obligatorie.",
+    "emailRequiredShort": "E-mail obligatoriu.",
+    "backendNotOk": "Backend-ul nu a răspuns cu statusul ok.",
+    "createFailed": "Crearea a eșuat. ",
+    "updateFailed": "Actualizarea a eșuat. ",
+    "deactivateFailed": "Dezactivarea a eșuat. ",
+    "deleteFailed": "Ștergerea a eșuat. ",
+    "unknown": "Eroare necunoscută"
+  }
+}

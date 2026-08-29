@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Пристрої закладу",
+    "subtitle": "Усі динаміки та дисплеї в одному місці — зі статусом у реальному часі."
+  },
+  "buttons": {
+    "addDevice": "Новий пристрій",
+    "groups": "Групи",
+    "firmwareOta": "Прошивка OTA",
+    "refresh": "Оновити"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Вимкнення звуку ВИМК – окремі гучності буде відновлено",
+    "muteAllTooltipOff": "Вимкнення звуку УВІМК – гучність усіх пристроїв стане 0",
+    "muteAllLabelOn": "Без звуку УВІМК",
+    "muteAllLabel": "Без звуку",
+    "maxAllTooltipOn": "Макс. гучність ВИМК – окремі гучності буде відновлено",
+    "maxAllTooltipOff": "Макс. гучність УВІМК – гучність усіх пристроїв стане 10",
+    "maxAllLabelOn": "Макс УВІМК",
+    "maxAllLabel": "Макс",
+    "globalMuteActiveTooltip": "Глобальне вимкнення звуку активне",
+    "globalMaxActiveTooltip": "Глобальна максимальна гучність активна",
+    "tooltip": "Гучність: {{vol}}/10",
+    "mutedSuffix": " (без звуку)"
+  },
+  "activate": {
+    "esp32Title": "Активувати пристрій ESP32",
+    "pendingIdLabel": "ID очікування: {{id}}",
+    "deviceNameLabel": "Назва пристрою *",
+    "deviceNameLabelShort": "Назва пристрою",
+    "deviceNamePlaceholderEsp32": "напр. динамік кабінету 14",
+    "deviceNamePlaceholderWebplayer": "напр. планшет на вахті, дисплей їдальні",
+    "deviceNamePlaceholderNative": "напр. ПК Windows на вахті",
+    "deviceClassLabel": "Тип пристрою *",
+    "deviceClassLabelShort": "Тип пристрою",
+    "tenantLabel": "Заклад *",
+    "tenantPlaceholder": "Виберіть заклад…",
+    "wifiSectionTitle": "Налаштування WiFi",
+    "wifiSsidLabel": "WiFi SSID *",
+    "wifiSsidPlaceholder": "напр. Школа-WiFi",
+    "wifiHiddenLabel": "Прихована мережа",
+    "wifiSecurityLabel": "Тип захисту",
+    "wifiPasswordLabel": "Пароль WiFi *",
+    "passwordPlaceholder": "Пароль",
+    "wifiUserLabel": "Ім'я для входу *",
+    "wifiUserPlaceholder": "напр. user@shkola.ua",
+    "openNetworkWarning": "Відкрита мережа – не рекомендується для робочого середовища",
+    "activating": "⏳ Активація…",
+    "activateButton": "⚡ Активувати",
+    "activateButtonWebplayer": "📱 Активувати",
+    "activateButtonNative": "🖥️ Активувати",
+    "webplayerTitle": "Активувати віртуальний програвач",
+    "webplayerHint": "Ви активуєте пристрій WebPlayer. Браузер буде працювати як віртуальний динамік.",
+    "nativeTitle": "Активувати Native Player",
+    "nativeHint": "Активація нативного програвача Windows/Linux/Android. Пристрій підключається за допомогою власного ключа пристрою.",
+    "successTitle": "Пристрій активовано: {{name}}",
+    "deviceKeyLabel": "Ключ пристрою (видно лише один раз!):"
+  },
+  "table": {
+    "title": "Список пристроїв",
+    "countLabel": "{{filtered}} / {{total}} пристроїв",
+    "nameHeader": "Назва пристрою",
+    "statusHeader": "Статус",
+    "volumeHeader": "Гучність",
+    "detailsHeader": "Деталі",
+    "emptyTitle": "Немає пристроїв для відображення",
+    "emptyHint": "Додайте пристрої кнопкою «Новий пристрій»",
+    "detailsButtonTitle": "Деталі + синхронізація + редагування + видалення"
+  },
+  "status": {
+    "online": "Онлайн",
+    "offline": "Офлайн"
+  },
+  "pending": {
+    "title": "Пристрої, що очікують активації",
+    "nativeSectionTitle": "Native-програвачі (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Пристрій ще не надіслав свій ключ. Зачекайте кілька секунд.",
+    "keyReady": "Ключ готовий",
+    "keyWaiting": "Очікування…",
+    "webplayerSectionTitle": "Віртуальні програвачі (WebPlayer)",
+    "lastSeen": "Востаннє в мережі: {{date}}",
+    "esp32Hint": "Нижченаведені пристрої ESP32 перебувають у режимі провіжинінгу, очікуючи активації.",
+    "esp32Empty": "Немає пристроїв ESP32, що очікують активації."
+  },
+  "details": {
+    "durationSeconds": "{{s}}с",
+    "durationMinutes": "{{m}}хв {{s}}с",
+    "durationHours": "{{h}}год {{m}}хв",
+    "durationDays": "{{d}}д {{h}}год",
+    "title": "Деталі: {{name}}",
+    "typeLabel": "Тип",
+    "hwModelLabel": "Модель HW",
+    "ipLabel": "IP-адреса",
+    "firmwareLabel": "Прошивка",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Остання активність",
+    "resetTooltip": "Скинути в режим провіжинінгу",
+    "resetButton": "Скинути",
+    "resetConfirm": "Скинути в режим провіжинінгу?\n{{name}}\n\nПристрій втратить статус активації.",
+    "deleteConfirm": "Видалити? ({{name}})"
+  },
+  "sync": {
+    "title": "Зсув синхронізації Snap",
+    "description": "Точне налаштування на слух: додатне значення робить так, що пристрій відтворює <b>пізніше</b> (більше відстає від інших пристроїв), від'ємне → <b>раніше</b>. Кроки по 10 мс, діапазон ±2000 мс. Зміна набуває чинності з наступного аудіофрагмента.",
+    "earlierTooltip": "-10 мс (зсунути раніше)",
+    "laterTooltip": "+10 мс (зсунути пізніше)",
+    "resetButton": "Скинути на 0"
+  },
+  "channelMode": {
+    "title": "Моно канальний режим",
+    "description": "Для моно ЦАП: <b>Мікс</b> = (Л+П)/2, <b>Лівий/Правий</b> = лише відповідний канал. Для стерео ЦАП: <b>Стерео</b> = наскрізна передача, незмінний вихід Л/П.",
+    "left": "Лівий",
+    "mix": "Мікс",
+    "stereo": "Стерео",
+    "right": "Правий"
+  },
+  "editModal": {
+    "title": "Редагувати пристрій",
+    "typeNote": "Примітка: тип наразі змінюється бекендом лише через повторний провіжинінг — це поле зарезервовано на майбутнє.",
+    "hwModelLabel": "Апаратна модель",
+    "hwModelNotSet": "— Не встановлено —",
+    "saving": "⏳ Збереження…"
+  },
+  "groups": {
+    "title": "Групи пристроїв",
+    "newGroupPlaceholder": "Назва нової групи…",
+    "createButton": "Створити",
+    "empty": "Ще немає груп.",
+    "renameSaveButton": "Зберегти",
+    "noMembers": "Немає учасників",
+    "memberCount": "{{count}} пристроїв",
+    "membersButton": "Учасники",
+    "renameButton": "Перейменувати",
+    "selectMembersLabel": "ВИБІР УЧАСНИКІВ",
+    "deleteConfirm": "Видалити цю групу?"
+  },
+  "ota": {
+    "modalTitle": "Керування прошивкою OTA",
+    "uploadSectionTitle": "Завантажити нову прошивку",
+    "versionLabel": "Версія *",
+    "targetDeviceLabel": "Цільовий пристрій",
+    "targetAll": "Усі пристрої",
+    "notesLabel": "Примітка",
+    "notesPlaceholder": "Примітки до випуску…",
+    "mandatoryLabel": "Обов'язкове оновлення",
+    "uploadInProgress": "Триває завантаження…",
+    "uploadDropHint": "Натисніть, щоб вибрати файл .bin",
+    "availableVersionsTitle": "Доступні версії",
+    "noReleases": "Ще не завантажено жодної прошивки.",
+    "mandatoryBadge": "Обов'язково",
+    "deviceUpdateStatusTitle": "Статус оновлення пристроїв",
+    "noPhysicalDevices": "Немає фізичного пристрою",
+    "uploadSuccess": "✅ {{version}} успішно завантажено",
+    "deleteConfirm": "Видалити версію {{version}}?",
+    "status": {
+      "upToDate": "Актуально",
+      "pending": "Очікується оновлення",
+      "downloading": "Завантаження…",
+      "installing": "Встановлення…",
+      "failed": "Помилка",
+      "rollback": "Відкат"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Дисплей",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Віртуальний (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Динамік", "description": "Лише відтворення звуку" },
+    "display":   { "label": "Дисплей", "description": "Візуальне відображення" },
+    "multi":     { "label": "Multi", "description": "Звук + дисплей" },
+    "multizone": { "label": "Multizone", "description": "8-зонний релейний підсилювач (створює 8 пристроїв)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (найпоширеніший)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Відкрита мережа (без шифрування)"
+  },
+  "errors": {
+    "unknown": "Невідома помилка",
+    "deviceNameRequired": "Назва пристрою не може бути порожньою.",
+    "versionRequired": "Номер версії обов'язковий!",
+    "uploadFailed": "Завантаження не вдалося",
+    "deleteFailed": "Видалення не вдалося",
+    "groupsLoadFailed": "Не вдалося завантажити групи",
+    "groupCreateFailed": "Не вдалося створити",
+    "groupSaveFailed": "Не вдалося зберегти",
+    "groupRenameFailed": "Не вдалося перейменувати",
+    "deviceNameRequiredLong": "Назва пристрою обов'язкова.",
+    "deviceNameRequiredShort": "Назва пристрою обов'язкова.",
+    "tenantRequired": "Вибір закладу обов'язковий.",
+    "wifiSsidRequired": "WiFi SSID обов'язковий.",
+    "wifiPasswordRequired": "Пароль WiFi обов'язковий.",
+    "wifiUserRequired": "Для WPA2 Enterprise потрібне ім'я для входу."
+  }
+}

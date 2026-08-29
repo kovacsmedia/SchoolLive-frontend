@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -78,16 +79,20 @@ type FirmwareRelease = {
   createdBy:{ email:string; displayName:string|null };
 };
 
-const HW_MODEL_OPTIONS = [
-  { value:"ESP32_S3",          label:"ESP32-S3-N16R8",     icon:"🔧" },
-  { value:"ESP32_WROOM",       label:"ESP32-WROOM-32",     icon:"🔧" },
-  { value:"ESP32_S3_DISPLAY",  label:"ESP32-S3 Kijelző",   icon:"🖥️" },
-  { value:"ESP32_S3_MULTI",    label:"ESP32-S3 Multi",     icon:"🎛️" },
-  { value:"VIRTUAL",           label:"Virtuális (WP)",     icon:"📱" },
-  { value:"VIRTUAL_WIN",       label:"Windows Player",     icon:"🖥️" },
-  { value:"VIRTUAL_LINUX",     label:"Linux Player",       icon:"🐧" },
-  { value:"VIRTUAL_ANDROID",   label:"Android Player",     icon:"📱" },
-];
+type Tfn = (key: string) => string;
+
+function getHwModelOptions(t: Tfn) {
+  return [
+    { value:"ESP32_S3",          label:t("hwModel.esp32S3"),         icon:"🔧" },
+    { value:"ESP32_WROOM",       label:t("hwModel.esp32Wroom"),      icon:"🔧" },
+    { value:"ESP32_S3_DISPLAY",  label:t("hwModel.esp32S3Display"),  icon:"🖥️" },
+    { value:"ESP32_S3_MULTI",    label:t("hwModel.esp32S3Multi"),    icon:"🎛️" },
+    { value:"VIRTUAL",           label:t("hwModel.virtual"),         icon:"📱" },
+    { value:"VIRTUAL_WIN",       label:t("hwModel.virtualWin"),      icon:"🖥️" },
+    { value:"VIRTUAL_LINUX",     label:t("hwModel.virtualLinux"),    icon:"🐧" },
+    { value:"VIRTUAL_ANDROID",   label:t("hwModel.virtualAndroid"),  icon:"📱" },
+  ];
+}
 const HW_MODEL_BADGE: Record<string,{bg:string;color:string;border:string}> = {
   ESP32_S3:         { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe" },
   ESP32_WROOM:      { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe" },
@@ -98,39 +103,45 @@ const HW_MODEL_BADGE: Record<string,{bg:string;color:string;border:string}> = {
   VIRTUAL_LINUX:    { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0" },
   VIRTUAL_ANDROID:  { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe" },
 };
-const OTA_STATUS_BADGE: Record<OtaStatus,{bg:string;color:string;border:string;label:string;icon:string}> = {
-  UP_TO_DATE:  { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", label:"Naprakész",     icon:"✅" },
-  PENDING:     { bg:"#fffbeb", color:"#d97706", border:"#fde68a", label:"Frissítés vár", icon:"⏳" },
-  DOWNLOADING: { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", label:"Letöltés…",    icon:"⬇️" },
-  INSTALLING:  { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", label:"Telepítés…",   icon:"🔧" },
-  FAILED:      { bg:"#fef2f2", color:"#dc2626", border:"#fecaca", label:"Sikertelen",    icon:"❌" },
-  ROLLBACK:    { bg:"#fff7ed", color:"#c2410c", border:"#fed7aa", label:"Visszagörgetés",icon:"↩️" },
-};
+function getOtaStatusBadge(t: Tfn): Record<OtaStatus,{bg:string;color:string;border:string;label:string;icon:string}> {
+  return {
+    UP_TO_DATE:  { bg:"#f0fdf4", color:"#15803d", border:"#bbf7d0", label:t("ota.status.upToDate"),     icon:"✅" },
+    PENDING:     { bg:"#fffbeb", color:"#d97706", border:"#fde68a", label:t("ota.status.pending"),      icon:"⏳" },
+    DOWNLOADING: { bg:"#eff6ff", color:"#1d4ed8", border:"#bfdbfe", label:t("ota.status.downloading"),  icon:"⬇️" },
+    INSTALLING:  { bg:"#f5f3ff", color:"#7c3aed", border:"#ddd6fe", label:t("ota.status.installing"),   icon:"🔧" },
+    FAILED:      { bg:"#fef2f2", color:"#dc2626", border:"#fecaca", label:t("ota.status.failed"),       icon:"❌" },
+    ROLLBACK:    { bg:"#fff7ed", color:"#c2410c", border:"#fed7aa", label:t("ota.status.rollback"),     icon:"↩️" },
+  };
+}
 
-const DEVICE_CLASS_OPTIONS = [
-  { value:"SPEAKER",    label:"🔊 Hangszóró",   description:"Csak hanglejátszás" },
-  { value:"DISPLAY",    label:"🖥️ Kijelző",     description:"Vizuális megjelenítés" },
-  { value:"MULTI",      label:"🎛️ Multi",       description:"Hang + kijelző" },
-  { value:"MULTIZONE",  label:"🔀 Multizone",   description:"8 zónás relés erősítő (8 eszközt hoz létre)" },
-];
-const WIFI_SECURITY_OPTIONS = [
-  { value:"WPA2_PERSONAL",   label:"WPA2 Personal (leggyakoribb)" },
-  { value:"WPA3_PERSONAL",   label:"WPA3 Personal" },
-  { value:"WPA2_ENTERPRISE", label:"WPA2 Enterprise (802.1X/PEAP)" },
-  { value:"OPEN",            label:"Nyílt hálózat (nem titkosított)" },
-];
+function getDeviceClassOptions(t: Tfn) {
+  return [
+    { value:"SPEAKER",    label:`🔊 ${t("deviceClass.speaker.label")}`,     description:t("deviceClass.speaker.description") },
+    { value:"DISPLAY",    label:`🖥️ ${t("deviceClass.display.label")}`,     description:t("deviceClass.display.description") },
+    { value:"MULTI",      label:`🎛️ ${t("deviceClass.multi.label")}`,       description:t("deviceClass.multi.description") },
+    { value:"MULTIZONE",  label:`🔀 ${t("deviceClass.multizone.label")}`,   description:t("deviceClass.multizone.description") },
+  ];
+}
+function getWifiSecurityOptions(t: Tfn) {
+  return [
+    { value:"WPA2_PERSONAL",   label:t("wifiSecurity.wpa2Personal") },
+    { value:"WPA3_PERSONAL",   label:t("wifiSecurity.wpa3Personal") },
+    { value:"WPA2_ENTERPRISE", label:t("wifiSecurity.wpa2Enterprise") },
+    { value:"OPEN",            label:t("wifiSecurity.open") },
+  ];
+}
 
 function formatDateTime(iso?: string | null) {
   if (!iso) return "–";
   return new Date(iso).toLocaleString("hu-HU");
 }
-function safeErrorMessage(e: unknown): string {
+function safeErrorMessage(e: unknown, t: Tfn): string {
   if (typeof e === "string") return e;
   if (e && typeof e === "object") {
     const a = e as any;
-    return a?.data?.message || a?.data?.error || a?.message || "Ismeretlen hiba";
+    return a?.data?.message || a?.data?.error || a?.message || t("errors.unknown");
   }
-  return "Ismeretlen hiba";
+  return t("errors.unknown");
 }
 
 const CLASS_BADGE: Record<DeviceClass, {bg:string;color:string;border:string;icon:string}> = {
@@ -254,10 +265,15 @@ function Modal({ title, icon, children, onClose }: { title:string; icon:string; 
 }
 
 export default function Devices() {
+  const { t } = useTranslation(["devices", "common"]);
   const { state } = useAuth();
   const role = state.status === "authed" ? (state.user as any)?.role ?? "" : "";
   const isSuperAdmin = role === "SUPER_ADMIN";
   const canWrite = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
+  const hwModelOptions = getHwModelOptions(t);
+  const deviceClassOptions = getDeviceClassOptions(t);
+  const wifiSecurityOptions = getWifiSecurityOptions(t);
+  const otaStatusBadge = getOtaStatusBadge(t);
 
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -350,7 +366,7 @@ export default function Devices() {
         p.deviceId === deviceId ? { ...p, syncOffsetMs: clamped } : p,
       ));
     } catch (e) {
-      setError(safeErrorMessage(e));
+      setError(safeErrorMessage(e, t));
     }
   }
 
@@ -366,7 +382,7 @@ export default function Devices() {
         p.deviceId === deviceId ? { ...p, channelMode: mode } : p,
       ));
     } catch (e) {
-      setError(safeErrorMessage(e));
+      setError(safeErrorMessage(e, t));
     }
   }
 
@@ -393,7 +409,7 @@ export default function Devices() {
       // Optimistic UI: a táblában is friss érték legyen, ne várja a beacont
       setDevices(prev => prev.map(p => p.deviceId === deviceId ? { ...p, volume: clamped } : p));
     } catch (e) {
-      if (!opts?.silent) setError(safeErrorMessage(e));
+      if (!opts?.silent) setError(safeErrorMessage(e, t));
     }
   }
 
@@ -472,7 +488,7 @@ export default function Devices() {
   // ── Eszköz-szerkesztés mentés ────────────────────────────────────────────
   async function submitEditDevice(): Promise<void> {
     if (!editDevice) return;
-    if (!editDevice.name.trim()) { setEditError("Az eszköznév nem lehet üres."); return; }
+    if (!editDevice.name.trim()) { setEditError(t("errors.deviceNameRequired")); return; }
     setEditError(null);
     setEditBusy(true);
     try {
@@ -489,7 +505,7 @@ export default function Devices() {
       setEditDevice(null);
       void loadDevices();
     } catch (e) {
-      setEditError(safeErrorMessage(e));
+      setEditError(safeErrorMessage(e, t));
     } finally {
       setEditBusy(false);
     }
@@ -503,7 +519,7 @@ export default function Devices() {
     finally { setReleasesLoading(false); }
   }
   async function uploadFirmware(file: File) {
-    if (!uploadForm.version.trim()) { setUploadError("Verziószám kötelező!"); return; }
+    if (!uploadForm.version.trim()) { setUploadError(t("errors.versionRequired")); return; }
     setUploadBusy(true); setUploadError(null); setUploadSuccess(null);
     try {
       const token    = sessionStorage.getItem("accessToken")    ?? localStorage.getItem("accessToken")    ?? "";
@@ -523,24 +539,24 @@ export default function Devices() {
         body: fd,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Feltöltés sikertelen");
-      setUploadSuccess(`✅ ${data.release.version} sikeresen feltöltve`);
+      if (!res.ok) throw new Error(data.error ?? t("errors.uploadFailed"));
+      setUploadSuccess(t("ota.uploadSuccess", { version: data.release.version }));
       setUploadForm({ version:"", notes:"", mandatory:false, targetClass:"ALL" });
       void loadReleases();
-    } catch (e:any) { setUploadError(e?.message ?? "Feltöltés sikertelen"); }
+    } catch (e:any) { setUploadError(e?.message ?? t("errors.uploadFailed")); }
     finally { setUploadBusy(false); }
   }
   async function deleteRelease(id: string, version: string) {
-    if (!window.confirm(`Törlöd a ${version} verziót?`)) return;
+    if (!window.confirm(t("ota.deleteConfirm", { version }))) return;
     try { await apiFetch(`/firmware/releases/${id}`, { method:"DELETE" }); void loadReleases(); }
-    catch (e:any) { setUploadError(e?.message ?? "Törlés sikertelen"); }
+    catch (e:any) { setUploadError(e?.message ?? t("errors.deleteFailed")); }
   }
 
   // ── Csoportok ───────────────────────────────────────────────────────────────
   async function loadGroups() {
     setGroupsLoading(true);
     try { const r = await apiFetch<{ok:boolean;groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); }
-    catch { setGroupsError("Csoportok betöltése sikertelen"); }
+    catch { setGroupsError(t("errors.groupsLoadFailed")); }
     finally { setGroupsLoading(false); }
   }
   async function createGroup() {
@@ -549,7 +565,7 @@ export default function Devices() {
     try {
       await apiFetch("/admin/devices/groups", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: newGroupName.trim() }) });
       setNewGroupName(""); await loadGroups();
-    } catch (e:any) { setGroupsError(e?.message??"Létrehozás sikertelen"); }
+    } catch (e:any) { setGroupsError(e?.message ?? t("errors.groupCreateFailed")); }
     finally { setGroupsBusy(false); }
   }
   async function saveGroupMembers(g: DeviceGroup, deviceIds: string[]) {
@@ -557,7 +573,7 @@ export default function Devices() {
     try {
       await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ deviceIds }) });
       await loadGroups(); setEditGroup(null);
-    } catch (e:any) { setGroupsError(e?.message??"Mentés sikertelen"); }
+    } catch (e:any) { setGroupsError(e?.message ?? t("errors.groupSaveFailed")); }
     finally { setGroupsBusy(false); }
   }
   async function renameGroup(g: DeviceGroup, name: string) {
@@ -566,13 +582,13 @@ export default function Devices() {
     try {
       await apiFetch(`/admin/devices/groups/${g.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ name: name.trim() }) });
       await loadGroups(); setEditGroup(null);
-    } catch (e:any) { setGroupsError(e?.message??"Átnevezés sikertelen"); }
+    } catch (e:any) { setGroupsError(e?.message ?? t("errors.groupRenameFailed")); }
     finally { setGroupsBusy(false); }
   }
   async function deleteGroup(id: string) {
-    if (!window.confirm("Törlöd ezt a csoportot?")) return;
+    if (!window.confirm(t("groups.deleteConfirm"))) return;
     try { await apiFetch(`/admin/devices/groups/${id}`, { method:"DELETE" }); await loadGroups(); }
-    catch { setGroupsError("Törlés sikertelen"); }
+    catch { setGroupsError(t("errors.deleteFailed")); }
   }
 
   // ── Pending lekérések ───────────────────────────────────────────────────────
@@ -592,7 +608,7 @@ export default function Devices() {
   // ── Web player aktiválás ────────────────────────────────────────────────────
   async function submitWpActivate() {
     if (!wpActivateForm) return;
-    if (!wpActivateForm.name.trim()) { setWpActivateError("Az eszköznév megadása kötelező."); return; }
+    if (!wpActivateForm.name.trim()) { setWpActivateError(t("errors.deviceNameRequiredLong")); return; }
     setWpActivateError(null); setWpActivateBusy(true);
     try {
       await apiFetch(`/admin/devices/activate-web/${wpActivateForm.pendingId}`, {
@@ -600,14 +616,14 @@ export default function Devices() {
         body: JSON.stringify({ name: wpActivateForm.name.trim() }),
       });
       setWpActivateForm(null); void loadDevices(); void loadPendingWeb();
-    } catch (e) { setWpActivateError(safeErrorMessage(e)); }
+    } catch (e) { setWpActivateError(safeErrorMessage(e, t)); }
     finally { setWpActivateBusy(false); }
   }
 
   // ── Native player aktiválás ────────────────────────────────────────────────
   async function submitNativeActivate() {
     if (!nativeActivateForm) return;
-    if (!nativeActivateForm.name.trim()) { setNativeActivateError("Eszköznév kötelező."); return; }
+    if (!nativeActivateForm.name.trim()) { setNativeActivateError(t("errors.deviceNameRequiredShort")); return; }
     setNativeActivateError(null); setNativeActivateBusy(true);
     try {
       await apiFetch(`/admin/devices/activate-native/${nativeActivateForm.pendingId}`, {
@@ -615,17 +631,17 @@ export default function Devices() {
         body: JSON.stringify({ name: nativeActivateForm.name.trim(), deviceClass: nativeActivateForm.deviceClass }),
       });
       setNativeActivateForm(null); void loadDevices(); void loadPendingNative();
-    } catch (e) { setNativeActivateError(safeErrorMessage(e)); }
+    } catch (e) { setNativeActivateError(safeErrorMessage(e, t)); }
     finally { setNativeActivateBusy(false); }
   }
 
   // ── Reset provision ────────────────────────────────────────────────────────
   async function resetProvision(deviceId: string, name: string) {
-    if (!window.confirm(`Visszaállítod provisioning módba?\n${name}\n\nAz eszköz elveszti aktivált státuszát.`)) return;
+    if (!window.confirm(t("details.resetConfirm", { name }))) return;
     try {
       await apiFetch(`/admin/devices/${deviceId}/reset-provision`, { method: "POST" });
       void loadDevices();
-    } catch (e) { setError(safeErrorMessage(e)); }
+    } catch (e) { setError(safeErrorMessage(e, t)); }
   }
 
   // ── Eszközök ────────────────────────────────────────────────────────────────
@@ -634,7 +650,7 @@ export default function Devices() {
       const data = await apiFetch<HealthResponse>("/admin/devices/health");
       setDevices(Array.isArray(data.devices) ? data.devices : []);
       setError(null);
-    } catch (e) { setError(safeErrorMessage(e)); }
+    } catch (e) { setError(safeErrorMessage(e, t)); }
     finally { setLoading(false); }
   }
   async function loadPending() {
@@ -701,11 +717,11 @@ export default function Devices() {
   async function submitActivate() {
     if (!activateForm) return;
     const { pendingId, tenantId, name, deviceClass, wifiSsid, wifiHidden, wifiSecurity, wifiPassword, wifiUser } = activateForm;
-    if (!name.trim())    { setActivateError("Az eszköznév megadása kötelező."); return; }
-    if (!tenantId)       { setActivateError("Intézmény kiválasztása kötelező."); return; }
-    if (!wifiSsid.trim()) { setActivateError("WiFi SSID megadása kötelező."); return; }
-    if (wifiSecurity !== "OPEN" && !wifiPassword.trim()) { setActivateError("WiFi jelszó megadása kötelező."); return; }
-    if (wifiSecurity === "WPA2_ENTERPRISE" && !wifiUser.trim()) { setActivateError("WPA2 Enterprise esetén bejelentkezési név kötelező."); return; }
+    if (!name.trim())    { setActivateError(t("errors.deviceNameRequiredLong")); return; }
+    if (!tenantId)       { setActivateError(t("errors.tenantRequired")); return; }
+    if (!wifiSsid.trim()) { setActivateError(t("errors.wifiSsidRequired")); return; }
+    if (wifiSecurity !== "OPEN" && !wifiPassword.trim()) { setActivateError(t("errors.wifiPasswordRequired")); return; }
+    if (wifiSecurity === "WPA2_ENTERPRISE" && !wifiUser.trim()) { setActivateError(t("errors.wifiUserRequired")); return; }
     setActivateError(null); setBusyActivate(true);
     try {
       const res = await apiFetch<{ ok:true; device:{ name:string }; deviceKey:string }>(
@@ -720,7 +736,7 @@ export default function Devices() {
       );
       setActivateSuccess({ deviceKey:res.deviceKey, name:res.device.name });
       setActivateForm(null); void loadDevices();
-    } catch (e) { setActivateError(safeErrorMessage(e)); }
+    } catch (e) { setActivateError(safeErrorMessage(e, t)); }
     finally { setBusyActivate(false); }
   }
 
@@ -736,11 +752,11 @@ export default function Devices() {
 
       <div className="dv-header">
         <div>
-          <div className="dv-title">🔊 Intézményi eszközök</div>
-          <div className="dv-subtitle">Az összes hangszóró és kijelző egy helyen — valós idejű státusszal.</div>
+          <div className="dv-title">🔊 {t("header.title")}</div>
+          <div className="dv-subtitle">{t("header.subtitle")}</div>
         </div>
         <div className="dv-actions">
-          <input className="dv-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
+          <input className="dv-search" placeholder={`🔍 ${t("common:actions.search")}…`} value={q} onChange={e => setQ(e.target.value)} />
           {/* Globális hangerő-vezérlők – csak ha van írási jog és van eszköz */}
           {canWrite && devices.length > 0 && (
             <>
@@ -750,9 +766,9 @@ export default function Devices() {
                 onClick={() => void toggleGlobalMute()}
                 disabled={volBusy}
                 title={globalMute
-                  ? "Némítás KI – visszaállnak az egyedi hangerők"
-                  : "Némítás BE – minden eszköz hangereje 0 lesz"}>
-                {globalMute ? "🔇 Némítás BE" : "🔈 Némítás"}
+                  ? t("volume.muteAllTooltipOn")
+                  : t("volume.muteAllTooltipOff")}>
+                {globalMute ? `🔇 ${t("volume.muteAllLabelOn")}` : `🔈 ${t("volume.muteAllLabel")}`}
               </button>
               <button
                 type="button"
@@ -760,25 +776,25 @@ export default function Devices() {
                 onClick={() => void toggleGlobalMax()}
                 disabled={volBusy}
                 title={globalMax
-                  ? "Max hangerő KI – visszaállnak az egyedi hangerők"
-                  : "Max hangerő BE – minden eszköz hangereje 10 lesz"}>
-                {globalMax ? "📢 Max BE" : "📣 Max"}
+                  ? t("volume.maxAllTooltipOn")
+                  : t("volume.maxAllTooltipOff")}>
+                {globalMax ? `📢 ${t("volume.maxAllLabelOn")}` : `📣 ${t("volume.maxAllLabel")}`}
               </button>
             </>
           )}
           {canWrite && (
-            <button className="dv-btn dv-btn-primary" onClick={openPending} type="button">＋ Új eszköz</button>
+            <button className="dv-btn dv-btn-primary" onClick={openPending} type="button">＋ {t("buttons.addDevice")}</button>
           )}
           <button className="dv-btn dv-btn-ghost" type="button" onClick={() => { setGroupsOpen(true); void loadGroups(); }}>
-            👥 Csoportok
+            👥 {t("buttons.groups")}
           </button>
           {isSuperAdmin && (
             <button className="dv-btn dv-btn-ghost" type="button" onClick={() => { setOtaOpen(true); void loadReleases(); }}>
-              📦 Firmware OTA
+              📦 {t("buttons.firmwareOta")}
             </button>
           )}
           <button className="dv-btn dv-btn-ghost" onClick={() => void loadDevices()} disabled={loading} type="button">
-            🔄 Frissítés
+            🔄 {t("buttons.refresh")}
           </button>
         </div>
       </div>
@@ -787,40 +803,40 @@ export default function Devices() {
 
       {activateSuccess && (
         <div className="dv-alert dv-alert-success" style={{ marginBottom:16, flexDirection:"column", alignItems:"flex-start" }}>
-          <div style={{ fontWeight:800, fontFamily:"'Nunito',sans-serif" }}>✅ Eszköz aktiválva: {activateSuccess.name}</div>
+          <div style={{ fontWeight:800, fontFamily:"'Nunito',sans-serif" }}>✅ {t("activate.successTitle", { name: activateSuccess.name })}</div>
           <div style={{ fontSize:12, marginTop:4 }}>
-            Device key (csak egyszer látható!):
+            {t("activate.deviceKeyLabel")}
             <div className="dv-key-box" style={{ marginTop:6 }}>{activateSuccess.deviceKey}</div>
           </div>
-          <button onClick={() => setActivateSuccess(null)} style={{ fontSize:12, color:"inherit", opacity:0.7, background:"none", border:"none", cursor:"pointer", padding:0, marginTop:6 }}>Bezár</button>
+          <button onClick={() => setActivateSuccess(null)} style={{ fontSize:12, color:"inherit", opacity:0.7, background:"none", border:"none", cursor:"pointer", padding:0, marginTop:6 }}>{t("common:actions.close")}</button>
         </div>
       )}
 
       <div className="dv-card">
         <div className="dv-card-hdr">
-          <div className="dv-card-title">📋 Eszközök listája</div>
-          <div className="dv-card-meta">{loading ? "Betöltés…" : `${filtered.length} / ${devices.length} eszköz`}</div>
+          <div className="dv-card-title">📋 {t("table.title")}</div>
+          <div className="dv-card-meta">{loading ? t("common:actions.loading") : t("table.countLabel", { filtered: filtered.length, total: devices.length })}</div>
         </div>
         <div style={{ overflowX:"auto" }}>
           <table className="dv-table">
             <thead>
               <tr>
-                <th>Eszköznév</th><th>Státusz</th><th>Hangerő</th>
-                <th style={{ textAlign:"right" }}>Részletek</th>
+                <th>{t("table.nameHeader")}</th><th>{t("table.statusHeader")}</th><th>{t("table.volumeHeader")}</th>
+                <th style={{ textAlign:"right" }}>{t("table.detailsHeader")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr><td colSpan={4} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
-                  <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>Betöltés…</div>
+                  <span style={{ fontSize:24 }}>⏳</span><div style={{ marginTop:8, fontSize:13 }}>{t("common:actions.loading")}</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
                 <tr><td colSpan={4}>
                   <div className="dv-empty">
                     <div className="dv-empty-icon">🔇</div>
-                    <div className="dv-empty-txt">Nincs megjeleníthető eszköz</div>
-                    <div style={{ fontSize:13, marginTop:6 }}>Adj hozzá eszközöket az „Új eszköz" gombbal</div>
+                    <div className="dv-empty-txt">{t("table.emptyTitle")}</div>
+                    <div style={{ fontSize:13, marginTop:6 }}>{t("table.emptyHint")}</div>
                   </div>
                 </td></tr>
               )}
@@ -833,7 +849,7 @@ export default function Devices() {
                       : { background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)" }
                     }>
                       <span style={{ width:7,height:7,borderRadius:"50%",background:d.isOnline?"#22c55e":"#94a3b8",display:"inline-block" }} />
-                      {d.isOnline ? "Online" : "Offline"}
+                      {d.isOnline ? t("status.online") : t("status.offline")}
                     </span>
                   </td>
                   <td>
@@ -852,9 +868,9 @@ export default function Devices() {
                             style={{ ["--vol" as any]: `${vol * 10}%` }}
                             onChange={e => handleVolumeSlider(d.deviceId, Number(e.target.value))}
                             title={
-                              globalMute ? "Globális némítás aktív" :
-                              globalMax  ? "Globális max hangerő aktív" :
-                              `Hangerő: ${vol}/10${vol === 0 ? " (némítva)" : ""}`
+                              globalMute ? t("volume.globalMuteActiveTooltip") :
+                              globalMax  ? t("volume.globalMaxActiveTooltip") :
+                              `${t("volume.tooltip", { vol })}${vol === 0 ? t("volume.mutedSuffix") : ""}`
                             }
                           />
                           <span className={`dv-vol-val ${cls}`}>
@@ -866,9 +882,9 @@ export default function Devices() {
                   </td>
                   <td style={{ textAlign:"right" }}>
                     <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                      title="Részletek + sync + szerkesztés + törlés"
+                      title={t("table.detailsButtonTitle")}
                       onClick={() => setDetailsDeviceId(d.deviceId)}>
-                      🔍 Részletek
+                      🔍 {t("table.detailsHeader")}
                     </button>
                   </td>
                 </tr>
@@ -880,18 +896,18 @@ export default function Devices() {
 
       {/* ── Pending modal ───────────────────────────────────────────────────── */}
       {pendingOpen && (
-        <Modal title="Aktiválásra váró eszközök" icon="📡" onClose={closePending}>
+        <Modal title={t("pending.title")} icon="📡" onClose={closePending}>
           <div className="dv-modal-body">
 
             {/* Native Players szekció */}
             {pendingNative.length > 0 && (
               <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:13, padding:"13px 16px", marginBottom:4 }}>
-                <div className="dv-section-title" style={{ color:"#1d4ed8" }}>🖥️ Native Playerek (Windows / Linux / Android)</div>
+                <div className="dv-section-title" style={{ color:"#1d4ed8" }}>🖥️ {t("pending.nativeSectionTitle")}</div>
                 {pendingNative.map(np => (
                   <button key={np.id} className="dv-pending-item" type="button"
                     style={{ border:"1.5px solid #bfdbfe", background:"#f0f7ff" }}
                     onClick={() => {
-                      if (!np.hasKeyHash) { alert("Az eszköz még nem küldte el a kulcsát. Várj pár másodpercet."); return; }
+                      if (!np.hasKeyHash) { alert(t("pending.keyNotReadyAlert")); return; }
                       setNativeActivateForm({ pendingId: np.id, name: "", deviceClass: "MULTI" });
                       setNativeActivateError(null);
                       closePending();
@@ -903,7 +919,7 @@ export default function Devices() {
                         color: np.hasKeyHash ? "#15803d" : "#d97706",
                         border: `1px solid ${np.hasKeyHash ? "#bbf7d0" : "#fde68a"}`,
                         fontWeight:700 }}>
-                        {np.hasKeyHash ? "✅ Kulcs kész" : "⏳ Várakozás…"}
+                        {np.hasKeyHash ? `✅ ${t("pending.keyReady")}` : `⏳ ${t("pending.keyWaiting")}`}
                       </span>
                     </div>
                     <div className="dv-pending-meta">
@@ -919,7 +935,7 @@ export default function Devices() {
             {/* WebPlayer szekció */}
             {pendingWeb.length > 0 && (
               <div style={{ background:"#f0fdf4", border:"1.5px solid #bbf7d0", borderRadius:13, padding:"13px 16px", marginBottom:4 }}>
-                <div className="dv-section-title" style={{ color:"#15803d" }}>📱 Virtuális lejátszók (WebPlayer)</div>
+                <div className="dv-section-title" style={{ color:"#15803d" }}>📱 {t("pending.webplayerSectionTitle")}</div>
                 {pendingWeb.map(wp => (
                   <button key={wp.id} className="dv-pending-item" type="button"
                     style={{ border:"1.5px solid #bbf7d0", background:"#f0fdf4" }}
@@ -928,7 +944,7 @@ export default function Devices() {
                       <span className="dv-pending-mac" style={{ color:"#15803d" }}>
                         📱 WP-{wp.clientId?.slice(0,8).toUpperCase() ?? "?"}
                       </span>
-                      <span style={{ fontSize:11, color:"var(--sl-muted)" }}>Utoljára: {formatDateTime(wp.lastSeenAt)}</span>
+                      <span style={{ fontSize:11, color:"var(--sl-muted)" }}>{t("pending.lastSeen", { date: formatDateTime(wp.lastSeenAt) })}</span>
                     </div>
                     <div className="dv-pending-meta">
                       {wp.ipAddress && <span>📍 {wp.ipAddress}</span>}
@@ -940,22 +956,22 @@ export default function Devices() {
             )}
 
             <div className="dv-alert dv-alert-warn" style={{ fontSize:13 }}>
-              <span>💡</span>Az alábbi ESP32 eszközök provisioning módban várják az aktiválást.
+              <span>💡</span>{t("pending.esp32Hint")}
             </div>
             {pendingLoading && pending.length === 0 && (
-              <div style={{ textAlign:"center", padding:"20px", color:"var(--sl-muted)", fontSize:13 }}>🔍 Keresés…</div>
+              <div style={{ textAlign:"center", padding:"20px", color:"var(--sl-muted)", fontSize:13 }}>🔍 {t("common:actions.search")}…</div>
             )}
             {!pendingLoading && pending.length === 0 && (
               <div style={{ textAlign:"center", padding:"24px", color:"var(--sl-muted)", fontSize:13 }}>
                 <div style={{ fontSize:36, marginBottom:10 }}>📡</div>
-                Nincs aktiválásra váró ESP32 eszköz.
+                {t("pending.esp32Empty")}
               </div>
             )}
             {pending.map(p => (
               <button key={p.id} className="dv-pending-item" type="button" onClick={() => selectPending(p)}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <span className="dv-pending-mac">{p.mac}</span>
-                  <span style={{ fontSize:11, color:"var(--sl-muted)" }}>Utoljára: {formatDateTime(p.lastSeenAt)}</span>
+                  <span style={{ fontSize:11, color:"var(--sl-muted)" }}>{t("pending.lastSeen", { date: formatDateTime(p.lastSeenAt) })}</span>
                 </div>
                 <div className="dv-pending-meta">
                   {p.ipAddress && <span>📍 {p.ipAddress}</span>}
@@ -966,94 +982,94 @@ export default function Devices() {
           </div>
           <div className="dv-modal-footer">
             <button className="dv-btn dv-btn-ghost" onClick={() => { void loadPending(); void loadPendingNative(); void loadPendingWeb(); }} disabled={pendingLoading} type="button">
-              🔄 Frissítés
+              🔄 {t("buttons.refresh")}
             </button>
-            <button className="dv-btn dv-btn-ghost" onClick={closePending} type="button">Mégse</button>
+            <button className="dv-btn dv-btn-ghost" onClick={closePending} type="button">{t("common:actions.cancel")}</button>
           </div>
         </Modal>
       )}
 
       {/* ── ESP32 Activate modal ─────────────────────────────────────────────── */}
       {activateForm && (
-        <Modal title="ESP32 eszköz aktiválása" icon="⚡" onClose={() => setActivateForm(null)}>
+        <Modal title={t("activate.esp32Title")} icon="⚡" onClose={() => setActivateForm(null)}>
           <div className="dv-modal-body">
             <div style={{ fontSize:12, color:"var(--sl-muted)", fontFamily:"monospace", background:"var(--sl-bg)", padding:"6px 10px", borderRadius:8 }}>
-              Pending ID: {activateForm.pendingId}
+              {t("activate.pendingIdLabel", { id: activateForm.pendingId })}
             </div>
             <div className="dv-grid2">
               <div>
-                <label className="dv-label">Eszköznév *</label>
-                <input className="dv-input" placeholder="pl. 14. terem hangszóró"
+                <label className="dv-label">{t("activate.deviceNameLabel")}</label>
+                <input className="dv-input" placeholder={t("activate.deviceNamePlaceholderEsp32")}
                   value={activateForm.name} onChange={e => setActivateForm(s => s?{...s,name:e.target.value}:s)} />
               </div>
               <div>
-                <label className="dv-label">Eszköztípus *</label>
+                <label className="dv-label">{t("activate.deviceClassLabel")}</label>
                 <select className="dv-select" value={activateForm.deviceClass}
                   onChange={e => setActivateForm(s => s?{...s,deviceClass:e.target.value as DeviceClass}:s)}>
-                  {DEVICE_CLASS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {deviceClassOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
             {isSuperAdmin && (
               <div>
-                <label className="dv-label">Intézmény *</label>
+                <label className="dv-label">{t("activate.tenantLabel")}</label>
                 <select className="dv-select" value={activateForm.tenantId}
                   onChange={e => setActivateForm(s => s?{...s,tenantId:e.target.value}:s)}>
-                  <option value="">Válassz intézményt…</option>
-                  {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  <option value="">{t("activate.tenantPlaceholder")}</option>
+                  {tenants.map(tn => <option key={tn.id} value={tn.id}>{tn.name}</option>)}
                 </select>
               </div>
             )}
             <div className="dv-wifi-section">
-              <div className="dv-wifi-title">📶 WiFi konfiguráció</div>
+              <div className="dv-wifi-title">📶 {t("activate.wifiSectionTitle")}</div>
               <div>
-                <label className="dv-label">WiFi SSID *</label>
-                <input className="dv-input" placeholder="pl. Iskola-WiFi"
+                <label className="dv-label">{t("activate.wifiSsidLabel")}</label>
+                <input className="dv-input" placeholder={t("activate.wifiSsidPlaceholder")}
                   value={activateForm.wifiSsid} onChange={e => setActivateForm(s => s?{...s,wifiSsid:e.target.value}:s)} />
                 <label className="dv-check" style={{ marginTop:8 }}>
                   <input type="checkbox" checked={activateForm.wifiHidden}
                     onChange={e => setActivateForm(s => s?{...s,wifiHidden:e.target.checked}:s)} />
-                  Rejtett hálózat
+                  {t("activate.wifiHiddenLabel")}
                 </label>
               </div>
               <div>
-                <label className="dv-label">Biztonsági típus</label>
+                <label className="dv-label">{t("activate.wifiSecurityLabel")}</label>
                 <select className="dv-select" value={activateForm.wifiSecurity}
                   onChange={e => setActivateForm(s => s?{...s,wifiSecurity:e.target.value as WifiSecurity,wifiPassword:"",wifiUser:""}:s)}>
-                  {WIFI_SECURITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {wifiSecurityOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               {(activateForm.wifiSecurity==="WPA2_PERSONAL"||activateForm.wifiSecurity==="WPA3_PERSONAL") && (
                 <div>
-                  <label className="dv-label">WiFi jelszó *</label>
-                  <input type="password" className="dv-input" placeholder="Jelszó"
+                  <label className="dv-label">{t("activate.wifiPasswordLabel")}</label>
+                  <input type="password" className="dv-input" placeholder={t("activate.passwordPlaceholder")}
                     value={activateForm.wifiPassword} onChange={e => setActivateForm(s => s?{...s,wifiPassword:e.target.value}:s)} />
                 </div>
               )}
               {activateForm.wifiSecurity==="WPA2_ENTERPRISE" && (
                 <div className="dv-grid2">
                   <div>
-                    <label className="dv-label">Bejelentkezési név *</label>
-                    <input className="dv-input" placeholder="pl. user@iskola.hu"
+                    <label className="dv-label">{t("activate.wifiUserLabel")}</label>
+                    <input className="dv-input" placeholder={t("activate.wifiUserPlaceholder")}
                       value={activateForm.wifiUser} onChange={e => setActivateForm(s => s?{...s,wifiUser:e.target.value}:s)} />
                   </div>
                   <div>
-                    <label className="dv-label">Jelszó *</label>
-                    <input type="password" className="dv-input" placeholder="Jelszó"
+                    <label className="dv-label">{t("activate.wifiPasswordLabel")}</label>
+                    <input type="password" className="dv-input" placeholder={t("activate.passwordPlaceholder")}
                       value={activateForm.wifiPassword} onChange={e => setActivateForm(s => s?{...s,wifiPassword:e.target.value}:s)} />
                   </div>
                 </div>
               )}
               {activateForm.wifiSecurity==="OPEN" && (
-                <div className="dv-alert dv-alert-warn" style={{ fontSize:12 }}>⚠ Nyílt hálózat – nem javasolt éles környezetben</div>
+                <div className="dv-alert dv-alert-warn" style={{ fontSize:12 }}>⚠ {t("activate.openNetworkWarning")}</div>
               )}
             </div>
             {activateError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{activateError}</div>}
           </div>
           <div className="dv-modal-footer">
-            <button className="dv-btn dv-btn-ghost" onClick={() => setActivateForm(null)} disabled={busyActivate} type="button">Mégse</button>
+            <button className="dv-btn dv-btn-ghost" onClick={() => setActivateForm(null)} disabled={busyActivate} type="button">{t("common:actions.cancel")}</button>
             <button className="dv-btn dv-btn-primary" onClick={() => void submitActivate()} disabled={busyActivate} type="button">
-              {busyActivate ? "⏳ Aktiválás…" : "⚡ Aktivál"}
+              {busyActivate ? t("activate.activating") : t("activate.activateButton")}
             </button>
           </div>
         </Modal>
@@ -1061,23 +1077,23 @@ export default function Devices() {
 
       {/* ── Web Player aktiválás modal ──────────────────────────────────────── */}
       {wpActivateForm && (
-        <Modal title="Virtuális lejátszó aktiválása" icon="📱" onClose={() => setWpActivateForm(null)}>
+        <Modal title={t("activate.webplayerTitle")} icon="📱" onClose={() => setWpActivateForm(null)}>
           <div className="dv-modal-body">
             <div className="dv-alert" style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#15803d", fontSize:13 }}>
-              <span>📱</span>Egy WebPlayer eszközt aktiválsz. A böngésző virtuális hangszóróként fog működni.
+              <span>📱</span>{t("activate.webplayerHint")}
             </div>
             <div>
-              <label className="dv-label">Eszköznév *</label>
-              <input className="dv-input" placeholder="pl. Portás tablet, Ebédlő kijelző"
+              <label className="dv-label">{t("activate.deviceNameLabel")}</label>
+              <input className="dv-input" placeholder={t("activate.deviceNamePlaceholderWebplayer")}
                 value={wpActivateForm.name}
                 onChange={e => setWpActivateForm(s => s ? { ...s, name: e.target.value } : s)} />
             </div>
             {wpActivateError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{wpActivateError}</div>}
           </div>
           <div className="dv-modal-footer">
-            <button className="dv-btn dv-btn-ghost" onClick={() => setWpActivateForm(null)} disabled={wpActivateBusy} type="button">Mégse</button>
+            <button className="dv-btn dv-btn-ghost" onClick={() => setWpActivateForm(null)} disabled={wpActivateBusy} type="button">{t("common:actions.cancel")}</button>
             <button className="dv-btn dv-btn-primary" onClick={() => void submitWpActivate()} disabled={wpActivateBusy} type="button">
-              {wpActivateBusy ? "⏳ Aktiválás…" : "📱 Aktivál"}
+              {wpActivateBusy ? t("activate.activating") : t("activate.activateButtonWebplayer")}
             </button>
           </div>
         </Modal>
@@ -1085,32 +1101,32 @@ export default function Devices() {
 
       {/* ── Native Player aktiválás modal ──────────────────────────────────── */}
       {nativeActivateForm && (
-        <Modal title="Native Player aktiválása" icon="🖥️" onClose={() => setNativeActivateForm(null)}>
+        <Modal title={t("activate.nativeTitle")} icon="🖥️" onClose={() => setNativeActivateForm(null)}>
           <div className="dv-modal-body">
             <div className="dv-alert" style={{ background:"#eff6ff", border:"1px solid #bfdbfe", color:"#1d4ed8", fontSize:13 }}>
-              <span>🖥️</span>Windows / Linux / Android natív player aktiválása. Az eszköz a saját device key-jével csatlakozik.
+              <span>🖥️</span>{t("activate.nativeHint")}
             </div>
             <div className="dv-grid2">
               <div>
-                <label className="dv-label">Eszköznév *</label>
-                <input className="dv-input" placeholder="pl. Porta Windows PC"
+                <label className="dv-label">{t("activate.deviceNameLabel")}</label>
+                <input className="dv-input" placeholder={t("activate.deviceNamePlaceholderNative")}
                   value={nativeActivateForm.name}
                   onChange={e => setNativeActivateForm(s => s ? { ...s, name: e.target.value } : s)} />
               </div>
               <div>
-                <label className="dv-label">Eszköztípus</label>
+                <label className="dv-label">{t("activate.deviceClassLabelShort")}</label>
                 <select className="dv-select" value={nativeActivateForm.deviceClass}
                   onChange={e => setNativeActivateForm(s => s ? { ...s, deviceClass: e.target.value } : s)}>
-                  {DEVICE_CLASS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  {deviceClassOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             </div>
             {nativeActivateError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{nativeActivateError}</div>}
           </div>
           <div className="dv-modal-footer">
-            <button className="dv-btn dv-btn-ghost" onClick={() => setNativeActivateForm(null)} disabled={nativeActivateBusy} type="button">Mégse</button>
+            <button className="dv-btn dv-btn-ghost" onClick={() => setNativeActivateForm(null)} disabled={nativeActivateBusy} type="button">{t("common:actions.cancel")}</button>
             <button className="dv-btn dv-btn-primary" onClick={() => void submitNativeActivate()} disabled={nativeActivateBusy} type="button">
-              {nativeActivateBusy ? "⏳ Aktiválás…" : "🖥️ Aktivál"}
+              {nativeActivateBusy ? t("activate.activating") : t("activate.activateButtonNative")}
             </button>
           </div>
         </Modal>
@@ -1124,27 +1140,27 @@ export default function Devices() {
         const lastSeenLabel = (() => {
           const s = d.secondsSinceLastSeen;
           if (s === null || s === undefined) return "—";
-          if (s < 60)    return `${s}mp`;
-          if (s < 3600)  return `${Math.floor(s/60)}p ${s%60}mp`;
-          if (s < 86400) return `${Math.floor(s/3600)}ó ${Math.floor((s%3600)/60)}p`;
-          return `${Math.floor(s/86400)}n ${Math.floor((s%86400)/3600)}ó`;
+          if (s < 60)    return t("details.durationSeconds", { s });
+          if (s < 3600)  return t("details.durationMinutes", { m: Math.floor(s/60), s: s%60 });
+          if (s < 86400) return t("details.durationHours", { h: Math.floor(s/3600), m: Math.floor((s%3600)/60) });
+          return t("details.durationDays", { d: Math.floor(s/86400), h: Math.floor((s%86400)/3600) });
         })();
         const cb = CLASS_BADGE[d.deviceClass] || CLASS_BADGE.SPEAKER;
         return (
-          <Modal title={`Részletek: ${d.name}`} icon="🔍" onClose={() => setDetailsDeviceId(null)}>
+          <Modal title={t("details.title", { name: d.name })} icon="🔍" onClose={() => setDetailsDeviceId(null)}>
             <div className="dv-modal-body">
               {/* Alapadatok rács */}
               <div style={{ display:"grid", gridTemplateColumns:"max-content 1fr", gap:"8px 14px", fontSize:13 }}>
-                <div style={{ color:"var(--sl-muted)" }}>Típus</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.typeLabel")}</div>
                 <div>
                   <span className="dv-badge" style={{ background:cb.bg, color:cb.color, borderColor:cb.border }}>
-                    {cb.icon} {d.deviceClass === "SPEAKER" ? "Hangszóró" : d.deviceClass === "DISPLAY" ? "Kijelző" : d.deviceClass === "MULTIZONE" ? `Multizone${d.zoneIndex ? ` Z${d.zoneIndex}` : ""}` : "Multi"}
+                    {cb.icon} {d.deviceClass === "SPEAKER" ? t("deviceClass.speaker.label") : d.deviceClass === "DISPLAY" ? t("deviceClass.display.label") : d.deviceClass === "MULTIZONE" ? `${t("deviceClass.multizone.label")}${d.zoneIndex ? ` Z${d.zoneIndex}` : ""}` : t("deviceClass.multi.label")}
                   </span>
                 </div>
-                <div style={{ color:"var(--sl-muted)" }}>HW modell</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.hwModelLabel")}</div>
                 <div>
                   {d.hwModel ? (() => {
-                    const hw  = HW_MODEL_OPTIONS.find(h => h.value === d.hwModel);
+                    const hw  = hwModelOptions.find(h => h.value === d.hwModel);
                     const bdg = HW_MODEL_BADGE[d.hwModel ?? ""] ?? { bg:"var(--sl-bg)", color:"var(--sl-muted)", border:"var(--sl-border)" };
                     return (
                       <span className="dv-badge" style={{ background:bdg.bg, color:bdg.color, borderColor:bdg.border, fontSize:11 }}>
@@ -1153,15 +1169,15 @@ export default function Devices() {
                     );
                   })() : <span style={{ color:"var(--sl-muted)" }}>—</span>}
                 </div>
-                <div style={{ color:"var(--sl-muted)" }}>IP cím</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.ipLabel")}</div>
                 <div style={{ fontFamily:"monospace", fontSize:12 }}>{d.ipAddress ?? "—"}</div>
-                <div style={{ color:"var(--sl-muted)" }}>Firmware</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.firmwareLabel")}</div>
                 <div style={{ fontSize:12 }}>{d.firmwareVersion ?? "—"}</div>
-                <div style={{ color:"var(--sl-muted)" }}>OTA</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.otaLabel")}</div>
                 <div>
                   {d.otaStatus && d.otaStatus !== "UP_TO_DATE" ? (() => {
                     const os = d.otaStatus as OtaStatus;
-                    const ob = OTA_STATUS_BADGE[os] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                    const ob = otaStatusBadge[os] ?? otaStatusBadge.UP_TO_DATE;
                     return (
                       <span className="dv-badge" style={{ background:ob.bg, color:ob.color, borderColor:ob.border, fontSize:11 }}>
                         {ob.icon} {ob.label}
@@ -1170,7 +1186,7 @@ export default function Devices() {
                     );
                   })() : <span style={{ color:"var(--sl-muted)", fontSize:12 }}>UP_TO_DATE</span>}
                 </div>
-                <div style={{ color:"var(--sl-muted)" }}>Utolsó aktivitás</div>
+                <div style={{ color:"var(--sl-muted)" }}>{t("details.lastSeenLabel")}</div>
                 <div style={{ fontSize:12 }}>{lastSeenLabel}</div>
               </div>
 
@@ -1181,18 +1197,16 @@ export default function Devices() {
                 borderRadius:11,
               }}>
                 <div style={{ fontWeight:700, fontSize:13, marginBottom:10, display:"flex", alignItems:"center", gap:8 }}>
-                  ⏱ Snap szinkron-eltolás
+                  ⏱ {t("sync.title")}
                 </div>
                 <div style={{ fontSize:11, color:"var(--sl-muted)", marginBottom:12, lineHeight:1.5 }}>
-                  Hallás-alapú finomhangolás: pozitív érték → eszköz <b>későbbre</b> csúszik
-                  (más eszközhöz képest hátrébb), negatív → <b>előrébb</b>. 10 ms-os lépések,
-                  ±2000 ms tartomány. A változás a következő hangchunk-tól érvényesül.
+                  <Trans i18nKey="devices:sync.description" components={{ b: <b /> }} />
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
                   <button className="dv-btn dv-btn-ghost" type="button"
                     onClick={() => void sendSyncOffset(d.deviceId, offset - 10)}
                     disabled={!canWrite || offset <= -2000}
-                    title="-10 ms (előrébb csúsztatás)">
+                    title={t("sync.earlierTooltip")}>
                     ◀ −10 ms
                   </button>
                   <div style={{
@@ -1209,7 +1223,7 @@ export default function Devices() {
                   <button className="dv-btn dv-btn-ghost" type="button"
                     onClick={() => void sendSyncOffset(d.deviceId, offset + 10)}
                     disabled={!canWrite || offset >= 2000}
-                    title="+10 ms (hátrébb csúsztatás)">
+                    title={t("sync.laterTooltip")}>
                     +10 ms ▶
                   </button>
                 </div>
@@ -1217,7 +1231,7 @@ export default function Devices() {
                   <div style={{ marginTop:8, textAlign:"center" }}>
                     <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
                       onClick={() => void sendSyncOffset(d.deviceId, 0)} disabled={!canWrite}>
-                      ↻ Reset 0-ra
+                      ↻ {t("sync.resetButton")}
                     </button>
                   </div>
                 )}
@@ -1232,16 +1246,20 @@ export default function Devices() {
                 borderRadius:11,
               }}>
                 <div style={{ fontWeight:700, fontSize:13, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}>
-                  🔊 Mono csatorna-mód
+                  🔊 {t("channelMode.title")}
                 </div>
                 <div style={{ fontSize:11, color:"var(--sl-muted)", marginBottom:12, lineHeight:1.5 }}>
-                  Mono DAC-nál: <b>Mix</b> = (L+R)/2, <b>Bal/Jobb</b> = csak az adott csatorna.
-                  Sztereó DAC-nál: <b>Sztereó</b> = pass-through, változatlan L/R kimenet.
+                  <Trans i18nKey="devices:channelMode.description" components={{ b: <b /> }} />
                 </div>
                 <div style={{ display:"flex", gap:6, justifyContent:"center" }}>
                   {(["LEFT", "MIXED", "STEREO", "RIGHT"] as const).map(mode => {
                     const active = (d.channelMode ?? "MIXED") === mode;
-                    const labels: Record<string, string> = { LEFT:"◀ Bal", MIXED:"⊕ Mix", STEREO:"🎵 Sztereó", RIGHT:"Jobb ▶" };
+                    const labels: Record<string, string> = {
+                      LEFT:   `◀ ${t("channelMode.left")}`,
+                      MIXED:  `⊕ ${t("channelMode.mix")}`,
+                      STEREO: `🎵 ${t("channelMode.stereo")}`,
+                      RIGHT:  `${t("channelMode.right")} ▶`,
+                    };
                     return (
                       <button key={mode}
                         className="dv-btn dv-btn-ghost"
@@ -1267,30 +1285,30 @@ export default function Devices() {
             <div className="dv-modal-footer" style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {d.isNativePlayer && (
                 <button className="dv-btn dv-btn-ghost" type="button"
-                  title="Visszaállítás provisioning módba"
+                  title={t("details.resetTooltip")}
                   disabled={!canWrite}
                   onClick={() => {
                     setDetailsDeviceId(null);
                     void resetProvision(d.deviceId, d.name);
                   }}>
-                  🔄 Reset
+                  🔄 {t("details.resetButton")}
                 </button>
               )}
               <button className="dv-btn dv-btn-danger" type="button"
                 disabled={!canWrite}
                 onClick={async () => {
-                  if (!window.confirm(`Törlöd? (${d.name})`)) return;
+                  if (!window.confirm(t("details.deleteConfirm", { name: d.name }))) return;
                   try {
                     await apiFetch(`/admin/devices/${d.deviceId}`, { method:"DELETE" });
                     setDetailsDeviceId(null);
                     void loadDevices();
-                  } catch (e) { setError(safeErrorMessage(e)); }
+                  } catch (e) { setError(safeErrorMessage(e, t)); }
                 }}>
-                🗑 Törlés
+                🗑 {t("common:actions.delete")}
               </button>
               <div style={{ flex:1 }} />
               <button className="dv-btn dv-btn-ghost" type="button"
-                onClick={() => setDetailsDeviceId(null)}>Bezár</button>
+                onClick={() => setDetailsDeviceId(null)}>{t("common:actions.close")}</button>
               {canWrite && (
                 <button className="dv-btn dv-btn-primary" type="button"
                   onClick={() => {
@@ -1303,7 +1321,7 @@ export default function Devices() {
                     });
                     setDetailsDeviceId(null);
                   }}>
-                  ✏️ Szerkeszt
+                  ✏️ {t("common:actions.edit")}
                 </button>
               )}
             </div>
@@ -1312,11 +1330,11 @@ export default function Devices() {
       })()}
 
       {editDevice && (
-        <Modal title="Eszköz szerkesztése" icon="✏️" onClose={() => setEditDevice(null)}>
+        <Modal title={t("editModal.title")} icon="✏️" onClose={() => setEditDevice(null)}>
           <div className="dv-modal-body">
             {editError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{editError}</div>}
             <div>
-              <label className="dv-label">Eszköznév</label>
+              <label className="dv-label">{t("activate.deviceNameLabelShort")}</label>
               <input className="dv-input"
                 value={editDevice.name}
                 onChange={e => setEditDevice(s => s ? { ...s, name: e.target.value } : s)}
@@ -1324,24 +1342,23 @@ export default function Devices() {
                 autoFocus />
             </div>
             <div>
-              <label className="dv-label">Típus</label>
+              <label className="dv-label">{t("details.typeLabel")}</label>
               <select className="dv-select" value={editDevice.deviceClass}
                 onChange={e => setEditDevice(s => s ? { ...s, deviceClass: e.target.value as DeviceClass } : s)}>
-                {DEVICE_CLASS_OPTIONS.map(o => (
+                {deviceClassOptions.map(o => (
                   <option key={o.value} value={o.value}>{o.label} – {o.description}</option>
                 ))}
               </select>
               <div style={{ fontSize: 11, color: "var(--sl-muted)", marginTop: 4 }}>
-                Megjegyzés: a típust a backend jelenleg csak újraprovisioning útján módosítja —
-                ez a mező későbbre tartogatott.
+                {t("editModal.typeNote")}
               </div>
             </div>
             <div>
-              <label className="dv-label">Hardver modell</label>
+              <label className="dv-label">{t("editModal.hwModelLabel")}</label>
               <select className="dv-select" value={editDevice.hwModel}
                 onChange={e => setEditDevice(s => s ? { ...s, hwModel: e.target.value } : s)}>
-                <option value="">— Nincs beállítva —</option>
-                {HW_MODEL_OPTIONS.map(o => (
+                <option value="">{t("editModal.hwModelNotSet")}</option>
+                {hwModelOptions.map(o => (
                   <option key={o.value} value={o.value}>{o.icon} {o.label}</option>
                 ))}
               </select>
@@ -1349,10 +1366,10 @@ export default function Devices() {
           </div>
           <div className="dv-modal-footer">
             <button className="dv-btn dv-btn-ghost" type="button"
-              onClick={() => setEditDevice(null)} disabled={editBusy}>Mégse</button>
+              onClick={() => setEditDevice(null)} disabled={editBusy}>{t("common:actions.cancel")}</button>
             <button className="dv-btn dv-btn-primary" type="button"
               onClick={() => void submitEditDevice()} disabled={editBusy}>
-              {editBusy ? "⏳ Mentés…" : "💾 Mentés"}
+              {editBusy ? t("editModal.saving") : t("common:actions.save")}
             </button>
           </div>
         </Modal>
@@ -1363,21 +1380,21 @@ export default function Devices() {
         <div className="dv-overlay" onClick={() => setGroupsOpen(false)}>
           <div className="dv-modal" style={{ maxWidth:560 }} onClick={e => e.stopPropagation()}>
             <div className="dv-modal-hdr">
-              <div className="dv-modal-title">👥 Eszköz csoportok</div>
+              <div className="dv-modal-title">👥 {t("groups.title")}</div>
               <button className="dv-close" onClick={() => setGroupsOpen(false)}>✕</button>
             </div>
             <div style={{ padding:"18px 22px", overflowY:"auto", maxHeight:"70vh" }}>
               {groupsError && <div className="dv-alert dv-alert-error" style={{marginBottom:12}}><span>⚠️</span>{groupsError}</div>}
               <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-                <input className="dv-input" style={{ flex:1 }} placeholder="Új csoport neve…"
+                <input className="dv-input" style={{ flex:1 }} placeholder={t("groups.newGroupPlaceholder")}
                   value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
                   onKeyDown={e => e.key==="Enter" && void createGroup()} />
-                <button className="dv-btn dv-btn-primary" onClick={() => void createGroup()} disabled={groupsBusy||!newGroupName.trim()} type="button">＋ Létrehoz</button>
+                <button className="dv-btn dv-btn-primary" onClick={() => void createGroup()} disabled={groupsBusy||!newGroupName.trim()} type="button">＋ {t("groups.createButton")}</button>
               </div>
               {groupsLoading ? (
-                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)" }}>⏳ Betöltés…</div>
+                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)" }}>⏳ {t("common:actions.loading")}</div>
               ) : groups.length === 0 ? (
-                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)", fontSize:13 }}>Még nincs csoport.</div>
+                <div style={{ textAlign:"center", padding:24, color:"var(--sl-muted)", fontSize:13 }}>{t("groups.empty")}</div>
               ) : (
                 <div className="dv-group-list">
                   {groups.map(g => (
@@ -1387,29 +1404,29 @@ export default function Devices() {
                           <input className="dv-input" style={{ flex:1 }} value={editGroupName}
                             onChange={e => setEditGroupName(e.target.value)}
                             onKeyDown={e => e.key==="Enter" && void renameGroup(g, editGroupName)} autoFocus />
-                          <button className="dv-btn dv-btn-primary dv-btn-sm" onClick={() => void renameGroup(g, editGroupName)} disabled={groupsBusy} type="button">Ment</button>
-                          <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => setEditGroup(null)} type="button">Mégse</button>
+                          <button className="dv-btn dv-btn-primary dv-btn-sm" onClick={() => void renameGroup(g, editGroupName)} disabled={groupsBusy} type="button">{t("groups.renameSaveButton")}</button>
+                          <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => setEditGroup(null)} type="button">{t("common:actions.cancel")}</button>
                         </>
                       ) : (
                         <>
                           <div style={{ flex:1 }}>
                             <div className="dv-group-name">👥 {g.name}</div>
                             <div style={{ fontSize:11, color:"var(--sl-muted)", marginTop:2 }}>
-                              {g.deviceIds.length === 0 ? "Nincs tag" : `${g.deviceIds.length} eszköz`}
+                              {g.deviceIds.length === 0 ? t("groups.noMembers") : t("groups.memberCount", { count: g.deviceIds.length })}
                               {g.deviceIds.length > 0 && ": " + devices.filter(d => g.deviceIds.includes(d.deviceId)).map(d => d.name).join(", ")}
                             </div>
                           </div>
                           <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                            onClick={() => { setEditGroup({...g, _editMembers: true} as any); setEditGroupName(g.name); }}>✏️ Tagok</button>
+                            onClick={() => { setEditGroup({...g, _editMembers: true} as any); setEditGroupName(g.name); }}>✏️ {t("groups.membersButton")}</button>
                           <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button"
-                            onClick={() => { setEditGroup(g); setEditGroupName(g.name); }}>📝 Átnevez</button>
+                            onClick={() => { setEditGroup(g); setEditGroupName(g.name); }}>📝 {t("groups.renameButton")}</button>
                           <button className="dv-btn dv-btn-danger dv-btn-sm" type="button"
                             onClick={() => void deleteGroup(g.id)}>🗑</button>
                         </>
                       )}
                       {(editGroup as any)?._editMembers && editGroup?.id === g.id && (
                         <div style={{ width:"100%", marginTop:8 }}>
-                          <div style={{ fontSize:11, fontWeight:800, color:"var(--sl-muted)", marginBottom:4 }}>TAGOK KIVÁLASZTÁSA</div>
+                          <div style={{ fontSize:11, fontWeight:800, color:"var(--sl-muted)", marginBottom:4 }}>{t("groups.selectMembersLabel")}</div>
                           <div className="dv-device-check-list">
                             {devices.map(d => {
                               const isMember = editGroup.deviceIds.includes(d.deviceId);
@@ -1430,9 +1447,9 @@ export default function Devices() {
                           <div style={{ display:"flex", gap:8, marginTop:10 }}>
                             <button className="dv-btn dv-btn-primary dv-btn-sm" disabled={groupsBusy} type="button"
                               onClick={() => void saveGroupMembers(g, editGroup.deviceIds)}>
-                              {groupsBusy ? "Mentés…" : "💾 Mentés"}
+                              {groupsBusy ? t("editModal.saving") : t("common:actions.save")}
                             </button>
-                            <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button" onClick={() => setEditGroup(null)}>Mégse</button>
+                            <button className="dv-btn dv-btn-ghost dv-btn-sm" type="button" onClick={() => setEditGroup(null)}>{t("common:actions.cancel")}</button>
                           </div>
                         </div>
                       )}
@@ -1450,47 +1467,47 @@ export default function Devices() {
         <div className="dv-overlay" onClick={() => setOtaOpen(false)}>
           <div className="dv-modal" style={{ maxWidth:640, maxHeight:"92vh", display:"flex", flexDirection:"column" }} onClick={e => e.stopPropagation()}>
             <div className="dv-modal-hdr">
-              <div className="dv-modal-title">📦 Firmware OTA kezelő</div>
+              <div className="dv-modal-title">📦 {t("ota.modalTitle")}</div>
               <button className="dv-close" onClick={() => setOtaOpen(false)}>✕</button>
             </div>
             <div style={{ padding:"18px 22px", overflowY:"auto", flex:1, display:"flex", flexDirection:"column", gap:16 }}>
               <div style={{ background:"var(--sl-bg)", border:"1px solid var(--sl-border)", borderRadius:14, padding:16 }}>
-                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>⬆️ Új firmware feltöltése</div>
+                <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", marginBottom:12, fontFamily:"'Nunito',sans-serif" }}>⬆️ {t("ota.uploadSectionTitle")}</div>
                 <div className="dv-grid2" style={{ marginBottom:10 }}>
                   <div>
-                    <label className="dv-label">Verzió *</label>
+                    <label className="dv-label">{t("ota.versionLabel")}</label>
                     <input className="dv-input" placeholder="pl. S3.5" value={uploadForm.version}
                       onChange={e => setUploadForm(s => ({ ...s, version:e.target.value }))} />
                   </div>
                   <div>
-                    <label className="dv-label">Céleszköz</label>
+                    <label className="dv-label">{t("ota.targetDeviceLabel")}</label>
                     <select className="dv-select" value={uploadForm.targetClass}
                       onChange={e => setUploadForm(s => ({ ...s, targetClass:e.target.value }))}>
-                      <option value="ALL">Minden eszköz</option>
+                      <option value="ALL">{t("ota.targetAll")}</option>
                       <option value="ESP32_S3">ESP32-S3-N16R8</option>
                       <option value="ESP32_WROOM">ESP32-WROOM-32</option>
-                      <option value="ESP32_S3_DISPLAY">ESP32-S3 Kijelző</option>
-                      <option value="ESP32_S3_MULTI">ESP32-S3 Multi</option>
+                      <option value="ESP32_S3_DISPLAY">{t("hwModel.esp32S3Display")}</option>
+                      <option value="ESP32_S3_MULTI">{t("hwModel.esp32S3Multi")}</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ marginBottom:10 }}>
-                  <label className="dv-label">Megjegyzés</label>
-                  <input className="dv-input" placeholder="Release notes…" value={uploadForm.notes}
+                  <label className="dv-label">{t("ota.notesLabel")}</label>
+                  <input className="dv-input" placeholder={t("ota.notesPlaceholder")} value={uploadForm.notes}
                     onChange={e => setUploadForm(s => ({ ...s, notes:e.target.value }))} />
                 </div>
                 <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"var(--sl-text-2)", marginBottom:12, cursor:"pointer" }}>
                   <input type="checkbox" checked={uploadForm.mandatory}
                     onChange={e => setUploadForm(s => ({ ...s, mandatory:e.target.checked }))}
                     style={{ accentColor:"#dc2626" }} />
-                  <span>⚠️ Kötelező frissítés</span>
+                  <span>⚠️ {t("ota.mandatoryLabel")}</span>
                 </label>
                 <input ref={uploadFileRef} type="file" accept=".bin" style={{ display:"none" }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFirmware(f); e.target.value = ""; }} />
                 <div className="dv-upload-zone" onClick={() => !uploadBusy && uploadFileRef.current?.click()}>
                   <div style={{ fontSize:28, marginBottom:6 }}>{uploadBusy ? "⏳" : "📁"}</div>
                   <div style={{ fontSize:13, fontWeight:700, color:"var(--sl-text-2)" }}>
-                    {uploadBusy ? "Feltöltés folyamatban…" : "Kattints a .bin fájl kiválasztásához"}
+                    {uploadBusy ? t("ota.uploadInProgress") : t("ota.uploadDropHint")}
                   </div>
                 </div>
                 {uploadError   && <div className="dv-alert dv-alert-error"   style={{marginTop:8}}><span>⚠️</span>{uploadError}</div>}
@@ -1498,21 +1515,21 @@ export default function Devices() {
               </div>
               <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
                 <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>📋 Elérhető verziók</div>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>📋 {t("ota.availableVersionsTitle")}</div>
                   <button className="dv-btn dv-btn-ghost dv-btn-sm" onClick={() => void loadReleases()} disabled={releasesLoading} type="button">🔄</button>
                 </div>
                 {releasesLoading ? (
-                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ Betöltés…</div>
+                  <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>⏳ {t("common:actions.loading")}</div>
                 ) : releases.length === 0 ? (
                   <div style={{ padding:24, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>
-                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>Még nincs feltöltött firmware.
+                    <div style={{ fontSize:32, marginBottom:8 }}>📭</div>{t("ota.noReleases")}
                   </div>
                 ) : releases.map(r => (
                   <div key={r.id} className="dv-fw-item">
                     <div>
                       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                         <span className="dv-fw-version">{r.version}</span>
-                        {r.mandatory && <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>⚠️ Kötelező</span>}
+                        {r.mandatory && <span className="dv-badge" style={{ background:"#fef2f2", color:"#dc2626", borderColor:"#fecaca", fontSize:11 }}>⚠️ {t("ota.mandatoryBadge")}</span>}
                         {r.targetClass !== "ALL" && <span className="dv-badge" style={{ background:"var(--sl-bg)", color:"var(--sl-muted)", borderColor:"var(--sl-border)", fontSize:11 }}>{r.targetClass}</span>}
                       </div>
                       <div className="dv-fw-meta">
@@ -1533,11 +1550,11 @@ export default function Devices() {
               </div>
               <div style={{ background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, overflow:"hidden" }}>
                 <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--sl-border)" }}>
-                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>🔊 Eszközök frissítési állapota</div>
+                  <div style={{ fontSize:13, fontWeight:800, color:"var(--sl-text)", fontFamily:"'Nunito',sans-serif" }}>🔊 {t("ota.deviceUpdateStatusTitle")}</div>
                 </div>
                 {devices.filter(d => !d.isVirtualPlayer && !d.isNativePlayer).map(d => {
                   const s2 = (d.otaStatus ?? "UP_TO_DATE") as OtaStatus;
-                  const b2 = OTA_STATUS_BADGE[s2] ?? OTA_STATUS_BADGE.UP_TO_DATE;
+                  const b2 = otaStatusBadge[s2] ?? otaStatusBadge.UP_TO_DATE;
                   return (
                     <div key={d.deviceId} style={{ padding:"10px 16px", borderBottom:"1px solid var(--sl-border)", display:"flex", alignItems:"center", gap:12 }}>
                       <span style={{ width:7,height:7,borderRadius:"50%",background:isDeviceOnline(d)?"#22c55e":"#94a3b8",flexShrink:0 }} />
@@ -1552,7 +1569,7 @@ export default function Devices() {
                   );
                 })}
                 {devices.filter(d => !d.isVirtualPlayer && !d.isNativePlayer).length === 0 && (
-                  <div style={{ padding:20, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>Nincs fizikai eszköz</div>
+                  <div style={{ padding:20, textAlign:"center", color:"var(--sl-muted)", fontSize:13 }}>{t("ota.noPhysicalDevices")}</div>
                 )}
               </div>
             </div>

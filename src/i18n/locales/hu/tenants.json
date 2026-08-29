@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Ismeretlen hiba",
+    "nameRequired": "Az intézmény neve kötelező.",
+    "backendError": "Backend hiba",
+    "deactivateFailed": "Nem sikerült deaktiválni.",
+    "deleteFailed": "Nem sikerült törölni."
+  },
+  "page": {
+    "subtitle": "Tenant-szintű intézmények és beállításaik kezelése."
+  },
+  "search": {
+    "placeholder": "Keresés…"
+  },
+  "actions": {
+    "newTenant": "Új intézmény",
+    "inactiveHidden": "Inaktívak elrejtve",
+    "inactiveVisible": "Inaktívak mutatása"
+  },
+  "table": {
+    "nameHeader": "Intézmény",
+    "actionsHeader": "Műveletek",
+    "emptyTitle": "Nincs intézmény",
+    "viewDetailsAction": "Részletek",
+    "editAction": "Szerkeszt",
+    "deactivateAction": "Deaktivál"
+  },
+  "status": {
+    "active": "Aktív",
+    "inactive": "Inaktív"
+  },
+  "modal": {
+    "creating": "Létrehozás…",
+    "create": "Létrehoz",
+    "editTitle": "Szerkesztés: {{name}}",
+    "saving": "Mentés…"
+  },
+  "confirm": {
+    "deactivateMessage": "Deaktiválod az intézményt?\n\n{{name}}",
+    "hardDeleteMessage": "Véglegesen törlöd az intézményt? Ez nem visszafordítható!\nAz összes felhasználó, eszköz és adat törlődik!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefon",
+    "email": "E-mail",
+    "address": "Cím",
+    "eduId": "OM azonosító",
+    "status": "Státusz",
+    "domain": "Domain",
+    "director": "Igazgató",
+    "createdAt": "Létrehozva"
+  },
+  "detail": {
+    "closeAction": "Bezár"
+  },
+  "form": {
+    "nameLabel": "Intézmény neve *",
+    "namePlaceholder": "pl. Kossuth Lajos Általános Iskola",
+    "domainLabel": "Domain / subdomain",
+    "domainPlaceholder": "pl. kossuth.schoollive.hu",
+    "activeLabel": "Aktív intézmény",
+    "contactSectionTitle": "Kapcsolattartó / Igazgató",
+    "directorNameLabel": "Igazgató neve",
+    "directorNamePlaceholder": "pl. Nagy István",
+    "phonePlaceholder": "+36 20 123 4567",
+    "emailPlaceholder": "igazgato@iskola.hu",
+    "otherSectionTitle": "Egyéb adatok",
+    "addressPlaceholder": "1234 Budapest, Fő u. 1.",
+    "eduIdPlaceholder": "032456"
+  }
+}

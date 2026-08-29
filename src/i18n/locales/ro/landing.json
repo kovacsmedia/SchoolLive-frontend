@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "A apărut o eroare.",
+    "sendFailed": "Trimiterea e-mailului a eșuat."
+  },
+  "nav": {
+    "login": "Conectare →"
+  },
+  "hero": {
+    "tag": "🏫 Sistem de comunicare școlară",
+    "titlePrefix": "Comunicare școlară",
+    "titleHighlight": "mai simplă",
+    "description": "SchoolLive ajută mesajele școlare să ajungă mereu la timp, clar și fiabil acolo unde este nevoie de ele — mai puține neînțelegeri, reacție mai rapidă, zile mai liniștite.",
+    "ctaPrimary": "🚀 Intră în sistem",
+    "ctaSecondary": "Află mai multe ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Semnale automate și precise conform programului școlii. Cu șabloane organizate în calendar și zile libere." },
+    "messages": { "title": "Mesaje instantanee", "desc": "Trimite un mesaj vocal către orice parte a clădirii în câteva secunde, cu voce TTS." },
+    "radio":    { "title": "Radio școlar", "desc": "Muzică și emisiuni programate, în toată clădirea simultan – controlate direct din browser." },
+    "devices":  { "title": "Mai multe dispozitive", "desc": "Toate difuzoarele și display-urile într-un singur loc, cu status în timp real, organizate pe grupuri." },
+    "security": { "title": "Securizat", "desc": "Roluri, gestionarea accesului, separare pe instituții, operațiuni auditate." }
+  },
+  "cta": {
+    "title": "🎯 Doriți să încercați și la instituția dumneavoastră?",
+    "description": "Solicitați o probă gratuită — implementare gratuită, cu prezentare personală!",
+    "contactButton": "📩 Contactați-ne"
+  },
+  "contactModal": {
+    "title": "📩 Contact",
+    "subtitle": "Completați formularul de mai jos și vă vom contacta în curând!",
+    "sending": "⏳ Se trimite…",
+    "submit": "📨 Trimite",
+    "success": {
+      "title": "Vă mulțumim pentru interes!",
+      "message": "Am primit mesajul dumneavoastră, vă vom contacta în curând."
+    },
+    "fields": {
+      "name":        { "label": "Numele dumneavoastră *", "placeholder": "ex. Ion Popescu" },
+      "institution": { "label": "Instituția dumneavoastră", "placeholder": "ex. Școala Gimnazială Nr. 1" },
+      "email":       { "label": "Adresă de e-mail *", "placeholder": "ex. ion.popescu@scoala.ro" },
+      "phone":       { "label": "Număr de telefon", "placeholder": "ex. +40 712 345 678" }
+    }
+  },
+  "footer": {
+    "tagline": "Sistem de comunicare școlară"
+  }
+}

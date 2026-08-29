@@ -1,0 +1,14 @@
+{
+  "menuAria": "Menü",
+  "statusTime": "Idő:",
+  "statusBell": "Csengő:",
+  "statusMessage": "Üzenet:",
+  "statusRadio": "Rádió:",
+  "chooseTenantPlaceholder": "Válassz intézményt…",
+  "inactiveSuffix": " (inaktív)",
+  "chooseTenantBadge": "⚠️ Válassz intézményt",
+  "chooseTenantTitle": "Válassz intézményt!",
+  "chooseTenantBody": "Rendszergazda módban a felső sávban válassz ki egy intézményt, hogy hozzáférhess az adatokhoz.",
+  "tenantsLoadError": "Betöltés sikertelen",
+  "defaultUserName": "Felhasználó"
+}

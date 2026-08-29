@@ -1,0 +1,14 @@
+{
+  "menuAria": "Menü",
+  "statusTime": "Uhrzeit:",
+  "statusBell": "Glocke:",
+  "statusMessage": "Nachricht:",
+  "statusRadio": "Radio:",
+  "chooseTenantPlaceholder": "Einrichtung auswählen…",
+  "inactiveSuffix": " (inaktiv)",
+  "chooseTenantBadge": "⚠️ Einrichtung auswählen",
+  "chooseTenantTitle": "Wählen Sie eine Einrichtung aus!",
+  "chooseTenantBody": "Wählen Sie im Administratormodus in der oberen Leiste eine Einrichtung aus, um auf die Daten zugreifen zu können.",
+  "tenantsLoadError": "Laden fehlgeschlagen",
+  "defaultUserName": "Benutzer"
+}

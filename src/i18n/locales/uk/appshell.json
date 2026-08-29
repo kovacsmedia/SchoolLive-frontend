@@ -1,0 +1,14 @@
+{
+  "menuAria": "Меню",
+  "statusTime": "Час:",
+  "statusBell": "Дзвінок:",
+  "statusMessage": "Повідомлення:",
+  "statusRadio": "Радіо:",
+  "chooseTenantPlaceholder": "Виберіть заклад…",
+  "inactiveSuffix": " (неактивний)",
+  "chooseTenantBadge": "⚠️ Виберіть заклад",
+  "chooseTenantTitle": "Виберіть заклад!",
+  "chooseTenantBody": "У режимі адміністратора виберіть заклад на верхній панелі, щоб отримати доступ до даних.",
+  "tenantsLoadError": "Не вдалося завантажити",
+  "defaultUserName": "Користувач"
+}

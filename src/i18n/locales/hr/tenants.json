@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Nepoznata pogreška",
+    "nameRequired": "Naziv ustanove je obavezan.",
+    "backendError": "Pogreška backenda",
+    "deactivateFailed": "Deaktivacija nije uspjela.",
+    "deleteFailed": "Brisanje nije uspjelo."
+  },
+  "page": {
+    "subtitle": "Upravljanje ustanovama na razini zakupca i njihovim postavkama."
+  },
+  "search": {
+    "placeholder": "Pretraga…"
+  },
+  "actions": {
+    "newTenant": "Nova ustanova",
+    "inactiveHidden": "Neaktivne skrivene",
+    "inactiveVisible": "Prikaži neaktivne"
+  },
+  "table": {
+    "nameHeader": "Ustanova",
+    "actionsHeader": "Radnje",
+    "emptyTitle": "Nema ustanova",
+    "viewDetailsAction": "Detalji",
+    "editAction": "Uredi",
+    "deactivateAction": "Deaktiviraj"
+  },
+  "status": {
+    "active": "Aktivna",
+    "inactive": "Neaktivna"
+  },
+  "modal": {
+    "creating": "Kreiranje…",
+    "create": "Kreiraj",
+    "editTitle": "Uređivanje: {{name}}",
+    "saving": "Spremanje…"
+  },
+  "confirm": {
+    "deactivateMessage": "Deaktivirati ovu ustanovu?\n\n{{name}}",
+    "hardDeleteMessage": "Trajno izbrisati ovu ustanovu? Ova se radnja ne može poništiti!\nSvi korisnici, uređaji i podaci bit će izbrisani!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefon",
+    "email": "E-mail",
+    "address": "Adresa",
+    "eduId": "Obrazovni identifikator",
+    "status": "Status",
+    "domain": "Domena",
+    "director": "Ravnatelj",
+    "createdAt": "Stvoreno"
+  },
+  "detail": {
+    "closeAction": "Zatvori"
+  },
+  "form": {
+    "nameLabel": "Naziv ustanove *",
+    "namePlaceholder": "npr. Osnovna škola Ivana Gundulića",
+    "domainLabel": "Domena / poddomena",
+    "domainPlaceholder": "npr. skola1.schoollive.hu",
+    "activeLabel": "Aktivna ustanova",
+    "contactSectionTitle": "Kontakt osoba / Ravnatelj",
+    "directorNameLabel": "Ime ravnatelja",
+    "directorNamePlaceholder": "npr. Ivan Horvat",
+    "phonePlaceholder": "+385 91 123 4567",
+    "emailPlaceholder": "ravnatelj@skola.hr",
+    "otherSectionTitle": "Ostali podaci",
+    "addressPlaceholder": "Školska 1, Zagreb",
+    "eduIdPlaceholder": "032456"
+  }
+}

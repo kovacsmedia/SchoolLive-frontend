@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Unknown error",
+    "nameRequired": "Institution name is required.",
+    "backendError": "Backend error",
+    "deactivateFailed": "Failed to deactivate.",
+    "deleteFailed": "Failed to delete."
+  },
+  "page": {
+    "subtitle": "Manage tenant-level institutions and their settings."
+  },
+  "search": {
+    "placeholder": "Search…"
+  },
+  "actions": {
+    "newTenant": "New institution",
+    "inactiveHidden": "Inactive hidden",
+    "inactiveVisible": "Show inactive"
+  },
+  "table": {
+    "nameHeader": "Institution",
+    "actionsHeader": "Actions",
+    "emptyTitle": "No institutions",
+    "viewDetailsAction": "Details",
+    "editAction": "Edit",
+    "deactivateAction": "Deactivate"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "modal": {
+    "creating": "Creating…",
+    "create": "Create",
+    "editTitle": "Edit: {{name}}",
+    "saving": "Saving…"
+  },
+  "confirm": {
+    "deactivateMessage": "Deactivate this institution?\n\n{{name}}",
+    "hardDeleteMessage": "Permanently delete this institution? This cannot be undone!\nAll users, devices, and data will be deleted!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "eduId": "Education ID",
+    "status": "Status",
+    "domain": "Domain",
+    "director": "Director",
+    "createdAt": "Created"
+  },
+  "detail": {
+    "closeAction": "Close"
+  },
+  "form": {
+    "nameLabel": "Institution name *",
+    "namePlaceholder": "e.g. Lincoln Elementary School",
+    "domainLabel": "Domain / subdomain",
+    "domainPlaceholder": "e.g. lincoln.schoollive.hu",
+    "activeLabel": "Active institution",
+    "contactSectionTitle": "Contact / Director",
+    "directorNameLabel": "Director's name",
+    "directorNamePlaceholder": "e.g. John Smith",
+    "phonePlaceholder": "+1 555 123 4567",
+    "emailPlaceholder": "director@school.edu",
+    "otherSectionTitle": "Other details",
+    "addressPlaceholder": "123 Main St, Springfield",
+    "eduIdPlaceholder": "032456"
+  }
+}

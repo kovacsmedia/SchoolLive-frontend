@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Geräte der Institution",
+    "subtitle": "Alle Lautsprecher und Displays an einem Ort — mit Echtzeit-Status."
+  },
+  "buttons": {
+    "addDevice": "Neues Gerät",
+    "groups": "Gruppen",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Aktualisieren"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Stummschaltung AUS – individuelle Lautstärken werden wiederhergestellt",
+    "muteAllTooltipOff": "Stummschaltung EIN – Lautstärke aller Geräte wird 0",
+    "muteAllLabelOn": "Stumm EIN",
+    "muteAllLabel": "Stumm",
+    "maxAllTooltipOn": "Max. Lautstärke AUS – individuelle Lautstärken werden wiederhergestellt",
+    "maxAllTooltipOff": "Max. Lautstärke EIN – Lautstärke aller Geräte wird 10",
+    "maxAllLabelOn": "Max EIN",
+    "maxAllLabel": "Max",
+    "globalMuteActiveTooltip": "Globale Stummschaltung aktiv",
+    "globalMaxActiveTooltip": "Globale Maximal-Lautstärke aktiv",
+    "tooltip": "Lautstärke: {{vol}}/10",
+    "mutedSuffix": " (stumm)"
+  },
+  "activate": {
+    "esp32Title": "ESP32-Gerät aktivieren",
+    "pendingIdLabel": "Pending-ID: {{id}}",
+    "deviceNameLabel": "Gerätename *",
+    "deviceNameLabelShort": "Gerätename",
+    "deviceNamePlaceholderEsp32": "z. B. Lautsprecher Raum 14",
+    "deviceNamePlaceholderWebplayer": "z. B. Empfangs-Tablet, Kantinen-Display",
+    "deviceNamePlaceholderNative": "z. B. Empfangs-PC (Windows)",
+    "deviceClassLabel": "Gerätetyp *",
+    "deviceClassLabelShort": "Gerätetyp",
+    "tenantLabel": "Institution *",
+    "tenantPlaceholder": "Institution auswählen…",
+    "wifiSectionTitle": "WLAN-Konfiguration",
+    "wifiSsidLabel": "WLAN-SSID *",
+    "wifiSsidPlaceholder": "z. B. Schul-WLAN",
+    "wifiHiddenLabel": "Verstecktes Netzwerk",
+    "wifiSecurityLabel": "Sicherheitstyp",
+    "wifiPasswordLabel": "WLAN-Passwort *",
+    "passwordPlaceholder": "Passwort",
+    "wifiUserLabel": "Anmeldename *",
+    "wifiUserPlaceholder": "z. B. benutzer@schule.de",
+    "openNetworkWarning": "Offenes Netzwerk – im Produktivbetrieb nicht empfohlen",
+    "activating": "⏳ Wird aktiviert…",
+    "activateButton": "⚡ Aktivieren",
+    "activateButtonWebplayer": "📱 Aktivieren",
+    "activateButtonNative": "🖥️ Aktivieren",
+    "webplayerTitle": "Virtuellen Player aktivieren",
+    "webplayerHint": "Sie aktivieren ein WebPlayer-Gerät. Der Browser fungiert als virtueller Lautsprecher.",
+    "nativeTitle": "Native Player aktivieren",
+    "nativeHint": "Aktivierung eines nativen Windows-/Linux-/Android-Players. Das Gerät verbindet sich mit seinem eigenen Geräteschlüssel.",
+    "successTitle": "Gerät aktiviert: {{name}}",
+    "deviceKeyLabel": "Geräteschlüssel (nur einmal sichtbar!):"
+  },
+  "table": {
+    "title": "Geräteliste",
+    "countLabel": "{{filtered}} / {{total}} Geräte",
+    "nameHeader": "Gerätename",
+    "statusHeader": "Status",
+    "volumeHeader": "Lautstärke",
+    "detailsHeader": "Details",
+    "emptyTitle": "Keine Geräte anzuzeigen",
+    "emptyHint": "Fügen Sie Geräte mit „Neues Gerät“ hinzu",
+    "detailsButtonTitle": "Details + Sync + Bearbeiten + Löschen"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "pending": {
+    "title": "Geräte, die auf Aktivierung warten",
+    "nativeSectionTitle": "Native Player (Windows / Linux / Android)",
+    "keyNotReadyAlert": "Das Gerät hat seinen Schlüssel noch nicht gesendet. Bitte ein paar Sekunden warten.",
+    "keyReady": "Schlüssel bereit",
+    "keyWaiting": "Wartet…",
+    "webplayerSectionTitle": "Virtuelle Player (WebPlayer)",
+    "lastSeen": "Zuletzt gesehen: {{date}}",
+    "esp32Hint": "Die folgenden ESP32-Geräte befinden sich im Provisioning-Modus und warten auf die Aktivierung.",
+    "esp32Empty": "Keine ESP32-Geräte warten auf Aktivierung."
+  },
+  "details": {
+    "durationSeconds": "{{s}}s",
+    "durationMinutes": "{{m}}m {{s}}s",
+    "durationHours": "{{h}}h {{m}}m",
+    "durationDays": "{{d}}d {{h}}h",
+    "title": "Details: {{name}}",
+    "typeLabel": "Typ",
+    "hwModelLabel": "HW-Modell",
+    "ipLabel": "IP-Adresse",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Letzte Aktivität",
+    "resetTooltip": "In den Provisioning-Modus zurücksetzen",
+    "resetButton": "Reset",
+    "resetConfirm": "In den Provisioning-Modus zurücksetzen?\n{{name}}\n\nDas Gerät verliert seinen aktivierten Status.",
+    "deleteConfirm": "Löschen? ({{name}})"
+  },
+  "sync": {
+    "title": "Snap-Sync-Versatz",
+    "description": "Feinabstimmung nach Gehör: ein positiver Wert lässt das Gerät <b>später</b> wiedergeben (im Verhältnis zu anderen Geräten verzögert), negativ → <b>früher</b>. Schritte von 10 ms, Bereich ±2000 ms. Die Änderung wirkt sich ab dem nächsten Audio-Chunk aus.",
+    "earlierTooltip": "-10 ms (früher verschieben)",
+    "laterTooltip": "+10 ms (später verschieben)",
+    "resetButton": "Auf 0 zurücksetzen"
+  },
+  "channelMode": {
+    "title": "Mono-Kanalmodus",
+    "description": "Bei einem Mono-DAC: <b>Mix</b> = (L+R)/2, <b>Links/Rechts</b> = nur der jeweilige Kanal. Bei einem Stereo-DAC: <b>Stereo</b> = Durchleitung, unveränderte L/R-Ausgabe.",
+    "left": "Links",
+    "mix": "Mix",
+    "stereo": "Stereo",
+    "right": "Rechts"
+  },
+  "editModal": {
+    "title": "Gerät bearbeiten",
+    "typeNote": "Hinweis: Der Typ wird derzeit nur vom Backend per Neu-Provisioning geändert — dieses Feld ist für später vorgesehen.",
+    "hwModelLabel": "Hardware-Modell",
+    "hwModelNotSet": "— Nicht festgelegt —",
+    "saving": "⏳ Speichern…"
+  },
+  "groups": {
+    "title": "Gerätegruppen",
+    "newGroupPlaceholder": "Neuer Gruppenname…",
+    "createButton": "Erstellen",
+    "empty": "Noch keine Gruppe vorhanden.",
+    "renameSaveButton": "Speichern",
+    "noMembers": "Keine Mitglieder",
+    "memberCount": "{{count}} Geräte",
+    "membersButton": "Mitglieder",
+    "renameButton": "Umbenennen",
+    "selectMembersLabel": "MITGLIEDER AUSWÄHLEN",
+    "deleteConfirm": "Diese Gruppe löschen?"
+  },
+  "ota": {
+    "modalTitle": "Firmware-OTA-Verwaltung",
+    "uploadSectionTitle": "Neue Firmware hochladen",
+    "versionLabel": "Version *",
+    "targetDeviceLabel": "Zielgerät",
+    "targetAll": "Alle Geräte",
+    "notesLabel": "Notiz",
+    "notesPlaceholder": "Versionshinweise…",
+    "mandatoryLabel": "Pflicht-Update",
+    "uploadInProgress": "Upload läuft…",
+    "uploadDropHint": "Klicken, um eine .bin-Datei auszuwählen",
+    "availableVersionsTitle": "Verfügbare Versionen",
+    "noReleases": "Noch keine Firmware hochgeladen.",
+    "mandatoryBadge": "Pflicht",
+    "deviceUpdateStatusTitle": "Update-Status der Geräte",
+    "noPhysicalDevices": "Kein physisches Gerät",
+    "uploadSuccess": "✅ {{version}} erfolgreich hochgeladen",
+    "deleteConfirm": "Version {{version}} löschen?",
+    "status": {
+      "upToDate": "Aktuell",
+      "pending": "Update ausstehend",
+      "downloading": "Wird heruntergeladen…",
+      "installing": "Wird installiert…",
+      "failed": "Fehlgeschlagen",
+      "rollback": "Zurückgesetzt"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Display",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Virtuell (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Lautsprecher", "description": "Nur Audiowiedergabe" },
+    "display":   { "label": "Display", "description": "Visuelle Anzeige" },
+    "multi":     { "label": "Multi", "description": "Audio + Display" },
+    "multizone": { "label": "Multizone", "description": "8-Zonen-Relaisverstärker (erzeugt 8 Geräte)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (am häufigsten)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Offenes Netzwerk (unverschlüsselt)"
+  },
+  "errors": {
+    "unknown": "Unbekannter Fehler",
+    "deviceNameRequired": "Der Gerätename darf nicht leer sein.",
+    "versionRequired": "Versionsnummer ist erforderlich!",
+    "uploadFailed": "Upload fehlgeschlagen",
+    "deleteFailed": "Löschen fehlgeschlagen",
+    "groupsLoadFailed": "Gruppen konnten nicht geladen werden",
+    "groupCreateFailed": "Erstellen fehlgeschlagen",
+    "groupSaveFailed": "Speichern fehlgeschlagen",
+    "groupRenameFailed": "Umbenennen fehlgeschlagen",
+    "deviceNameRequiredLong": "Der Gerätename ist erforderlich.",
+    "deviceNameRequiredShort": "Gerätename erforderlich.",
+    "tenantRequired": "Die Auswahl einer Institution ist erforderlich.",
+    "wifiSsidRequired": "Die WLAN-SSID ist erforderlich.",
+    "wifiPasswordRequired": "Das WLAN-Passwort ist erforderlich.",
+    "wifiUserRequired": "Bei WPA2 Enterprise ist ein Anmeldename erforderlich."
+  }
+}

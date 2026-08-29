@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "An error occurred.",
+    "sendFailed": "Failed to send the email."
+  },
+  "nav": {
+    "login": "Log in →"
+  },
+  "hero": {
+    "tag": "🏫 School Communication System",
+    "titlePrefix": "Simpler school",
+    "titleHighlight": "communication",
+    "description": "SchoolLive helps school messages reach the right people on time, clearly, and reliably — fewer misunderstandings, faster responses, calmer everyday routines.",
+    "ctaPrimary": "🚀 Log in to the system",
+    "ctaSecondary": "Learn more ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatic, precise signals following the school's schedule. With calendar-organized templates and holidays." },
+    "messages": { "title": "Instant messages", "desc": "Send a text or voice message to any part of the building within seconds, with TTS voice." },
+    "radio":    { "title": "School radio", "desc": "Scheduled music and programs across the whole building at once — controlled directly from your browser." },
+    "devices":  { "title": "Multiple devices", "desc": "Every speaker and display in one place, with real-time status, organized into groups." },
+    "security": { "title": "Secure", "desc": "Roles, access management, institutional separation, audited actions." }
+  },
+  "cta": {
+    "title": "🎯 Want to try it at your institution too?",
+    "description": "Request a free trial — a no-cost introduction with a personal demo!",
+    "contactButton": "📩 Get in touch"
+  },
+  "contactModal": {
+    "title": "📩 Get in touch",
+    "subtitle": "Fill out the form below and we'll get back to you shortly!",
+    "sending": "⏳ Sending…",
+    "submit": "📨 Send",
+    "success": {
+      "title": "Thank you for your interest!",
+      "message": "We've received your message and will be in touch shortly."
+    },
+    "fields": {
+      "name":        { "label": "Your name *", "placeholder": "e.g. John Smith" },
+      "institution": { "label": "Your institution", "placeholder": "e.g. Lincoln Elementary School" },
+      "email":       { "label": "Email address *", "placeholder": "e.g. john.smith@school.edu" },
+      "phone":       { "label": "Phone number", "placeholder": "e.g. +1 555 123 4567" }
+    }
+  },
+  "footer": {
+    "tagline": "School communication system"
+  }
+}

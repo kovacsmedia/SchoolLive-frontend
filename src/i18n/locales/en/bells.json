@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Manage calendar, templates, and sound files",
+    "endEditing": "End editing",
+    "lockActive": "Edit lock active",
+    "loadingCalendar": "Loading calendar...",
+    "tabs": {
+      "calendar": "Calendar",
+      "templates": "Templates",
+      "sounds": "Sound files"
+    }
+  },
+  "calendar": {
+    "today": "Today",
+    "loadHolidaysButton": "Load holidays",
+    "hint": "Click a day to edit it. Shift: select a range, Ctrl/Cmd: select multiple days.",
+    "holidayTitle": "Non-teaching day",
+    "normalTitle": "School day",
+    "holidayBadge": "Day off",
+    "weekendBadge": "Weekend",
+    "weekdays": {
+      "mon": "Mo",
+      "tue": "Tu",
+      "wed": "We",
+      "thu": "Th",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "Su"
+    },
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "dayPanel": {
+      "multipleSelected": "{{count}} days selected",
+      "titleSuffix": "editing",
+      "multiHint": "(the same settings will apply to every selected day)",
+      "holidayCheckbox": "Day off (no bells)",
+      "templateDefaultOption": "Default template",
+      "noteLabel": "Note",
+      "notePlaceholder": "e.g. Shortened lessons"
+    }
+  },
+  "templates": {
+    "heading": "Bell schedule templates",
+    "newButton": "New template",
+    "defaultInfo": {
+      "prefix": "The",
+      "highlight": "default",
+      "suffix": "template is downloaded to the device as an offline fallback."
+    },
+    "noDefaultWarning": "No default template is set!",
+    "defaultBadge": "Default",
+    "lockedBadge": "Locked",
+    "bellsCount": "{{count}} signals",
+    "viewButton": "View",
+    "setDefaultTitle": "Set as offline default",
+    "setDefaultShort": "Default",
+    "newTemplateTitle": "New template",
+    "nameLabel": "Template name",
+    "namePlaceholder": "e.g. Shortened day",
+    "tableHeaders": {
+      "time": "Time",
+      "type": "Type",
+      "sound": "Sound"
+    },
+    "bellType": {
+      "main": "Main",
+      "signal": "Signal"
+    },
+    "commitButton": "✓ Done",
+    "commitRowTitle": "Accept and insert row",
+    "discardRowTitle": "Discard row",
+    "addBellButton": "Add signal",
+    "pendingHint": {
+      "prefix": "Set the time, then press",
+      "suffix": "to insert it"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Storage usage",
+    "available": "Available: {{available}}",
+    "uploadButton": "Upload MP3",
+    "uploadingButton": "Uploading...",
+    "noFreeSpace": "No free space!",
+    "defaultBadge": "Default",
+    "previewButton": "Preview",
+    "previewTitle": "Preview",
+    "closePlayerTitle": "Close player"
+  },
+  "confirm": {
+    "loadHolidays": "Load the holidays for {{year}}?",
+    "deleteTemplate": "Delete the \"{{name}}\" template?",
+    "setDefaultTemplate": "Set the \"{{name}}\" template as default?",
+    "saveDay": "Save the changes?",
+    "discardChanges": "There are unsaved changes. Are you sure you want to discard them?",
+    "deleteSound": "Delete the sound file \"{{filename}}\"?"
+  },
+  "success": {
+    "daysSaved": "{{count}} days saved.",
+    "holidaysLoaded": "{{count}} holidays loaded.",
+    "templateSaved": "Template saved.",
+    "templateDeleted": "Template deleted.",
+    "templateSetDefault": "\"{{name}}\" set as default.",
+    "soundUploaded": "Sound file uploaded!",
+    "soundDeleted": "Sound file deleted!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Failed to load templates.",
+    "loadCalendarFailed": "Failed to load calendar.",
+    "loadSoundsFailed": "Failed to load sound files.",
+    "lockConflict": "Someone else is already editing the bell schedule.",
+    "lockFailed": "Failed to acquire the edit lock.",
+    "saveFailed": "Failed to save.",
+    "loadHolidaysFailed": "Failed to load holidays.",
+    "pendingBellUnfinished": "Finish adding the pending signal (✓ Done or ✕).",
+    "templateNameRequired": "Template name is required.",
+    "deleteFailed": "Failed to delete.",
+    "setDefaultFailed": "Failed to set as default.",
+    "notEnoughSpace": "Not enough space! Available: {{available}}, needed: {{needed}}",
+    "uploadFailed": "Upload error"
+  },
+  "shared": {
+    "saveButton": "Save",
+    "savingButton": "Saving..."
+  }
+}

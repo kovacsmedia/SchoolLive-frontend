@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "Wystąpił błąd.",
+    "sendFailed": "Nie udało się wysłać e-maila."
+  },
+  "nav": {
+    "login": "Zaloguj się →"
+  },
+  "hero": {
+    "tag": "🏫 System komunikacji szkolnej",
+    "titlePrefix": "Prostsza komunikacja",
+    "titleHighlight": "szkolna",
+    "description": "SchoolLive pomaga, aby komunikaty szkolne docierały zawsze na czas, w sposób zrozumiały i niezawodny tam, gdzie są potrzebne — mniej nieporozumień, szybsza reakcja, spokojniejsza codzienność.",
+    "ctaPrimary": "🚀 Wejdź do systemu",
+    "ctaSecondary": "Dowiedz się więcej ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatyczne, precyzyjne sygnały zgodnie z planem dnia szkoły. Z szablonami zorganizowanymi w kalendarzu i dniami wolnymi." },
+    "messages": { "title": "Natychmiastowe wiadomości", "desc": "Wyślij wiadomość głosową do dowolnej części budynku w kilka sekund, z głosem TTS." },
+    "radio":    { "title": "Radio szkolne", "desc": "Zaplanowana muzyka i audycje w całym budynku jednocześnie – sterowane bezpośrednio z przeglądarki." },
+    "devices":  { "title": "Wiele urządzeń", "desc": "Wszystkie głośniki i wyświetlacze w jednym miejscu, ze statusem w czasie rzeczywistym, pogrupowane." },
+    "security": { "title": "Bezpieczne", "desc": "Role, zarządzanie dostępem, rozdzielenie instytucji, audytowane operacje." }
+  },
+  "cta": {
+    "title": "🎯 Chcesz wypróbować w swojej placówce?",
+    "description": "Poproś o bezpłatny okres próbny — darmowe wdrożenie z osobistą prezentacją!",
+    "contactButton": "📩 Skontaktuj się"
+  },
+  "contactModal": {
+    "title": "📩 Kontakt",
+    "subtitle": "Wypełnij poniższy formularz, a wkrótce się z Tobą skontaktujemy!",
+    "sending": "⏳ Wysyłanie…",
+    "submit": "📨 Wyślij",
+    "success": {
+      "title": "Dziękujemy za zainteresowanie!",
+      "message": "Otrzymaliśmy Twoją wiadomość, wkrótce się z Tobą skontaktujemy."
+    },
+    "fields": {
+      "name":        { "label": "Twoje imię i nazwisko *", "placeholder": "np. Jan Kowalski" },
+      "institution": { "label": "Twoja placówka", "placeholder": "np. Szkoła Podstawowa nr 1" },
+      "email":       { "label": "Adres e-mail *", "placeholder": "np. jan.kowalski@szkola.pl" },
+      "phone":       { "label": "Numer telefonu", "placeholder": "np. +48 600 123 456" }
+    }
+  },
+  "footer": {
+    "tagline": "System komunikacji szkolnej"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "menuAria": "Menu",
+  "statusTime": "Čas:",
+  "statusBell": "Zvonček:",
+  "statusMessage": "Správa:",
+  "statusRadio": "Rádio:",
+  "chooseTenantPlaceholder": "Vyberte inštitúciu…",
+  "inactiveSuffix": " (neaktívne)",
+  "chooseTenantBadge": "⚠️ Vyberte inštitúciu",
+  "chooseTenantTitle": "Vyberte inštitúciu!",
+  "chooseTenantBody": "V režime správcu vyberte inštitúciu v hornej lište, aby ste získali prístup k údajom.",
+  "tenantsLoadError": "Načítanie zlyhalo",
+  "defaultUserName": "Používateľ"
+}

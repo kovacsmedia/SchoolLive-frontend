@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Geräte",
+    "messages": "Nachrichten",
+    "radio": "Schulradio",
+    "bells": "Klingelplan",
+    "users": "Benutzer",
+    "tenants": "Einrichtungen"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Systemadministrator",
+    "TENANT_ADMIN": "Einrichtungsadministrator",
+    "ORG_ADMIN": "Organisationsadministrator",
+    "OPERATOR": "Bediener",
+    "TEACHER": "Lehrkraft",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "loading": "Wird geladen…",
+    "search": "Suchen",
+    "logout": "Abmelden",
+    "back": "Zurück",
+    "add": "Hinzufügen",
+    "send": "Senden"
+  },
+  "language": {
+    "label": "Sprache",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 
 type BellType = "MAIN" | "SIGNAL";
@@ -47,10 +48,11 @@ type PendingBell = {
 // 4 MB – az ESP32-S3-N16R8 LittleFS partícióján kb. ennyi marad a hangoknak.
 // (Backend-en is ugyanez a limit: bells.routes.ts MAX_TOTAL_BYTES.)
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
-const MONTHS_HU = [
-  "Január", "Február", "Március", "Április", "Május", "Június",
-  "Július", "Augusztus", "Szeptember", "Október", "November", "December",
+const MONTH_KEYS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
 ];
+const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function fmtBytes(b: number) {
@@ -72,6 +74,7 @@ function sortBells<T extends { hour: number; minute: number }>(bells: T[]): T[] 
 }
 
 export default function BellSchedule() {
+  const { t } = useTranslation(["bells", "common"]);
   const [tab, setTab] = useState<"calendar" | "templates" | "sounds">("calendar");
 
   const today = new Date();
@@ -111,7 +114,7 @@ export default function BellSchedule() {
       const r = await apiFetch<{ ok: boolean; templates: BellTemplate[] }>("/bells/templates");
       setTemplates(r.templates);
     } catch (e: any) {
-      setError(e?.message ?? "Hiba a sablonok betöltésekor");
+      setError(e?.message ?? t("errors.loadTemplatesFailed"));
     } finally {
       setTemplatesLoading(false);
     }
@@ -123,7 +126,7 @@ export default function BellSchedule() {
       const r = await apiFetch<{ ok: boolean; days: CalendarDay[] }>(`/bells/calendar?year=${calYear}`);
       setCalDays(r.days);
     } catch (e: any) {
-      setError(e?.message ?? "Hiba a naptár betöltésekor");
+      setError(e?.message ?? t("errors.loadCalendarFailed"));
     } finally {
       setCalLoading(false);
     }
@@ -135,7 +138,7 @@ export default function BellSchedule() {
       const r = await apiFetch<{ ok: boolean; sounds: BellSoundFile[] }>("/bells/sounds");
       setSounds(r.sounds);
     } catch (e: any) {
-      setError(e?.message ?? "Hiba a hangfájlok betöltésekor");
+      setError(e?.message ?? t("errors.loadSoundsFailed"));
     } finally {
       setSoundsLoading(false);
     }
@@ -152,9 +155,9 @@ export default function BellSchedule() {
       setError(null);
     } catch (e: any) {
       if (e?.status === 409) {
-        setError("Egy másik felhasználó éppen szerkeszti a csengetési rendet. Próbáld meg 30 perc múlva.");
+        setError(t("errors.lockConflict"));
       } else {
-        setError(e?.message ?? "Nem sikerült a szerkesztési zárat megszerezni");
+        setError(e?.message ?? t("errors.lockFailed"));
       }
     } finally {
       setLockLoading(false);
@@ -230,9 +233,9 @@ export default function BellSchedule() {
       await loadCalendar();
       setSelectedDates(new Set()); setEditDay(null); setDirty(false);
       const n = selectedDates.size;
-      setSuccess(`${n} nap mentve!`); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.daysSaved", { count: n })); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Mentési hiba");
+      setError(e?.message ?? t("errors.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -240,15 +243,15 @@ export default function BellSchedule() {
 
   async function initHolidays() {
     if (!hasLock) return;
-    if (!confirm(`Betöltöd a ${calYear}. évi munkaszüneti- és hétvégi napokat?`)) return;
+    if (!confirm(t("confirm.loadHolidays", { year: calYear }))) return;
     try {
       const r = await apiFetch<{ ok: boolean; imported: number }>("/bells/calendar/init", {
         method: "POST", body: JSON.stringify({ year: calYear }), headers: { "Content-Type": "application/json" },
       });
       await loadCalendar();
-      setSuccess(`${r.imported} szünnap betöltve!`); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.holidaysLoaded", { count: r.imported })); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Hiba az ünnepnapok betöltésekor");
+      setError(e?.message ?? t("errors.loadHolidaysFailed"));
     }
   }
 
@@ -258,9 +261,9 @@ export default function BellSchedule() {
     setPendingBell(null);
   }
 
-  function startEditTemplate(t: BellTemplate) {
-    setSelectedTemplate(t);
-    setEditTemplate({ name: t.name, bells: t.bells.map(b => ({ hour: b.hour, minute: b.minute, type: b.type, soundFile: b.soundFile })) });
+  function startEditTemplate(tpl: BellTemplate) {
+    setSelectedTemplate(tpl);
+    setEditTemplate({ name: tpl.name, bells: tpl.bells.map(b => ({ hour: b.hour, minute: b.minute, type: b.type, soundFile: b.soundFile })) });
     setPendingBell(null);
   }
 
@@ -301,8 +304,8 @@ export default function BellSchedule() {
 
   async function saveTemplate() {
     if (!editTemplate) return;
-    if (pendingBell) { setError("Van egy befejezetlen sor! Nyomj Kész-t vagy Elvett-et."); return; }
-    if (!editTemplate.name.trim()) { setError("A sablon neve kötelező!"); return; }
+    if (pendingBell) { setError(t("errors.pendingBellUnfinished")); return; }
+    if (!editTemplate.name.trim()) { setError(t("errors.templateNameRequired")); return; }
     setTemplateSaving(true);
     try {
       if (selectedTemplate) {
@@ -316,33 +319,33 @@ export default function BellSchedule() {
       }
       await loadTemplates();
       setEditTemplate(null); setSelectedTemplate(null); setPendingBell(null);
-      setSuccess("Sablon mentve!"); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.templateSaved")); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Mentési hiba");
+      setError(e?.message ?? t("errors.saveFailed"));
     } finally {
       setTemplateSaving(false);
     }
   }
 
-  async function deleteTemplate(t: BellTemplate) {
-    if (!confirm(`Törlöd a "${t.name}" sablont?`)) return;
+  async function deleteTemplate(tpl: BellTemplate) {
+    if (!confirm(t("confirm.deleteTemplate", { name: tpl.name }))) return;
     try {
-      await apiFetch(`/bells/templates/${t.id}`, { method: "DELETE" });
+      await apiFetch(`/bells/templates/${tpl.id}`, { method: "DELETE" });
       await loadTemplates();
-      setSuccess("Sablon törölve!"); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.templateDeleted")); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Törlési hiba");
+      setError(e?.message ?? t("errors.deleteFailed"));
     }
   }
 
-  async function setDefaultTemplate(t: BellTemplate) {
-    if (!confirm(`Az "${t.name}" lesz az alapértelmezett (offline is működő) csengetési rend?`)) return;
+  async function setDefaultTemplate(tpl: BellTemplate) {
+    if (!confirm(t("confirm.setDefaultTemplate", { name: tpl.name }))) return;
     try {
-      await apiFetch(`/bells/templates/${t.id}/set-default`, { method: "PUT" });
+      await apiFetch(`/bells/templates/${tpl.id}/set-default`, { method: "PUT" });
       await loadTemplates();
-      setSuccess(`"${t.name}" beállítva alapértelmezettként!`); setTimeout(() => setSuccess(null), 5000);
+      setSuccess(t("success.templateSetDefault", { name: tpl.name })); setTimeout(() => setSuccess(null), 5000);
     } catch (e: any) {
-      setError(e?.message ?? "Hiba az alapértelmezett beállításakor");
+      setError(e?.message ?? t("errors.setDefaultFailed"));
     }
   }
 
@@ -350,7 +353,7 @@ export default function BellSchedule() {
   const available = MAX_TOTAL_BYTES - totalUsed;
 
   async function uploadSound(file: File) {
-    if (file.size > available) { setError(`Nincs elég hely! Elérhető: ${fmtBytes(available)}, szükséges: ${fmtBytes(file.size)}`); return; }
+    if (file.size > available) { setError(t("errors.notEnoughSpace", { available: fmtBytes(available), needed: fmtBytes(file.size) })); return; }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -364,22 +367,22 @@ export default function BellSchedule() {
       const res = await fetch(`${baseUrl}/bells/sounds`, { method: "POST", headers, body: fd });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d?.error ?? `HTTP ${res.status}`); }
       await loadSounds();
-      setSuccess("Hangfájl feltöltve!"); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.soundUploaded")); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Feltöltési hiba");
+      setError(e?.message ?? t("errors.uploadFailed"));
     } finally {
       setUploading(false);
     }
   }
 
   async function deleteSound(s: BellSoundFile) {
-    if (!confirm(`Törlöd a "${s.filename}" hangfájlt?`)) return;
+    if (!confirm(t("confirm.deleteSound", { filename: s.filename }))) return;
     try {
       await apiFetch(`/bells/sounds/${s.id}`, { method: "DELETE" });
       await loadSounds();
-      setSuccess("Hangfájl törölve!"); setTimeout(() => setSuccess(null), 3000);
+      setSuccess(t("success.soundDeleted")); setTimeout(() => setSuccess(null), 3000);
     } catch (e: any) {
-      setError(e?.message ?? "Törlési hiba");
+      setError(e?.message ?? t("errors.deleteFailed"));
     }
   }
 
@@ -400,22 +403,23 @@ export default function BellSchedule() {
     while (cells.length % 7 !== 0) cells.push(null);
 
     // Az alapértelmezett csengetési rend (a normál napokra ezt mutatjuk).
-    const defaultTemplate = templates.find(t => t.isDefault) ?? null;
+    const defaultTemplate = templates.find(tpl => tpl.isDefault) ?? null;
+    const weekdayLabels = WEEKDAY_KEYS.map(k => t(`calendar.weekdays.${k}`));
 
     return (
       <div style={{ overflowX: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button className="sl-btn" onClick={() => { if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11); } else setCalMonth(m => m - 1); }}>◀</button>
-          <span style={{ fontWeight: 700, fontSize: 18, minWidth: 180, textAlign: "center" }}>{MONTHS_HU[calMonth]} {calYear}</span>
+          <span style={{ fontWeight: 700, fontSize: 18, minWidth: 180, textAlign: "center" }}>{t(`calendar.months.${MONTH_KEYS[calMonth]}`)} {calYear}</span>
           <button className="sl-btn" onClick={() => { if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0); } else setCalMonth(m => m + 1); }}>▶</button>
-          <button className="sl-btn sl-btn-secondary" onClick={() => { setCalYear(today.getFullYear()); setCalMonth(today.getMonth()); }}>Ma</button>
+          <button className="sl-btn sl-btn-secondary" onClick={() => { setCalYear(today.getFullYear()); setCalMonth(today.getMonth()); }}>{t("calendar.today")}</button>
           <button className="sl-btn sl-btn-secondary" onClick={() => setCalYear(y => y - 1)}>◀ {calYear - 1}</button>
           <button className="sl-btn sl-btn-secondary" onClick={() => setCalYear(y => y + 1)}>{calYear + 1} ▶</button>
-          {hasLock && <button className="sl-btn" onClick={initHolidays} style={{ marginLeft: "auto" }}>🗓 Ünnepnapok betöltése</button>}
+          {hasLock && <button className="sl-btn" onClick={initHolidays} style={{ marginLeft: "auto" }}>{t("calendar.loadHolidaysButton")}</button>}
         </div>
-        <div style={{ fontSize: 12, color: "#8da4c0", marginBottom: 6 }}>💡 Kattintás = napok kijelölése · <b>Ctrl+katt</b> = több nap · <b>Shift+katt</b> = tartomány</div>
+        <div style={{ fontSize: 12, color: "#8da4c0", marginBottom: 6 }}>{t("calendar.hint")}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 2 }}>
-          {["H", "K", "Sz", "Cs", "P", "Sz", "V"].map((d, i) => (
+          {weekdayLabels.map((d, i) => (
             <div key={i} style={{ textAlign: "center", fontWeight: 700, fontSize: 12, color: i >= 5 ? "#e55" : "#888", padding: "4px 0" }}>{d}</div>
           ))}
         </div>
@@ -444,12 +448,12 @@ export default function BellSchedule() {
             if (isSelected) { cellBg = "var(--sl-cell-selected)"; cellBorder = "#3b82f6"; }
             const titleHover =
               (data?.note ? `📝 ${data.note} · ` : "") +
-              (effectiveTemplateName ?? (isHoliday ? "Szünnap" : "Normál rend"));
+              (effectiveTemplateName ?? (isHoliday ? t("calendar.holidayTitle") : t("calendar.normalTitle")));
             return (
               <div key={idx} onClick={(e) => onDayClick(dateStr, e)} style={{ background: cellBg, border: `2px solid ${cellBorder}`, borderRadius: 6, padding: "6px 4px", minHeight: 64, cursor: hasLock ? "pointer" : "default", position: "relative", transition: "background 0.15s", userSelect: "none" }} title={titleHover}>
                 <div style={{ fontSize: 13, fontWeight: isToday ? 700 : 400, color: isToday ? "#3b82f6" : isWeekend ? "#ef4444" : "var(--sl-text)" }}>{day}</div>
-                {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>SZÜNNAP</div>}
-                {isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>HÉTVÉGE</div>}
+                {isHoliday && !isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>{t("calendar.holidayBadge")}</div>}
+                {isWeekend && <div style={{ fontSize: 9, color: "#ef4444", marginTop: 2 }}>{t("calendar.weekendBadge")}</div>}
                 {/* 16-karakteres megjegyzés (ha van) – kicsi sárga jelzés */}
                 {data?.note && (
                   <div style={{ fontSize: 9, color: "#d97706", marginTop: 2, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -478,26 +482,26 @@ export default function BellSchedule() {
             <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>
               📅 {selectedDates.size === 1
                 ? [...selectedDates][0]
-                : `${selectedDates.size} nap kijelölve`} szerkesztése
-              {selectedDates.size > 1 && <span style={{ fontSize: 12, color: "#8da4c0", marginLeft: 8 }}>(Ctrl+katt = hozzáad, Shift+katt = tartomány, katt = csak ez)</span>}
+                : t("calendar.dayPanel.multipleSelected", { count: selectedDates.size })} {t("calendar.dayPanel.titleSuffix")}
+              {selectedDates.size > 1 && <span style={{ fontSize: 12, color: "#8da4c0", marginLeft: 8 }}>{t("calendar.dayPanel.multiHint")}</span>}
             </h3>
             <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer" }}>
               <input type="checkbox" checked={editDay.isHoliday} onChange={e => { setEditDay({ ...editDay, isHoliday: e.target.checked, templateId: e.target.checked ? null : editDay.templateId }); setDirty(true); }} />
-              <span>Csengetésmentes nap (szünnap)</span>
+              <span>{t("calendar.dayPanel.holidayCheckbox")}</span>
             </label>
             {!editDay.isHoliday && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>Csengetési rend</label>
+                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>{t("common:nav.bells")}</label>
                 <select className="sl-select" value={editDay.templateId ?? ""} onChange={e => { setEditDay({ ...editDay, templateId: e.target.value || null }); setDirty(true); }}>
-                  <option value="">Normál csengetési rend (alapértelmezett)</option>
-                  {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  <option value="">{t("calendar.dayPanel.templateDefaultOption")}</option>
+                  {templates.map(tpl => <option key={tpl.id} value={tpl.id}>{tpl.name}</option>)}
                 </select>
               </div>
             )}
             {/* 16 karakteres megjegyzés – a naptár-cellában is látszik */}
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>
-                📝 Megjegyzés (max 16 karakter)
+                {t("calendar.dayPanel.noteLabel")}
                 <span style={{ float: "right", fontSize: 11, color: "var(--sl-muted)" }}>{editDay.note.length}/16</span>
               </label>
               <input
@@ -506,12 +510,12 @@ export default function BellSchedule() {
                 style={{ width: "100%" }}
                 value={editDay.note}
                 maxLength={16}
-                placeholder="pl. Tanévnyitó, Felmérő, Ülésrend…"
+                placeholder={t("calendar.dayPanel.notePlaceholder")}
                 onChange={e => { setEditDay({ ...editDay, note: e.target.value.slice(0, 16) }); setDirty(true); }} />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="sl-btn sl-btn-primary" onClick={() => { if (!confirm("Biztosan mentod?")) return; saveDay(); }} disabled={saving}>{saving ? "Mentés..." : "💾 Mentés"}</button>
-              <button className="sl-btn sl-btn-secondary" onClick={() => { if (dirty && !confirm("Elveted a változtatásokat?")) return; setSelectedDates(new Set()); setEditDay(null); setDirty(false); }}>Mégse</button>
+              <button className="sl-btn sl-btn-primary" onClick={() => { if (!confirm(t("confirm.saveDay"))) return; saveDay(); }} disabled={saving}>{saving ? t("shared.savingButton") : t("shared.saveButton")}</button>
+              <button className="sl-btn sl-btn-secondary" onClick={() => { if (dirty && !confirm(t("confirm.discardChanges"))) return; setSelectedDates(new Set()); setEditDay(null); setDirty(false); }}>{t("common:actions.cancel")}</button>
             </div>
           </div>
         )}
@@ -525,45 +529,45 @@ export default function BellSchedule() {
     return (
       <div>
         <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Csengetési rend sablonok</h3>
+          <h3 style={{ margin: 0, fontSize: 16 }}>{t("templates.heading")}</h3>
           {!editTemplate && templates.length < 6 && (
-            <button className="sl-btn sl-btn-primary" onClick={startNewTemplate} style={{ marginLeft: "auto" }}>+ Új sablon</button>
+            <button className="sl-btn sl-btn-primary" onClick={startNewTemplate} style={{ marginLeft: "auto" }}>+ {t("templates.newButton")}</button>
           )}
         </div>
 
         {!editTemplate && (
           <div style={{ fontSize: 12, color: "var(--sl-muted)", background: "var(--sl-bg)", border: "1px solid var(--sl-border)", borderRadius: 6, padding: "8px 12px", marginBottom: 12 }}>
-            ⭐ Az <strong style={{ color: "var(--sl-text)" }}>alapértelmezett</strong> sablon töltődik le az eszközre offline fallbackként.
-            {!templates.some(t => t.isDefault) && <span style={{ color: "#e8a", marginLeft: 6 }}>⚠ Nincs alapértelmezett sablon beállítva!</span>}
+            ⭐ {t("templates.defaultInfo.prefix")} <strong style={{ color: "var(--sl-text)" }}>{t("templates.defaultInfo.highlight")}</strong> {t("templates.defaultInfo.suffix")}
+            {!templates.some(tpl => tpl.isDefault) && <span style={{ color: "#e8a", marginLeft: 6 }}>⚠ {t("templates.noDefaultWarning")}</span>}
           </div>
         )}
 
-        {templatesLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
+        {templatesLoading ? <div style={{ color: "var(--sl-muted)" }}>{t("common:actions.loading")}</div> : (
           <div style={{ display: "grid", gap: 8, marginBottom: 20 }}>
-            {templates.map(t => (
-              <div key={t.id} style={{
+            {templates.map(tpl => (
+              <div key={tpl.id} style={{
                 // Alapértelmezett: középkék gradient + fehér szöveg, hogy
                 // a sötét és világos téma alatt is olvasható legyen.
                 // (Eddig világos zöld háttér + világos örökölt szöveg = láthatatlan.)
-                background: t.isDefault ? "linear-gradient(135deg,#1e3a8a,#3b82f6)" : "var(--sl-surface)",
-                color:      t.isDefault ? "#fff" : "var(--sl-text)",
-                border:     t.isDefault ? "1px solid #1e40af" : "1px solid var(--sl-border)",
+                background: tpl.isDefault ? "linear-gradient(135deg,#1e3a8a,#3b82f6)" : "var(--sl-surface)",
+                color:      tpl.isDefault ? "#fff" : "var(--sl-text)",
+                border:     tpl.isDefault ? "1px solid #1e40af" : "1px solid var(--sl-border)",
                 borderRadius: 8, padding: 12, display: "flex", alignItems: "center", gap: 12,
-                boxShadow: t.isDefault ? "0 2px 8px rgba(59,130,246,0.25)" : undefined,
+                boxShadow: tpl.isDefault ? "0 2px 8px rgba(59,130,246,0.25)" : undefined,
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
-                    {t.name}
-                    {t.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "rgba(255,255,255,0.2)", color: "#fff", borderRadius: 4, padding: "2px 6px" }}>⭐ Alapértelmezett</span>}
-                    {t.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#fffbeb", color: "#d97706", borderRadius: 4, padding: "2px 6px" }}>🔒 Zárolt</span>}
+                    {tpl.name}
+                    {tpl.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "rgba(255,255,255,0.2)", color: "#fff", borderRadius: 4, padding: "2px 6px" }}>⭐ {t("templates.defaultBadge")}</span>}
+                    {tpl.isLocked && <span style={{ marginLeft: 8, fontSize: 11, background: "#fffbeb", color: "#d97706", borderRadius: 4, padding: "2px 6px" }}>🔒 {t("templates.lockedBadge")}</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: t.isDefault ? "rgba(255,255,255,0.85)" : "var(--sl-muted)", marginTop: 4 }}>{t.bells.length} jelzés</div>
+                  <div style={{ fontSize: 12, color: tpl.isDefault ? "rgba(255,255,255,0.85)" : "var(--sl-muted)", marginTop: 4 }}>{t("templates.bellsCount", { count: tpl.bells.length })}</div>
                 </div>
-                <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(t)}>👁 Megtekint{!t.isLocked ? " / Szerkeszt" : ""}</button>
-                {hasLock && !t.isDefault && (
-                  <button className="sl-btn" style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", whiteSpace: "nowrap" }} onClick={() => setDefaultTemplate(t)} title="Beállítás offline alapértelmezettként">⭐ Alapért.</button>
+                <button className="sl-btn sl-btn-secondary" onClick={() => startEditTemplate(tpl)}>👁 {t("templates.viewButton")}{!tpl.isLocked ? ` / ${t("common:actions.edit")}` : ""}</button>
+                {hasLock && !tpl.isDefault && (
+                  <button className="sl-btn" style={{ background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0", whiteSpace: "nowrap" }} onClick={() => setDefaultTemplate(tpl)} title={t("templates.setDefaultTitle")}>⭐ {t("templates.setDefaultShort")}</button>
                 )}
-                {!t.isLocked && <button className="sl-btn sl-btn-danger" onClick={() => deleteTemplate(t)}>Töröl</button>}
+                {!tpl.isLocked && <button className="sl-btn sl-btn-danger" onClick={() => deleteTemplate(tpl)}>{t("common:actions.delete")}</button>}
               </div>
             ))}
           </div>
@@ -572,19 +576,19 @@ export default function BellSchedule() {
         {editTemplate && (
           <div style={{ background: "var(--sl-surface)", border: "1px solid #444", borderRadius: 8, padding: 16 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>
-              {selectedTemplate ? `${selectedTemplate.isLocked ? "👁 " : "✏️ "}${selectedTemplate.name}` : "Új sablon"}
+              {selectedTemplate ? `${selectedTemplate.isLocked ? "👁 " : "✏️ "}${selectedTemplate.name}` : t("templates.newTemplateTitle")}
             </h3>
 
             {!selectedTemplate?.isLocked && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>Sablon neve</label>
-                <input className="sl-input" value={editTemplate.name} onChange={e => setEditTemplate({ ...editTemplate, name: e.target.value })} placeholder="pl. Rövidített nap" />
+                <label style={{ fontSize: 13, color: "var(--sl-muted)", display: "block", marginBottom: 4 }}>{t("templates.nameLabel")}</label>
+                <input className="sl-input" value={editTemplate.name} onChange={e => setEditTemplate({ ...editTemplate, name: e.target.value })} placeholder={t("templates.namePlaceholder")} />
               </div>
             )}
 
             {/* Fejléc */}
             <div style={{ marginBottom: 6, fontSize: 12, color: "var(--sl-muted)", display: "grid", gridTemplateColumns: "120px 80px 1fr 80px", gap: 8, padding: "0 4px" }}>
-              <span>Időpont</span><span>Típus</span><span>Hang</span><span></span>
+              <span>{t("templates.tableHeaders.time")}</span><span>{t("templates.tableHeaders.type")}</span><span>{t("templates.tableHeaders.sound")}</span><span></span>
             </div>
 
             {/* Pending sor – a lista TETEJÉN, kiemelve */}
@@ -599,16 +603,16 @@ export default function BellSchedule() {
                 </div>
                 <select className="sl-select" style={{ fontSize: 12 }} value={pendingBell.type}
                   onChange={e => setPendingBell({ ...pendingBell, type: e.target.value as BellType })}>
-                  <option value="MAIN">Fő</option>
-                  <option value="SIGNAL">Jelző</option>
+                  <option value="MAIN">{t("templates.bellType.main")}</option>
+                  <option value="SIGNAL">{t("templates.bellType.signal")}</option>
                 </select>
                 <select className="sl-select" style={{ fontSize: 12 }} value={pendingBell.soundFile}
                   onChange={e => setPendingBell({ ...pendingBell, soundFile: e.target.value })}>
                   {sounds.map(s => <option key={s.id} value={s.filename}>{s.filename}</option>)}
                 </select>
                 <div style={{ display: "flex", gap: 4 }}>
-                  <button className="sl-btn sl-btn-primary" style={{ padding: "2px 10px", fontSize: 12, whiteSpace: "nowrap" }} onClick={commitPendingBell} title="Sor elfogadása és berendezés">✓ Kész</button>
-                  <button className="sl-btn sl-btn-secondary" style={{ padding: "2px 8px", fontSize: 12 }} onClick={discardPendingBell} title="Sor elvetése">✕</button>
+                  <button className="sl-btn sl-btn-primary" style={{ padding: "2px 10px", fontSize: 12, whiteSpace: "nowrap" }} onClick={commitPendingBell} title={t("templates.commitRowTitle")}>{t("templates.commitButton")}</button>
+                  <button className="sl-btn sl-btn-secondary" style={{ padding: "2px 8px", fontSize: 12 }} onClick={discardPendingBell} title={t("templates.discardRowTitle")}>✕</button>
                 </div>
               </div>
             )}
@@ -625,8 +629,8 @@ export default function BellSchedule() {
                 </div>
                 <select className="sl-select" style={{ fontSize: 12 }} value={bell.type}
                   onChange={e => updateBellEntry(idx, "type", e.target.value)} disabled={selectedTemplate?.isLocked}>
-                  <option value="MAIN">Fő</option>
-                  <option value="SIGNAL">Jelző</option>
+                  <option value="MAIN">{t("templates.bellType.main")}</option>
+                  <option value="SIGNAL">{t("templates.bellType.signal")}</option>
                 </select>
                 <select className="sl-select" style={{ fontSize: 12 }} value={bell.soundFile}
                   onChange={e => updateBellEntry(idx, "soundFile", e.target.value)} disabled={selectedTemplate?.isLocked}>
@@ -639,21 +643,21 @@ export default function BellSchedule() {
             ))}
 
             {!selectedTemplate?.isLocked && !pendingBell && (
-              <button className="sl-btn sl-btn-secondary" onClick={addBellEntry} style={{ marginTop: 8, marginBottom: 12 }}>+ Jelzés hozzáadása</button>
+              <button className="sl-btn sl-btn-secondary" onClick={addBellEntry} style={{ marginTop: 8, marginBottom: 12 }}>+ {t("templates.addBellButton")}</button>
             )}
             {pendingBell && (
               <div style={{ fontSize: 12, color: "#6a8", marginTop: 4, marginBottom: 12 }}>
-                ↑ Állítsd be az időpontot, majd nyomj <strong>✓ Kész</strong>-t a beillesztéshez
+                ↑ {t("templates.pendingHint.prefix")} <strong>{t("templates.commitButton")}</strong>{t("templates.pendingHint.suffix")}
               </div>
             )}
 
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               {!selectedTemplate?.isLocked && (
                 <button className="sl-btn sl-btn-primary" onClick={saveTemplate} disabled={templateSaving}>
-                  {templateSaving ? "Mentés..." : "💾 Mentés"}
+                  {templateSaving ? t("shared.savingButton") : `💾 ${t("shared.saveButton")}`}
                 </button>
               )}
-              <button className="sl-btn sl-btn-secondary" onClick={() => { setEditTemplate(null); setSelectedTemplate(null); setPendingBell(null); }}>Bezár</button>
+              <button className="sl-btn sl-btn-secondary" onClick={() => { setEditTemplate(null); setSelectedTemplate(null); setPendingBell(null); }}>{t("common:actions.close")}</button>
             </div>
           </div>
         )}
@@ -669,22 +673,22 @@ export default function BellSchedule() {
       <div>
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--sl-muted)", marginBottom: 4 }}>
-            <span>Tárhelyhasználat</span><span>{fmtBytes(totalUsed)} / {fmtBytes(MAX_TOTAL_BYTES)}</span>
+            <span>{t("sounds.storageUsage")}</span><span>{fmtBytes(totalUsed)} / {fmtBytes(MAX_TOTAL_BYTES)}</span>
           </div>
           <div style={{ background: "#333", borderRadius: 4, height: 8, overflow: "hidden" }}>
             <div style={{ width: `${pct}%`, height: "100%", background: pct > 80 ? "#e55" : "#6c8ebf", transition: "width 0.3s" }} />
           </div>
-          <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>Elérhető: {fmtBytes(available)}</div>
+          <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t("sounds.available", { available: fmtBytes(available) })}</div>
         </div>
         <div style={{ marginBottom: 16 }}>
           <input ref={fileInputRef} type="file" accept=".mp3,audio/mpeg" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadSound(f); e.target.value = ""; }} />
           <button className="sl-btn sl-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading || available <= 0}>
-            {uploading ? "Feltöltés..." : "📤 MP3 feltöltése"}
+            {uploading ? t("sounds.uploadingButton") : `📤 ${t("sounds.uploadButton")}`}
           </button>
-          {available <= 0 && <span style={{ marginLeft: 8, color: "#ef4444", fontSize: 13 }}>Nincs szabad hely!</span>}
+          {available <= 0 && <span style={{ marginLeft: 8, color: "#ef4444", fontSize: 13 }}>{t("sounds.noFreeSpace")}</span>}
         </div>
-        {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>Betöltés...</div> : (
+        {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>{t("common:actions.loading")}</div> : (
           <div style={{ display: "grid", gap: 8 }}>
             {sounds.map(s => {
               const apiBase = ((import.meta as any)?.env?.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
@@ -696,7 +700,7 @@ export default function BellSchedule() {
                     <div style={{ fontSize: 20 }}>🔔</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{s.filename}
-                        {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>Alapértelmezett</span>}
+                        {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>{t("sounds.defaultBadge")}</span>}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>{fmtBytes(s.sizeBytes)}</div>
                     </div>
@@ -704,10 +708,10 @@ export default function BellSchedule() {
                     <button
                       className="sl-btn sl-btn-secondary"
                       onClick={() => setPreviewSoundId(prev => prev === s.id ? null : s.id)}
-                      title={expanded ? "Lejátszó bezárása" : "Belehallgatás"}>
-                      {expanded ? "▾ Bezár" : "▶ Belehallgat"}
+                      title={expanded ? t("sounds.closePlayerTitle") : t("sounds.previewTitle")}>
+                      {expanded ? `▾ ${t("common:actions.close")}` : `▶ ${t("sounds.previewButton")}`}
                     </button>
-                    {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>Töröl</button>}
+                    {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>{t("common:actions.delete")}</button>}
                   </div>
                   {expanded && (
                     <audio controls autoPlay src={audioUrl} style={{ width: "100%", height: 36 }} />
@@ -786,18 +790,18 @@ export default function BellSchedule() {
 
       <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:24, flexWrap:"wrap" }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, fontWeight:900, fontFamily:"var(--sl-font)", color:"var(--sl-text)", letterSpacing:"-0.5px" }}>🔔 Csengetési rend</h1>
-          <div style={{ fontSize:13, color:"var(--sl-muted)", marginTop:3 }}>Naptár, sablonok és hangfájlok kezelése</div>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:900, fontFamily:"var(--sl-font)", color:"var(--sl-text)", letterSpacing:"-0.5px" }}>🔔 {t("common:nav.bells")}</h1>
+          <div style={{ fontSize:13, color:"var(--sl-muted)", marginTop:3 }}>{t("page.subtitle")}</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
           {!hasLock ? (
-            <button className="sl-btn sl-btn-primary" onClick={acquireLock} disabled={lockLoading}>{lockLoading ? "⏳ …" : "✏️ Szerkesztés"}</button>
+            <button className="sl-btn sl-btn-primary" onClick={acquireLock} disabled={lockLoading}>{lockLoading ? "⏳ …" : `✏️ ${t("common:actions.edit")}`}</button>
           ) : (
-            <button className="sl-btn sl-btn-secondary" onClick={releaseLock}>🔓 Szerkesztés vége</button>
+            <button className="sl-btn sl-btn-secondary" onClick={releaseLock}>🔓 {t("page.endEditing")}</button>
           )}
           {hasLock && (
             <span style={{ fontSize:12, color:"#15803d", background:"#f0fdf4", border:"1px solid #bbf7d0", padding:"4px 10px", borderRadius:20, fontWeight:700, fontFamily:"var(--sl-font)" }}>
-              ✓ Szerkesztési zár aktív
+              ✓ {t("page.lockActive")}
             </span>
           )}
         </div>
@@ -814,17 +818,17 @@ export default function BellSchedule() {
       )}
 
       <div style={{ display:"flex", gap:4, marginBottom:20, background:"var(--sl-surface)", border:"1px solid var(--sl-border)", borderRadius:14, padding:4 }}>
-        {(["calendar", "templates", "sounds"] as const).map((t, i) => {
-          const labels = ["📅 Naptár", "📋 Sablonok", "🔊 Hangfájlok"];
+        {(["calendar", "templates", "sounds"] as const).map((tabKey, i) => {
+          const labels = [`📅 ${t("page.tabs.calendar")}`, `📋 ${t("page.tabs.templates")}`, `🔊 ${t("page.tabs.sounds")}`];
           return (
-            <button key={t} onClick={() => setTab(t)} style={{
-              flex:1, background:tab===t?"linear-gradient(135deg,#eff6ff,#f5f3ff)":"transparent",
-              border:tab===t?"1px solid #bfdbfe":"1px solid transparent",
+            <button key={tabKey} onClick={() => setTab(tabKey)} style={{
+              flex:1, background:tab===tabKey?"linear-gradient(135deg,#eff6ff,#f5f3ff)":"transparent",
+              border:tab===tabKey?"1px solid #bfdbfe":"1px solid transparent",
               borderRadius:11, padding:"9px 16px",
-              color:tab===t?"#1d4ed8":"var(--sl-muted)",
-              cursor:"pointer", fontWeight:tab===t?800:600, fontSize:13.5,
+              color:tab===tabKey?"#1d4ed8":"var(--sl-muted)",
+              cursor:"pointer", fontWeight:tab===tabKey?800:600, fontSize:13.5,
               transition:"all 0.15s", fontFamily:"var(--sl-font)",
-              boxShadow:tab===t?"0 1px 6px rgba(59,130,246,0.12)":"none",
+              boxShadow:tab===tabKey?"0 1px 6px rgba(59,130,246,0.12)":"none",
             }}>
               {labels[i]}
             </button>
@@ -832,7 +836,7 @@ export default function BellSchedule() {
         })}
       </div>
 
-      {calLoading && tab === "calendar" && <div style={{ color: "var(--sl-muted)" }}>Naptár betöltése...</div>}
+      {calLoading && tab === "calendar" && <div style={{ color: "var(--sl-muted)" }}>{t("page.loadingCalendar")}</div>}
       {tab === "calendar" && renderCalendar()}
       {tab === "templates" && renderTemplates()}
       {tab === "sounds" && renderSounds()}

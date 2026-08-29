@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten.",
+    "sendFailed": "Die E-Mail konnte nicht gesendet werden."
+  },
+  "nav": {
+    "login": "Anmelden →"
+  },
+  "hero": {
+    "tag": "🏫 Schulkommunikationssystem",
+    "titlePrefix": "Einfachere schulische",
+    "titleHighlight": "Kommunikation",
+    "description": "SchoolLive sorgt dafür, dass schulische Nachrichten immer pünktlich, verständlich und zuverlässig dort ankommen, wo sie gebraucht werden — weniger Missverständnisse, schnellere Reaktionen, ein entspannterer Schulalltag.",
+    "ctaPrimary": "🚀 Zum System anmelden",
+    "ctaSecondary": "Mehr erfahren ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatische, punktgenaue Signale nach dem Stundenplan der Schule. Mit kalendergestützten Vorlagen und Feiertagen." },
+    "messages": { "title": "Sofortnachrichten", "desc": "Senden Sie in Sekunden eine Text- oder Sprachnachricht in jeden Teil des Gebäudes, mit TTS-Sprachausgabe." },
+    "radio":    { "title": "Schulradio", "desc": "Musik und Sendungen zeitgesteuert im gesamten Gebäude — direkt aus dem Browser gesteuert." },
+    "devices":  { "title": "Mehrere Geräte", "desc": "Alle Lautsprecher und Displays an einem Ort, mit Echtzeit-Status, in Gruppen organisiert." },
+    "security": { "title": "Sicher", "desc": "Rollen, Zugriffsverwaltung, institutionelle Trennung, protokollierte Vorgänge." }
+  },
+  "cta": {
+    "title": "🎯 Möchten Sie es auch an Ihrer Einrichtung ausprobieren?",
+    "description": "Fordern Sie eine kostenlose Testphase an — unverbindliche Einführung mit persönlicher Vorführung!",
+    "contactButton": "📩 Kontakt aufnehmen"
+  },
+  "contactModal": {
+    "title": "📩 Kontakt aufnehmen",
+    "subtitle": "Füllen Sie das untenstehende Formular aus, wir melden uns in Kürze bei Ihnen!",
+    "sending": "⏳ Wird gesendet…",
+    "submit": "📨 Absenden",
+    "success": {
+      "title": "Vielen Dank für Ihr Interesse!",
+      "message": "Wir haben Ihre Nachricht erhalten und melden uns in Kürze bei Ihnen."
+    },
+    "fields": {
+      "name":        { "label": "Ihr Name *", "placeholder": "z. B. Max Mustermann" },
+      "institution": { "label": "Ihre Einrichtung", "placeholder": "z. B. Grundschule am Stadtpark" },
+      "email":       { "label": "E-Mail-Adresse *", "placeholder": "z. B. max.mustermann@schule.de" },
+      "phone":       { "label": "Telefonnummer", "placeholder": "z. B. +49 30 123 4567" }
+    }
+  },
+  "footer": {
+    "tagline": "Schulkommunikationssystem"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Састављање нове поруке. Претходне су доступне у посебном прозору.",
+    "historyButton": "Претходне поруке"
+  },
+  "success": {
+    "sent": "Порука је успешно послата!",
+    "newMessage": "Нова порука"
+  },
+  "composer": {
+    "ttsTab": "Читање текста (TTS)",
+    "recordTab": "Гласовни снимак",
+    "textLabel": "Текст поруке",
+    "textPlaceholder": "Унесите текст поруке…",
+    "voiceLabel": "Глас"
+  },
+  "voices": {
+    "anna": "Ана (женски)",
+    "berta": "Берта (женски)",
+    "imre": "Имре (мушки)"
+  },
+  "translate": {
+    "button": "Превод",
+    "title": "Превод",
+    "hrNote": "српски глас",
+    "emptyText": "Текст не може бити празан!",
+    "failed": "Превод није успео"
+  },
+  "templates": {
+    "savedLabel": "Сачувани шаблони",
+    "saveLabel": "Сачувај као шаблон",
+    "namePlaceholder": "Назив шаблона…",
+    "saving": "Чување…",
+    "saved": "Шаблон сачуван!",
+    "saveFailed": "Чување није успело",
+    "nameAndTextRequired": "Унесите назив и текст!"
+  },
+  "record": {
+    "idleHint": "Кликните на дугме да бисте започели снимање.",
+    "start": "Започни снимање",
+    "recordingHint": "Снимање у току…",
+    "stop": "Заврши снимање",
+    "doneHint": "Снимак је спреман – преслушајте га!",
+    "newRecording": "Нови снимак",
+    "accepted": "Прихваћено",
+    "fillDetails": "попуните детаље испод",
+    "micDenied": "Приступ микрофону одбијен. Дозволите приступ у прегледачу.",
+    "micUnavailable": "Микрофон недоступан: {{error}}",
+    "noRecording": "Нема снимљеног звука!",
+    "uploadFailed": "Отпремање није успело"
+  },
+  "introSound": {
+    "label": "Звук пре поруке",
+    "defaultOption": "Подразумевано (dingdong)",
+    "uploadTitle": "Отпреми нови уводни звук (макс. 7с)",
+    "uploading": "Отпремање…",
+    "uploadButton": "Отпреми",
+    "deleteTitle": "Обриши изабрани звук",
+    "deleteConfirm": "Обрисати овај звук?",
+    "deleteFailed": "Брисање није успело",
+    "maxSizeError": "Фајл може имати максимално 200 KB (довољно за 7с mp3).",
+    "uploadFailed": "Отпремање није успело",
+    "hint": "Максимално 7 секунди. Ако оставите празно, чуће се подразумевани „dingdong”."
+  },
+  "target": {
+    "label": "Уређаји за репродукцију",
+    "all": "Сви",
+    "device": "Појединачно",
+    "group": "Група",
+    "noDevices": "Нема доступног уређаја",
+    "chooseGroupPlaceholder": "Изаберите групу…"
+  },
+  "schedule": {
+    "label": "Време репродукције",
+    "immediate": "Одмах",
+    "nextBell": "Следећи одмор",
+    "customTime": "Време",
+    "nextBreakAt": "Следећи одмор: {{time}}",
+    "noMoreBreaksToday": "Данас више нема одмора."
+  },
+  "errors": {
+    "textRequired": "Текст не може бити празан!",
+    "chooseTarget": "Изаберите циљ!",
+    "noMoreBreaksToday": "Данас више нема одмора.",
+    "enterTime": "Унесите време!",
+    "timePassed": "Наведено време је већ прошло!",
+    "lessonOverlapConfirm": "⚠️ Време је у току часа! Да ли сте сигурни да желите да наставите?",
+    "sendFailed": "Слање није успело"
+  },
+  "send": {
+    "generating": "Генерисање…",
+    "uploading": "Отпремање…"
+  },
+  "history": {
+    "loadFailed": "Учитавање није успело",
+    "deleteConfirmSingle": "Обрисати ову поруку?",
+    "deleteConfirmBulk": "Обрисати {{count}} изабраних порука?",
+    "deleteSelected": "Обриши изабране ({{count}})",
+    "empty": "Још увек није послата ниједна порука",
+    "replayTooltip": "Поновно емитовање (циљ и време се могу изабрати)",
+    "noFileTooltip": "Нема сачуваног фајла",
+    "replayAction": "Поново",
+    "detailsAction": "Детаљи",
+    "prevPage": "Претходна",
+    "nextPage": "Следећа",
+    "voiceMessage": "Гласовна порука"
+  },
+  "detail": {
+    "title": "Детаљи поруке",
+    "from": "Пошиљалац",
+    "created": "Направљено",
+    "scheduled": "Заказано",
+    "played": "Одсвирано",
+    "target": "Циљ",
+    "textLabel": "Текст"
+  },
+  "replay": {
+    "title": "Поновно емитовање поруке",
+    "storedFileNote": "Шаље се сачувани аудио фајл – dingdong се не додаје поново.",
+    "noFileError": "За ову поруку није сачуван фајл.",
+    "replayFailed": "Поновно емитовање није успело",
+    "sending": "Слање…",
+    "sendImmediate": "Одмах",
+    "schedule": "Закажи"
+  }
+}

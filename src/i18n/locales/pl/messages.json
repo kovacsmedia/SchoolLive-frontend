@@ -1,0 +1,126 @@
+{
+  "header": {
+    "subtitle": "Tworzenie nowej wiadomości. Wcześniejsze są dostępne w osobnym oknie.",
+    "historyButton": "Poprzednie wiadomości"
+  },
+  "success": {
+    "sent": "Wiadomość została pomyślnie wysłana!",
+    "newMessage": "Nowa wiadomość"
+  },
+  "composer": {
+    "ttsTab": "Synteza mowy (TTS)",
+    "recordTab": "Nagranie głosowe",
+    "textLabel": "Treść wiadomości",
+    "textPlaceholder": "Wpisz treść wiadomości…",
+    "voiceLabel": "Głos"
+  },
+  "voices": {
+    "anna": "Anna (kobiecy)",
+    "berta": "Berta (kobiecy)",
+    "imre": "Imre (męski)"
+  },
+  "translate": {
+    "button": "Tłumaczenie",
+    "title": "Tłumaczenie",
+    "hrNote": "głos serbski",
+    "emptyText": "Tekst nie może być pusty!",
+    "failed": "Tłumaczenie nie powiodło się"
+  },
+  "templates": {
+    "savedLabel": "Zapisane szablony",
+    "saveLabel": "Zapisz jako szablon",
+    "namePlaceholder": "Nazwa szablonu…",
+    "saving": "Zapisywanie…",
+    "saved": "Szablon zapisany!",
+    "saveFailed": "Zapisywanie nie powiodło się",
+    "nameAndTextRequired": "Podaj nazwę i treść!"
+  },
+  "record": {
+    "idleHint": "Kliknij przycisk, aby rozpocząć nagrywanie.",
+    "start": "Rozpocznij nagrywanie",
+    "recordingHint": "Trwa nagrywanie…",
+    "stop": "Zakończ nagrywanie",
+    "doneHint": "Nagranie gotowe – posłuchaj!",
+    "newRecording": "Nowe nagranie",
+    "accepted": "Zaakceptowano",
+    "fillDetails": "uzupełnij szczegóły poniżej",
+    "micDenied": "Odmówiono dostępu do mikrofonu. Zezwól na dostęp w przeglądarce.",
+    "micUnavailable": "Mikrofon niedostępny: {{error}}",
+    "noRecording": "Brak nagranego dźwięku!",
+    "uploadFailed": "Przesyłanie nie powiodło się"
+  },
+  "introSound": {
+    "label": "Dźwięk przed wiadomością",
+    "defaultOption": "Domyślny (dingdong)",
+    "uploadTitle": "Prześlij nowy dźwięk wprowadzający (maks. 7 s)",
+    "uploading": "Przesyłanie…",
+    "uploadButton": "Prześlij",
+    "deleteTitle": "Usuń wybrany dźwięk",
+    "deleteConfirm": "Usunąć ten dźwięk?",
+    "deleteFailed": "Usuwanie nie powiodło się",
+    "maxSizeError": "Plik może mieć maksymalnie 200 KB (wystarcza na 7s mp3).",
+    "uploadFailed": "Przesyłanie nie powiodło się",
+    "hint": "Maksymalnie 7 sekund. Jeśli pozostawisz puste, zabrzmi domyślny „dingdong”."
+  },
+  "target": {
+    "label": "Urządzenia odtwarzające",
+    "all": "Wszystkie",
+    "device": "Pojedyncze",
+    "group": "Grupa",
+    "noDevices": "Brak dostępnego urządzenia",
+    "chooseGroupPlaceholder": "Wybierz grupę…"
+  },
+  "schedule": {
+    "label": "Czas odtwarzania",
+    "immediate": "Natychmiast",
+    "nextBell": "Nast. przerwa",
+    "customTime": "Godzina",
+    "nextBreakAt": "Następna przerwa: {{time}}",
+    "noMoreBreaksToday": "Dzisiaj nie ma już więcej przerw."
+  },
+  "errors": {
+    "textRequired": "Tekst nie może być pusty!",
+    "chooseTarget": "Wybierz cel!",
+    "noMoreBreaksToday": "Dzisiaj nie ma już więcej przerw.",
+    "enterTime": "Podaj godzinę!",
+    "timePassed": "Podana godzina już minęła!",
+    "lessonOverlapConfirm": "⚠️ Godzina przypada w trakcie lekcji! Czy na pewno chcesz kontynuować?",
+    "sendFailed": "Wysyłanie nie powiodło się"
+  },
+  "send": {
+    "generating": "Generowanie…",
+    "uploading": "Przesyłanie…"
+  },
+  "history": {
+    "loadFailed": "Ładowanie nie powiodło się",
+    "deleteConfirmSingle": "Usunąć tę wiadomość?",
+    "deleteConfirmBulk": "Usunąć {{count}} zaznaczonych wiadomości?",
+    "deleteSelected": "Usuń zaznaczone ({{count}})",
+    "empty": "Nie wysłano jeszcze żadnej wiadomości",
+    "replayTooltip": "Odtwórz ponownie (można wybrać cel i czas)",
+    "noFileTooltip": "Brak zapisanego pliku",
+    "replayAction": "Ponownie",
+    "detailsAction": "Szczegóły",
+    "prevPage": "Poprzednia",
+    "nextPage": "Następna",
+    "voiceMessage": "Wiadomość głosowa"
+  },
+  "detail": {
+    "title": "Szczegóły wiadomości",
+    "from": "Nadawca",
+    "created": "Utworzono",
+    "scheduled": "Zaplanowano",
+    "played": "Odtworzono",
+    "target": "Cel",
+    "textLabel": "Tekst"
+  },
+  "replay": {
+    "title": "Ponowne odtworzenie wiadomości",
+    "storedFileNote": "Wysyłany jest zapisany plik dźwiękowy – dingdong nie zostanie dodany ponownie.",
+    "noFileError": "Do tej wiadomości nie zapisano pliku.",
+    "replayFailed": "Ponowne odtworzenie nie powiodło się",
+    "sending": "Wysyłanie…",
+    "sendImmediate": "Natychmiast",
+    "schedule": "Zaplanuj"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Dispozitive",
+    "messages": "Mesaje",
+    "radio": "Radio școlar",
+    "bells": "Program de sonerii",
+    "users": "Utilizatori",
+    "tenants": "Instituții"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Administrator de sistem",
+    "TENANT_ADMIN": "Administrator instituție",
+    "ORG_ADMIN": "Administrator organizație",
+    "OPERATOR": "Operator",
+    "TEACHER": "Profesor",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "delete": "Șterge",
+    "edit": "Editează",
+    "close": "Închide",
+    "confirm": "Confirmă",
+    "loading": "Se încarcă…",
+    "search": "Caută",
+    "logout": "Deconectare",
+    "back": "Înapoi",
+    "add": "Adaugă",
+    "send": "Trimite"
+  },
+  "language": {
+    "label": "Limbă",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

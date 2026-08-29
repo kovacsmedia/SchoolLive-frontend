@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Уређаји",
+    "messages": "Поруке",
+    "radio": "Школски радио",
+    "bells": "Распоред звона",
+    "users": "Корисници",
+    "tenants": "Установе"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Системски администратор",
+    "TENANT_ADMIN": "Администратор установе",
+    "ORG_ADMIN": "Администратор организације",
+    "OPERATOR": "Оператер",
+    "TEACHER": "Наставник",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Сачувај",
+    "cancel": "Откажи",
+    "delete": "Обриши",
+    "edit": "Уреди",
+    "close": "Затвори",
+    "confirm": "Потврди",
+    "loading": "Учитавање…",
+    "search": "Претрага",
+    "logout": "Одјава",
+    "back": "Назад",
+    "add": "Додај",
+    "send": "Пошаљи"
+  },
+  "language": {
+    "label": "Језик",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

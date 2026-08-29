@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Управљање календаром, шаблонима и звучним фајловима",
+    "endEditing": "Заврши уређивање",
+    "lockActive": "Активна брава за уређивање",
+    "loadingCalendar": "Учитавање календара...",
+    "tabs": {
+      "calendar": "Календар",
+      "templates": "Шаблони",
+      "sounds": "Звучни фајлови"
+    }
+  },
+  "calendar": {
+    "today": "Данас",
+    "loadHolidaysButton": "Учитај празнике",
+    "hint": "Кликните на дан да га уредите. Shift: избор опсега, Ctrl/Cmd: избор више дана.",
+    "holidayTitle": "Нерадни дан",
+    "normalTitle": "Наставни дан",
+    "holidayBadge": "Слободан дан",
+    "weekendBadge": "Викенд",
+    "weekdays": {
+      "mon": "Пон",
+      "tue": "Уто",
+      "wed": "Сре",
+      "thu": "Чет",
+      "fri": "Пет",
+      "sat": "Суб",
+      "sun": "Нед"
+    },
+    "months": {
+      "january": "Јануар",
+      "february": "Фебруар",
+      "march": "Март",
+      "april": "Април",
+      "may": "Мај",
+      "june": "Јун",
+      "july": "Јул",
+      "august": "Август",
+      "september": "Септембар",
+      "october": "Октобар",
+      "november": "Новембар",
+      "december": "Децембар"
+    },
+    "dayPanel": {
+      "multipleSelected": "Изабрано дана: {{count}}",
+      "titleSuffix": "уређивање",
+      "multiHint": "(иста подешавања ће се применити на све изабране дане)",
+      "holidayCheckbox": "Слободан дан (без звона)",
+      "templateDefaultOption": "Подразумевани шаблон",
+      "noteLabel": "Напомена",
+      "notePlaceholder": "нпр. Скраћени часови"
+    }
+  },
+  "templates": {
+    "heading": "Шаблони распореда звона",
+    "newButton": "Нови шаблон",
+    "defaultInfo": {
+      "prefix": "",
+      "highlight": "Подразумевани",
+      "suffix": "шаблон се преузима на уређај као офлајн резерва."
+    },
+    "noDefaultWarning": "Подразумевани шаблон није подешен!",
+    "defaultBadge": "Подразумевани",
+    "lockedBadge": "Закључан",
+    "bellsCount": "{{count}} сигнала",
+    "viewButton": "Прикажи",
+    "setDefaultTitle": "Подеси као офлајн подразумевани",
+    "setDefaultShort": "Подразумевани",
+    "newTemplateTitle": "Нови шаблон",
+    "nameLabel": "Назив шаблона",
+    "namePlaceholder": "нпр. Скраћени дан",
+    "tableHeaders": {
+      "time": "Време",
+      "type": "Тип",
+      "sound": "Звук"
+    },
+    "bellType": {
+      "main": "Главно",
+      "signal": "Сигнално"
+    },
+    "commitButton": "✓ Готово",
+    "commitRowTitle": "Прихвати и уметни ред",
+    "discardRowTitle": "Одбаци ред",
+    "addBellButton": "Додај сигнал",
+    "pendingHint": {
+      "prefix": "Подесите време, затим притисните",
+      "suffix": "да уметнете"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Искоришћеност простора",
+    "available": "Доступно: {{available}}",
+    "uploadButton": "Отпреми MP3",
+    "uploadingButton": "Отпремање...",
+    "noFreeSpace": "Нема слободног простора!",
+    "defaultBadge": "Подразумевани",
+    "previewButton": "Преслушај",
+    "previewTitle": "Преглед",
+    "closePlayerTitle": "Затвори плејер"
+  },
+  "confirm": {
+    "loadHolidays": "Учитати празнике за {{year}}. годину?",
+    "deleteTemplate": "Обрисати шаблон „{{name}}”?",
+    "setDefaultTemplate": "Подесити шаблон „{{name}}” као подразумевани?",
+    "saveDay": "Сачувати измене?",
+    "discardChanges": "Постоје несачуване измене. Да ли сте сигурни да желите да их одбаците?",
+    "deleteSound": "Обрисати звучни фајл „{{filename}}”?"
+  },
+  "success": {
+    "daysSaved": "Сачувано дана: {{count}}.",
+    "holidaysLoaded": "Учитано празника: {{count}}.",
+    "templateSaved": "Шаблон сачуван.",
+    "templateDeleted": "Шаблон обрисан.",
+    "templateSetDefault": "„{{name}}” подешен као подразумевани.",
+    "soundUploaded": "Звучни фајл отпремљен!",
+    "soundDeleted": "Звучни фајл обрисан!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Учитавање шаблона није успело.",
+    "loadCalendarFailed": "Учитавање календара није успело.",
+    "loadSoundsFailed": "Учитавање звучних фајлова није успело.",
+    "lockConflict": "Неко други већ уређује распоред звона.",
+    "lockFailed": "Добијање браве за уређивање није успело.",
+    "saveFailed": "Чување није успело.",
+    "loadHolidaysFailed": "Учитавање празника није успело.",
+    "pendingBellUnfinished": "Завршите додавање актуелног сигнала (✓ Готово или ✕).",
+    "templateNameRequired": "Назив шаблона је обавезан.",
+    "deleteFailed": "Брисање није успело.",
+    "setDefaultFailed": "Подешавање као подразумевани није успело.",
+    "notEnoughSpace": "Нема довољно простора! Доступно: {{available}}, потребно: {{needed}}",
+    "uploadFailed": "Грешка при отпремању"
+  },
+  "shared": {
+    "saveButton": "Сачувај",
+    "savingButton": "Чување..."
+  }
+}

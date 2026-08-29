@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Eszközök",
+    "messages": "Üzenetek",
+    "radio": "Iskolai Rádió",
+    "bells": "Csengetési rend",
+    "users": "Felhasználók",
+    "tenants": "Intézmények"
+  },
+  "roles": {
+    "SUPER_ADMIN": "Rendszergazda",
+    "TENANT_ADMIN": "Intézmény-adminisztrátor",
+    "ORG_ADMIN": "Szervezeti adminisztrátor",
+    "OPERATOR": "Operátor",
+    "TEACHER": "Pedagógus",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Mentés",
+    "cancel": "Mégse",
+    "delete": "Törlés",
+    "edit": "Szerkesztés",
+    "close": "Bezárás",
+    "confirm": "Megerősítés",
+    "loading": "Betöltés…",
+    "search": "Keresés",
+    "logout": "Kijelentkezés",
+    "back": "Vissza",
+    "add": "Hozzáadás",
+    "send": "Küldés"
+  },
+  "language": {
+    "label": "Nyelv",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

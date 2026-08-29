@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Zum Aktivieren des Tons klicken",
+    "startButton": "Starten"
+  },
+  "pending": {
+    "title": "Virtueller Player",
+    "registering": "Geräteregistrierung läuft…",
+    "errorLine1": "Verbindung zum Server nicht möglich.",
+    "errorLine2": "Bitte später erneut versuchen oder ab- und wieder anmelden.",
+    "deviceIdLabel": "Geräte-ID",
+    "statusConnecting": "Verbindet…",
+    "statusError": "Verbindungsfehler"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Klingeln läuft"
+  },
+  "hud": {
+    "defaultRadioTitle": "Schulradio",
+    "defaultMessageTitle": "Nachricht"
+  },
+  "nextBell": {
+    "label": "Nächstes Klingeln:",
+    "none": "Heute kein weiteres Klingeln"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-Stream verbunden",
+    "snapOfflineTooltip": "Snap-Stream offline",
+    "audioStreamOk": "Audio-Stream OK",
+    "audioStreamWaiting": "Audio-Stream wartet…",
+    "unmuteTooltip": "Stummschaltung aufheben",
+    "muteTooltip": "Stummschalten"
+  }
+}

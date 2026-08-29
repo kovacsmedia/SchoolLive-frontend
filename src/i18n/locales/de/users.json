@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Verwaltung von Benutzern und Berechtigungen der Institution."
+  },
+  "actions": {
+    "addUser": "＋ Neuer Benutzer",
+    "deactivate": "⏸ Deaktivieren",
+    "create": "✅ Erstellen",
+    "creating": "⏳ Wird erstellt…",
+    "saving": "⏳ Speichern…"
+  },
+  "table": {
+    "emailHeader": "E-Mail",
+    "nameHeader": "Name",
+    "statusHeader": "Status",
+    "roleHeader": "Rolle",
+    "createdAtHeader": "Erstellt",
+    "lastLoginHeader": "Letzte Anmeldung",
+    "actionsHeader": "Aktionen",
+    "noResults": "Keine Ergebnisse"
+  },
+  "status": {
+    "active": "✓ Aktiv",
+    "inactive": "✗ Inaktiv"
+  },
+  "modals": {
+    "createTitle": "Neuer Benutzer",
+    "editTitle": "Bearbeiten: {{email}}",
+    "messagesTitle": "Nachrichten: {{email}}"
+  },
+  "form": {
+    "emailLabel": "E-Mail-Adresse *",
+    "emailPlaceholder": "z. B. lehrer@schule.de",
+    "displayNameLabel": "Anzeigename",
+    "displayNamePlaceholder": "z. B. Max Mustermann",
+    "displayNameHint": "Optional",
+    "roleLabel": "Rolle",
+    "statusLabel": "Status",
+    "activeCheckbox": "Aktiver Benutzer",
+    "passwordLabel": "Passwort",
+    "passwordPlaceholder": "Mindestens 6 Zeichen",
+    "passwordHintEdit": "Bleibt unverändert, wenn leer gelassen.",
+    "passwordHintCreate": "Bei neuen Benutzern erforderlich."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Admin",
+      "description": "Tenant-Admin: volle Tenant-Berechtigung."
+    },
+    "EDITOR": {
+      "label": "Redakteur",
+      "description": "Nachrichten senden, geplante Signale verwalten."
+    },
+    "CONTRIBUTOR": {
+      "label": "Mitwirkender",
+      "description": "Sofortnachrichten senden."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Berechtigung für die Player-Ansicht."
+    }
+  },
+  "messages": {
+    "empty": "Dieser Benutzer hat noch keine Nachricht gesendet.",
+    "count": "{{count}} Nachrichten"
+  },
+  "confirm": {
+    "deactivateMessage": "Möchten Sie diesen Benutzer wirklich deaktivieren?\n{{email}}\n\nDas Konto bleibt bestehen, aber der Benutzer kann sich nicht mehr anmelden.",
+    "deleteMessage": "⚠️ ENDGÜLTIGES LÖSCHEN ⚠️\n\nMöchten Sie diesen Benutzer wirklich löschen?\n{{email}}\n\nDiese Aktion kann nicht rückgängig gemacht werden!"
+  },
+  "errors": {
+    "emailRequired": "E-Mail-Adresse ist erforderlich.",
+    "passwordRequired": "Passwort ist erforderlich.",
+    "emailRequiredShort": "E-Mail erforderlich.",
+    "backendNotOk": "Das Backend hat nicht mit Status „ok“ geantwortet.",
+    "createFailed": "Erstellen fehlgeschlagen. ",
+    "updateFailed": "Ändern fehlgeschlagen. ",
+    "deactivateFailed": "Deaktivieren fehlgeschlagen. ",
+    "deleteFailed": "Löschen fehlgeschlagen. ",
+    "unknown": "Unbekannter Fehler"
+  }
+}

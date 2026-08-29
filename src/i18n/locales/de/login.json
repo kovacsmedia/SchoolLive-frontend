@@ -1,0 +1,20 @@
+{
+  "heading": "Willkommen! 👋",
+  "subtitle": "Melde dich im Schulsystem an",
+  "already": {
+    "loggedInAs": "Du bist angemeldet als",
+    "unknownUser": "unbekannt",
+    "continue": "Weiter hierhin"
+  },
+  "form": {
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "z. B. lehrer@schule.de",
+    "passwordLabel": "Passwort",
+    "submit": "Anmelden →",
+    "submitBusy": "⏳ Anmeldung läuft…"
+  },
+  "backLink": "← Zurück zur Startseite",
+  "errors": {
+    "loginFailed": "Anmeldung fehlgeschlagen."
+  }
+}

@@ -12,6 +12,7 @@
 //         maga audio-asset URL-eket – csak a vizuális overlay-t mutatja.
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import { SnapWsClient } from "../lib/snapWsClient";
 
@@ -222,6 +223,7 @@ const CSS = `
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function VirtualPlayer() {
+  const { t } = useTranslation(["virtualPlayer", "common"]);
   const clientId = getOrCreateClientId();
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -375,11 +377,11 @@ export default function VirtualPlayer() {
             // mutatunk: a banner elég, a kliens-hang a snap-streamből jön.
           } else if (act === "TTS") {
             const text  = payload.text ?? "";
-            const title = payload.title ?? "Üzenet";
+            const title = payload.title ?? t("virtualPlayer:hud.defaultMessageTitle");
             const readingMs = text ? calcReadingMs(text) : 8000;
             showHud({ kind: "tts", title, text }, readingMs + 4000);
           } else if (act === "PLAY_URL") {
-            const title = payload.title ?? "Iskolarádió";
+            const title = payload.title ?? t("virtualPlayer:hud.defaultRadioTitle");
             showHud({ kind: "radio", title });
           } else if (act === "STOP_PLAYBACK") {
             dismissHud();
@@ -452,7 +454,7 @@ export default function VirtualPlayer() {
     };
 
     ws.onerror = () => { try { ws.close(); } catch {} };
-  }, [clientId, unlocked, startSnapClient, showHud, dismissHud, fetchBells, flashBellBanner]);
+  }, [clientId, unlocked, startSnapClient, showHud, dismissHud, fetchBells, flashBellBanner, t]);
 
   // ── JWT-relogin (a tokeneknek 15 perces TTL-je van; a webplayer egy nap
   //  nyitva marad → szilárdság miatt csendben megújítjuk, ha vannak vpCredentials
@@ -621,38 +623,38 @@ export default function VirtualPlayer() {
     <div className="vp-root">
       <style>{CSS}</style>
 
-      {bellBanner && <div className="vp-bell-banner">🔔 Csengetés folyamatban</div>}
+      {bellBanner && <div className="vp-bell-banner">🔔 {t("virtualPlayer:bellBanner.text")}</div>}
 
       {!unlocked && (
         <div className="vp-unlock" onClick={unlockAudio}>
           <div className="vp-unlock-icon">🔊</div>
           <div className="vp-unlock-title">SchoolLive Player</div>
-          <div className="vp-unlock-sub">Kattints a hang engedélyezéséhez</div>
-          <button className="vp-unlock-btn" type="button">▶ Indítás</button>
+          <div className="vp-unlock-sub">{t("virtualPlayer:unlock.subtitle")}</div>
+          <button className="vp-unlock-btn" type="button">▶ {t("virtualPlayer:unlock.startButton")}</button>
         </div>
       )}
 
       {unlocked && (status === "pending" || status === "registering") && (
         <div className="vp-pending">
           <div className="vp-pending-icon">📱</div>
-          <div className="vp-pending-title">Virtuális lejátszó</div>
+          <div className="vp-pending-title">{t("virtualPlayer:pending.title")}</div>
           <div className="vp-pending-sub">
             {status === "registering" ? (
-              <>Eszköz regisztrálása folyamatban…</>
+              <>{t("virtualPlayer:pending.registering")}</>
             ) : (
               <>
-                Nem sikerült csatlakozni a kiszolgálóhoz.<br />
-                Próbáld újra később, vagy jelentkezz ki és vissza.
+                {t("virtualPlayer:pending.errorLine1")}<br />
+                {t("virtualPlayer:pending.errorLine2")}
               </>
             )}
           </div>
           <div className="vp-pending-id">
-            <div style={{ marginBottom:6, color:"#8da4c0", fontSize:11, textTransform:"uppercase", letterSpacing:"0.8px" }}>Eszköz azonosító</div>
+            <div style={{ marginBottom:6, color:"#8da4c0", fontSize:11, textTransform:"uppercase", letterSpacing:"0.8px" }}>{t("virtualPlayer:pending.deviceIdLabel")}</div>
             <div>WP-{clientId.slice(0,8).toUpperCase()}</div>
           </div>
           <div style={{ fontSize:13, color:"#4a6280", display:"flex", alignItems:"center" }}>
             <span className="vp-pending-dot" />
-            {status === "registering" ? "Csatlakozás…" : "Kapcsolat hiba"}
+            {status === "registering" ? t("virtualPlayer:pending.statusConnecting") : t("virtualPlayer:pending.statusError")}
           </div>
         </div>
       )}
@@ -666,7 +668,7 @@ export default function VirtualPlayer() {
             </div>
             <div className="vp-status-txt">
               <span className="vp-online-dot" style={{ background: isOnline ? "#22c55e" : "#ef4444", boxShadow: isOnline ? "0 0 8px #22c55e" : "none" }} />
-              {isOnline ? "Online" : "Offline"}
+              {isOnline ? t("virtualPlayer:status.online") : t("virtualPlayer:status.offline")}
             </div>
           </div>
 
@@ -676,7 +678,7 @@ export default function VirtualPlayer() {
                 {hud.kind === "radio" ? (
                   <>
                     <div style={{fontSize:64}}>📻</div>
-                    <div className="vp-radio-title">{hud.title ?? "Iskolarádió"}</div>
+                    <div className="vp-radio-title">{hud.title ?? t("virtualPlayer:hud.defaultRadioTitle")}</div>
                   </>
                 ) : hud.kind === "tts" ? (
                   <>
@@ -706,11 +708,11 @@ export default function VirtualPlayer() {
                 {nextBell ? (
                   <>
                     <span className="vp-bell-icon">🔔</span>
-                    <span className="vp-bell-label">Következő csengetés:</span>
+                    <span className="vp-bell-label">{t("virtualPlayer:nextBell.label")}</span>
                     <span className="vp-bell-time">{nextBell}</span>
                   </>
                 ) : (
-                  <span style={{opacity:0.45,fontSize:"0.85em"}}>Nincs több csengetés ma</span>
+                  <span style={{opacity:0.45,fontSize:"0.85em"}}>{t("virtualPlayer:nextBell.none")}</span>
                 )}
               </div>
             )}
@@ -725,16 +727,16 @@ export default function VirtualPlayer() {
               <span
                 className="vp-snap-dot"
                 style={{ background: snapConnected ? "#22c55e" : "#ef4444" }}
-                title={snapConnected ? "Snap-stream csatlakozva" : "Snap-stream offline"}
+                title={snapConnected ? t("virtualPlayer:footer.snapConnectedTooltip") : t("virtualPlayer:footer.snapOfflineTooltip")}
               />
-              <span>{snapConnected ? "Hang-stream OK" : "Hang-stream várakozik…"}</span>
+              <span>{snapConnected ? t("virtualPlayer:footer.audioStreamOk") : t("virtualPlayer:footer.audioStreamWaiting")}</span>
             </div>
             <div className="vp-vol-wrap">
               <button
                 className="vp-vol-btn"
                 onClick={() => setMuted(m => !m)}
                 type="button"
-                title={muted ? "Némítás feloldása" : "Némítás"}
+                title={muted ? t("virtualPlayer:footer.unmuteTooltip") : t("virtualPlayer:footer.muteTooltip")}
               >
                 {muted ? "🔇" : "🔈"}
               </button>

@@ -13,6 +13,7 @@ import BellSchedule from "./pages/BellSchedule";
 import SchoolRadio from "./pages/SchoolRadio";
 import VirtualPlayer from "./pages/VirtualPlayer";
 import "./index.css";
+import "./i18n";
 
 import { AuthProvider } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";

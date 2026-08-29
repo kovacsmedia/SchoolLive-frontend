@@ -1,0 +1,82 @@
+{
+  "header": {
+    "subtitle": "Zarządzanie użytkownikami i uprawnieniami placówki."
+  },
+  "actions": {
+    "addUser": "＋ Nowy użytkownik",
+    "deactivate": "⏸ Dezaktywuj",
+    "create": "✅ Utwórz",
+    "creating": "⏳ Tworzenie…",
+    "saving": "⏳ Zapisywanie…"
+  },
+  "table": {
+    "emailHeader": "E-mail",
+    "nameHeader": "Imię i nazwisko",
+    "statusHeader": "Status",
+    "roleHeader": "Rola",
+    "createdAtHeader": "Utworzono",
+    "lastLoginHeader": "Ostatnie logowanie",
+    "actionsHeader": "Działania",
+    "noResults": "Brak wyników"
+  },
+  "status": {
+    "active": "✓ Aktywny",
+    "inactive": "✗ Nieaktywny"
+  },
+  "modals": {
+    "createTitle": "Nowy użytkownik",
+    "editTitle": "Edycja: {{email}}",
+    "messagesTitle": "Wiadomości: {{email}}"
+  },
+  "form": {
+    "emailLabel": "Adres e-mail *",
+    "emailPlaceholder": "np. nauczyciel@szkola.pl",
+    "displayNameLabel": "Wyświetlana nazwa",
+    "displayNamePlaceholder": "np. Jan Kowalski",
+    "displayNameHint": "Opcjonalne",
+    "roleLabel": "Rola",
+    "statusLabel": "Status",
+    "activeCheckbox": "Aktywny użytkownik",
+    "passwordLabel": "Hasło",
+    "passwordPlaceholder": "Minimum 6 znaków",
+    "passwordHintEdit": "Jeśli pozostawisz puste, nie zmieni się.",
+    "passwordHintCreate": "Wymagane dla nowego użytkownika."
+  },
+  "uiRoles": {
+    "ADMIN": {
+      "label": "Administrator",
+      "description": "Administrator tenanta: pełne uprawnienia w ramach tenanta."
+    },
+    "EDITOR": {
+      "label": "Redaktor",
+      "description": "Wysyłanie wiadomości, zarządzanie zaplanowanymi sygnałami."
+    },
+    "CONTRIBUTOR": {
+      "label": "Współpracownik",
+      "description": "Wysyłanie natychmiastowych wiadomości."
+    },
+    "PLAYER": {
+      "label": "Player",
+      "description": "Uprawnienie do widoku Player."
+    }
+  },
+  "messages": {
+    "empty": "Ten użytkownik nie wysłał jeszcze żadnej wiadomości.",
+    "count": "{{count}} wiadomości"
+  },
+  "confirm": {
+    "deactivateMessage": "Czy na pewno chcesz dezaktywować tego użytkownika?\n{{email}}\n\nKonto pozostanie, ale użytkownik nie będzie mógł się zalogować.",
+    "deleteMessage": "⚠️ TRWAŁE USUNIĘCIE ⚠️\n\nCzy na pewno chcesz usunąć tego użytkownika?\n{{email}}\n\nTej operacji nie można cofnąć!"
+  },
+  "errors": {
+    "emailRequired": "Adres e-mail jest wymagany.",
+    "passwordRequired": "Hasło jest wymagane.",
+    "emailRequiredShort": "E-mail jest wymagany.",
+    "backendNotOk": "Backend nie odpowiedział ze statusem ok.",
+    "createFailed": "Nie udało się utworzyć. ",
+    "updateFailed": "Nie udało się zaktualizować. ",
+    "deactivateFailed": "Nie udało się dezaktywować. ",
+    "deleteFailed": "Nie udało się usunąć. ",
+    "unknown": "Nieznany błąd"
+  }
+}

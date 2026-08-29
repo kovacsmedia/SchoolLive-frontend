@@ -1,0 +1,203 @@
+{
+  "header": {
+    "title": "Institution devices",
+    "subtitle": "All speakers and displays in one place — with real-time status."
+  },
+  "buttons": {
+    "addDevice": "New device",
+    "groups": "Groups",
+    "firmwareOta": "Firmware OTA",
+    "refresh": "Refresh"
+  },
+  "volume": {
+    "muteAllTooltipOn": "Mute OFF – individual volumes will be restored",
+    "muteAllTooltipOff": "Mute ON – every device's volume will be 0",
+    "muteAllLabelOn": "Mute ON",
+    "muteAllLabel": "Mute",
+    "maxAllTooltipOn": "Max volume OFF – individual volumes will be restored",
+    "maxAllTooltipOff": "Max volume ON – every device's volume will be 10",
+    "maxAllLabelOn": "Max ON",
+    "maxAllLabel": "Max",
+    "globalMuteActiveTooltip": "Global mute active",
+    "globalMaxActiveTooltip": "Global max volume active",
+    "tooltip": "Volume: {{vol}}/10",
+    "mutedSuffix": " (muted)"
+  },
+  "activate": {
+    "esp32Title": "Activate ESP32 device",
+    "pendingIdLabel": "Pending ID: {{id}}",
+    "deviceNameLabel": "Device name *",
+    "deviceNameLabelShort": "Device name",
+    "deviceNamePlaceholderEsp32": "e.g. Room 14 speaker",
+    "deviceNamePlaceholderWebplayer": "e.g. Front desk tablet, Cafeteria display",
+    "deviceNamePlaceholderNative": "e.g. Front desk Windows PC",
+    "deviceClassLabel": "Device type *",
+    "deviceClassLabelShort": "Device type",
+    "tenantLabel": "Institution *",
+    "tenantPlaceholder": "Choose an institution…",
+    "wifiSectionTitle": "WiFi configuration",
+    "wifiSsidLabel": "WiFi SSID *",
+    "wifiSsidPlaceholder": "e.g. School-WiFi",
+    "wifiHiddenLabel": "Hidden network",
+    "wifiSecurityLabel": "Security type",
+    "wifiPasswordLabel": "WiFi password *",
+    "passwordPlaceholder": "Password",
+    "wifiUserLabel": "Login username *",
+    "wifiUserPlaceholder": "e.g. user@school.edu",
+    "openNetworkWarning": "Open network – not recommended in production",
+    "activating": "⏳ Activating…",
+    "activateButton": "⚡ Activate",
+    "activateButtonWebplayer": "📱 Activate",
+    "activateButtonNative": "🖥️ Activate",
+    "webplayerTitle": "Activate virtual player",
+    "webplayerHint": "You're activating a WebPlayer device. The browser will act as a virtual speaker.",
+    "nativeTitle": "Activate Native Player",
+    "nativeHint": "Activating a Windows / Linux / Android native player. The device connects with its own device key.",
+    "successTitle": "Device activated: {{name}}",
+    "deviceKeyLabel": "Device key (visible only once!):"
+  },
+  "table": {
+    "title": "Device list",
+    "countLabel": "{{filtered}} / {{total}} devices",
+    "nameHeader": "Device name",
+    "statusHeader": "Status",
+    "volumeHeader": "Volume",
+    "detailsHeader": "Details",
+    "emptyTitle": "No devices to display",
+    "emptyHint": "Add devices with the \"New device\" button",
+    "detailsButtonTitle": "Details + sync + edit + delete"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "pending": {
+    "title": "Devices awaiting activation",
+    "nativeSectionTitle": "Native Players (Windows / Linux / Android)",
+    "keyNotReadyAlert": "The device hasn't sent its key yet. Wait a few seconds.",
+    "keyReady": "Key ready",
+    "keyWaiting": "Waiting…",
+    "webplayerSectionTitle": "Virtual players (WebPlayer)",
+    "lastSeen": "Last seen: {{date}}",
+    "esp32Hint": "The ESP32 devices below are in provisioning mode, waiting for activation.",
+    "esp32Empty": "No ESP32 devices awaiting activation."
+  },
+  "details": {
+    "durationSeconds": "{{s}}s",
+    "durationMinutes": "{{m}}m {{s}}s",
+    "durationHours": "{{h}}h {{m}}m",
+    "durationDays": "{{d}}d {{h}}h",
+    "title": "Details: {{name}}",
+    "typeLabel": "Type",
+    "hwModelLabel": "HW model",
+    "ipLabel": "IP address",
+    "firmwareLabel": "Firmware",
+    "otaLabel": "OTA",
+    "lastSeenLabel": "Last activity",
+    "resetTooltip": "Reset to provisioning mode",
+    "resetButton": "Reset",
+    "resetConfirm": "Reset to provisioning mode?\n{{name}}\n\nThe device will lose its activated status.",
+    "deleteConfirm": "Delete? ({{name}})"
+  },
+  "sync": {
+    "title": "Snap sync offset",
+    "description": "Fine-tune by ear: a positive value makes the device play <b>later</b> (further behind other devices), negative → <b>earlier</b>. 10 ms steps, ±2000 ms range. The change takes effect from the next audio chunk.",
+    "earlierTooltip": "-10 ms (shift earlier)",
+    "laterTooltip": "+10 ms (shift later)",
+    "resetButton": "Reset to 0"
+  },
+  "channelMode": {
+    "title": "Mono channel mode",
+    "description": "On a mono DAC: <b>Mix</b> = (L+R)/2, <b>Left/Right</b> = only that channel. On a stereo DAC: <b>Stereo</b> = pass-through, unchanged L/R output.",
+    "left": "Left",
+    "mix": "Mix",
+    "stereo": "Stereo",
+    "right": "Right"
+  },
+  "editModal": {
+    "title": "Edit device",
+    "typeNote": "Note: the type is currently only changed by the backend via re-provisioning — this field is reserved for later.",
+    "hwModelLabel": "Hardware model",
+    "hwModelNotSet": "— Not set —",
+    "saving": "⏳ Saving…"
+  },
+  "groups": {
+    "title": "Device groups",
+    "newGroupPlaceholder": "New group name…",
+    "createButton": "Create",
+    "empty": "No groups yet.",
+    "renameSaveButton": "Save",
+    "noMembers": "No members",
+    "memberCount": "{{count}} devices",
+    "membersButton": "Members",
+    "renameButton": "Rename",
+    "selectMembersLabel": "SELECT MEMBERS",
+    "deleteConfirm": "Delete this group?"
+  },
+  "ota": {
+    "modalTitle": "Firmware OTA manager",
+    "uploadSectionTitle": "Upload new firmware",
+    "versionLabel": "Version *",
+    "targetDeviceLabel": "Target device",
+    "targetAll": "All devices",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Release notes…",
+    "mandatoryLabel": "Mandatory update",
+    "uploadInProgress": "Upload in progress…",
+    "uploadDropHint": "Click to choose a .bin file",
+    "availableVersionsTitle": "Available versions",
+    "noReleases": "No firmware uploaded yet.",
+    "mandatoryBadge": "Mandatory",
+    "deviceUpdateStatusTitle": "Device update status",
+    "noPhysicalDevices": "No physical devices",
+    "uploadSuccess": "✅ {{version}} uploaded successfully",
+    "deleteConfirm": "Delete version {{version}}?",
+    "status": {
+      "upToDate": "Up to date",
+      "pending": "Update pending",
+      "downloading": "Downloading…",
+      "installing": "Installing…",
+      "failed": "Failed",
+      "rollback": "Rolled back"
+    }
+  },
+  "hwModel": {
+    "esp32S3": "ESP32-S3-N16R8",
+    "esp32Wroom": "ESP32-WROOM-32",
+    "esp32S3Display": "ESP32-S3 Display",
+    "esp32S3Multi": "ESP32-S3 Multi",
+    "virtual": "Virtual (WP)",
+    "virtualWin": "Windows Player",
+    "virtualLinux": "Linux Player",
+    "virtualAndroid": "Android Player"
+  },
+  "deviceClass": {
+    "speaker":   { "label": "Speaker", "description": "Audio playback only" },
+    "display":   { "label": "Display", "description": "Visual display" },
+    "multi":     { "label": "Multi", "description": "Audio + display" },
+    "multizone": { "label": "Multizone", "description": "8-zone relay amplifier (creates 8 devices)" }
+  },
+  "wifiSecurity": {
+    "wpa2Personal": "WPA2 Personal (most common)",
+    "wpa3Personal": "WPA3 Personal",
+    "wpa2Enterprise": "WPA2 Enterprise (802.1X/PEAP)",
+    "open": "Open network (unencrypted)"
+  },
+  "errors": {
+    "unknown": "Unknown error",
+    "deviceNameRequired": "Device name cannot be empty.",
+    "versionRequired": "Version number is required!",
+    "uploadFailed": "Upload failed",
+    "deleteFailed": "Delete failed",
+    "groupsLoadFailed": "Failed to load groups",
+    "groupCreateFailed": "Failed to create",
+    "groupSaveFailed": "Failed to save",
+    "groupRenameFailed": "Failed to rename",
+    "deviceNameRequiredLong": "Device name is required.",
+    "deviceNameRequiredShort": "Device name required.",
+    "tenantRequired": "Institution selection is required.",
+    "wifiSsidRequired": "WiFi SSID is required.",
+    "wifiPasswordRequired": "WiFi password is required.",
+    "wifiUserRequired": "Login username is required for WPA2 Enterprise."
+  }
+}

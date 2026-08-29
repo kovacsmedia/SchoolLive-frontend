@@ -1,0 +1,38 @@
+{
+  "unlock": {
+    "subtitle": "Kliknutím povoľte zvuk",
+    "startButton": "Spustiť"
+  },
+  "pending": {
+    "title": "Virtuálny prehrávač",
+    "registering": "Prebieha registrácia zariadenia…",
+    "errorLine1": "Nepodarilo sa pripojiť k serveru.",
+    "errorLine2": "Skúste to znova neskôr, alebo sa odhláste a znova prihláste.",
+    "deviceIdLabel": "ID zariadenia",
+    "statusConnecting": "Pripája sa…",
+    "statusError": "Chyba pripojenia"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "bellBanner": {
+    "text": "Prebieha zvonenie"
+  },
+  "hud": {
+    "defaultRadioTitle": "Školský rozhlas",
+    "defaultMessageTitle": "Správa"
+  },
+  "nextBell": {
+    "label": "Ďalšie zvonenie:",
+    "none": "Dnes už nie je žiadne ďalšie zvonenie"
+  },
+  "footer": {
+    "snapConnectedTooltip": "Snap-stream pripojený",
+    "snapOfflineTooltip": "Snap-stream offline",
+    "audioStreamOk": "Zvukový stream OK",
+    "audioStreamWaiting": "Zvukový stream čaká…",
+    "unmuteTooltip": "Zrušiť stlmenie",
+    "muteTooltip": "Stlmiť"
+  }
+}

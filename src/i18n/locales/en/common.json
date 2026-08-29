@@ -1,0 +1,44 @@
+{
+  "nav": {
+    "devices": "Devices",
+    "messages": "Messages",
+    "radio": "School Radio",
+    "bells": "Bell Schedule",
+    "users": "Users",
+    "tenants": "Institutions"
+  },
+  "roles": {
+    "SUPER_ADMIN": "System Administrator",
+    "TENANT_ADMIN": "Institution Administrator",
+    "ORG_ADMIN": "Organizational Administrator",
+    "OPERATOR": "Operator",
+    "TEACHER": "Teacher",
+    "PLAYER": "Player"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "search": "Search",
+    "logout": "Log out",
+    "back": "Back",
+    "add": "Add",
+    "send": "Send"
+  },
+  "language": {
+    "label": "Language",
+    "hu": "Magyar",
+    "en": "English",
+    "de": "Deutsch",
+    "sk": "Slovenčina",
+    "pl": "Polski",
+    "ro": "Română",
+    "uk": "Українська",
+    "sr": "Српски",
+    "hr": "Hrvatski"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Neznáma chyba",
+    "nameRequired": "Názov inštitúcie je povinný.",
+    "backendError": "Chyba backendu",
+    "deactivateFailed": "Deaktivácia zlyhala.",
+    "deleteFailed": "Vymazanie zlyhalo."
+  },
+  "page": {
+    "subtitle": "Správa inštitúcií na úrovni tenantu a ich nastavení."
+  },
+  "search": {
+    "placeholder": "Hľadať…"
+  },
+  "actions": {
+    "newTenant": "Nová inštitúcia",
+    "inactiveHidden": "Neaktívne skryté",
+    "inactiveVisible": "Zobraziť neaktívne"
+  },
+  "table": {
+    "nameHeader": "Inštitúcia",
+    "actionsHeader": "Akcie",
+    "emptyTitle": "Žiadna inštitúcia",
+    "viewDetailsAction": "Podrobnosti",
+    "editAction": "Upraviť",
+    "deactivateAction": "Deaktivovať"
+  },
+  "status": {
+    "active": "Aktívna",
+    "inactive": "Neaktívna"
+  },
+  "modal": {
+    "creating": "Vytváranie…",
+    "create": "Vytvoriť",
+    "editTitle": "Úprava: {{name}}",
+    "saving": "Ukladanie…"
+  },
+  "confirm": {
+    "deactivateMessage": "Deaktivovať túto inštitúciu?\n\n{{name}}",
+    "hardDeleteMessage": "Natrvalo vymazať túto inštitúciu? Toto sa nedá vrátiť späť!\nVšetci používatelia, zariadenia a údaje budú vymazané!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Telefón",
+    "email": "E-mail",
+    "address": "Adresa",
+    "eduId": "Identifikátor vzdelávania",
+    "status": "Stav",
+    "domain": "Doména",
+    "director": "Riaditeľ",
+    "createdAt": "Vytvorené"
+  },
+  "detail": {
+    "closeAction": "Zavrieť"
+  },
+  "form": {
+    "nameLabel": "Názov inštitúcie *",
+    "namePlaceholder": "napr. Základná škola Komenského",
+    "domainLabel": "Doména / subdoména",
+    "domainPlaceholder": "napr. komenskeho.schoollive.hu",
+    "activeLabel": "Aktívna inštitúcia",
+    "contactSectionTitle": "Kontakt / Riaditeľ",
+    "directorNameLabel": "Meno riaditeľa",
+    "directorNamePlaceholder": "napr. Ján Novák",
+    "phonePlaceholder": "+421 900 123 456",
+    "emailPlaceholder": "riaditel@skola.sk",
+    "otherSectionTitle": "Ďalšie údaje",
+    "addressPlaceholder": "Hlavná 1, 811 01 Bratislava",
+    "eduIdPlaceholder": "032456"
+  }
+}

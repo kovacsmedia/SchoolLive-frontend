@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Zarządzanie kalendarzem, szablonami i plikami dźwiękowymi",
+    "endEditing": "Zakończ edycję",
+    "lockActive": "Blokada edycji aktywna",
+    "loadingCalendar": "Ładowanie kalendarza...",
+    "tabs": {
+      "calendar": "Kalendarz",
+      "templates": "Szablony",
+      "sounds": "Pliki dźwiękowe"
+    }
+  },
+  "calendar": {
+    "today": "Dziś",
+    "loadHolidaysButton": "Wczytaj święta",
+    "hint": "Kliknij dzień, aby go edytować. Shift: zaznaczenie zakresu, Ctrl/Cmd: zaznaczenie wielu dni.",
+    "holidayTitle": "Dzień wolny",
+    "normalTitle": "Dzień nauki",
+    "holidayBadge": "Wolne",
+    "weekendBadge": "Weekend",
+    "weekdays": {
+      "mon": "Pon",
+      "tue": "Wt",
+      "wed": "Śr",
+      "thu": "Czw",
+      "fri": "Pt",
+      "sat": "Sob",
+      "sun": "Nd"
+    },
+    "months": {
+      "january": "Styczeń",
+      "february": "Luty",
+      "march": "Marzec",
+      "april": "Kwiecień",
+      "may": "Maj",
+      "june": "Czerwiec",
+      "july": "Lipiec",
+      "august": "Sierpień",
+      "september": "Wrzesień",
+      "october": "Październik",
+      "november": "Listopad",
+      "december": "Grudzień"
+    },
+    "dayPanel": {
+      "multipleSelected": "Wybrano {{count}} dni",
+      "titleSuffix": "edycja",
+      "multiHint": "(te same ustawienia zostaną zastosowane do wszystkich wybranych dni)",
+      "holidayCheckbox": "Dzień wolny (bez dzwonków)",
+      "templateDefaultOption": "Szablon domyślny",
+      "noteLabel": "Notatka",
+      "notePlaceholder": "np. Skrócone lekcje"
+    }
+  },
+  "templates": {
+    "heading": "Szablony planu dzwonków",
+    "newButton": "Nowy szablon",
+    "defaultInfo": {
+      "prefix": "Szablon",
+      "highlight": "domyślny",
+      "suffix": "jest pobierany na urządzenie jako offline'owa opcja awaryjna."
+    },
+    "noDefaultWarning": "Nie ustawiono szablonu domyślnego!",
+    "defaultBadge": "Domyślny",
+    "lockedBadge": "Zablokowany",
+    "bellsCount": "{{count}} sygnałów",
+    "viewButton": "Zobacz",
+    "setDefaultTitle": "Ustaw jako domyślny offline",
+    "setDefaultShort": "Domyślny",
+    "newTemplateTitle": "Nowy szablon",
+    "nameLabel": "Nazwa szablonu",
+    "namePlaceholder": "np. Skrócony dzień",
+    "tableHeaders": {
+      "time": "Godzina",
+      "type": "Typ",
+      "sound": "Dźwięk"
+    },
+    "bellType": {
+      "main": "Główny",
+      "signal": "Sygnałowy"
+    },
+    "commitButton": "✓ Gotowe",
+    "commitRowTitle": "Zatwierdź i wstaw wiersz",
+    "discardRowTitle": "Odrzuć wiersz",
+    "addBellButton": "Dodaj sygnał",
+    "pendingHint": {
+      "prefix": "Ustaw godzinę, a następnie naciśnij",
+      "suffix": ", aby wstawić"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Wykorzystanie miejsca",
+    "available": "Dostępne: {{available}}",
+    "uploadButton": "Prześlij MP3",
+    "uploadingButton": "Przesyłanie...",
+    "noFreeSpace": "Brak wolnego miejsca!",
+    "defaultBadge": "Domyślny",
+    "previewButton": "Odsłuchaj",
+    "previewTitle": "Podgląd",
+    "closePlayerTitle": "Zamknij odtwarzacz"
+  },
+  "confirm": {
+    "loadHolidays": "Wczytać święta na rok {{year}}?",
+    "deleteTemplate": "Usunąć szablon „{{name}}”?",
+    "setDefaultTemplate": "Ustawić szablon „{{name}}” jako domyślny?",
+    "saveDay": "Zapisać zmiany?",
+    "discardChanges": "Istnieją niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
+    "deleteSound": "Usunąć plik dźwiękowy „{{filename}}”?"
+  },
+  "success": {
+    "daysSaved": "Zapisano {{count}} dni.",
+    "holidaysLoaded": "Wczytano {{count}} świąt.",
+    "templateSaved": "Szablon zapisany.",
+    "templateDeleted": "Szablon usunięty.",
+    "templateSetDefault": "„{{name}}” ustawiono jako domyślny.",
+    "soundUploaded": "Plik dźwiękowy przesłany!",
+    "soundDeleted": "Plik dźwiękowy usunięty!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Nie udało się wczytać szablonów.",
+    "loadCalendarFailed": "Nie udało się wczytać kalendarza.",
+    "loadSoundsFailed": "Nie udało się wczytać plików dźwiękowych.",
+    "lockConflict": "Ktoś inny edytuje już plan dzwonków.",
+    "lockFailed": "Nie udało się uzyskać blokady edycji.",
+    "saveFailed": "Nie udało się zapisać.",
+    "loadHolidaysFailed": "Nie udało się wczytać świąt.",
+    "pendingBellUnfinished": "Dokończ dodawanie bieżącego sygnału (✓ Gotowe lub ✕).",
+    "templateNameRequired": "Nazwa szablonu jest wymagana.",
+    "deleteFailed": "Nie udało się usunąć.",
+    "setDefaultFailed": "Nie udało się ustawić jako domyślny.",
+    "notEnoughSpace": "Za mało miejsca! Dostępne: {{available}}, potrzebne: {{needed}}",
+    "uploadFailed": "Błąd przesyłania"
+  },
+  "shared": {
+    "saveButton": "Zapisz",
+    "savingButton": "Zapisywanie..."
+  }
+}

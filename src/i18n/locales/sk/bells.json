@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Správa kalendára, šablón a zvukových súborov",
+    "endEditing": "Ukončiť úpravu",
+    "lockActive": "Aktívny zámok úpravy",
+    "loadingCalendar": "Načítava sa kalendár...",
+    "tabs": {
+      "calendar": "Kalendár",
+      "templates": "Šablóny",
+      "sounds": "Zvukové súbory"
+    }
+  },
+  "calendar": {
+    "today": "Dnes",
+    "loadHolidaysButton": "Načítať sviatky",
+    "hint": "Kliknutím na deň ho upravíte. Shift: výber rozsahu, Ctrl/Cmd: výber viacerých dní.",
+    "holidayTitle": "Deň voľna",
+    "normalTitle": "Vyučovací deň",
+    "holidayBadge": "Voľno",
+    "weekendBadge": "Víkend",
+    "weekdays": {
+      "mon": "Po",
+      "tue": "Ut",
+      "wed": "St",
+      "thu": "Št",
+      "fri": "Pi",
+      "sat": "So",
+      "sun": "Ne"
+    },
+    "months": {
+      "january": "Január",
+      "february": "Február",
+      "march": "Marec",
+      "april": "Apríl",
+      "may": "Máj",
+      "june": "Jún",
+      "july": "Júl",
+      "august": "August",
+      "september": "September",
+      "october": "Október",
+      "november": "November",
+      "december": "December"
+    },
+    "dayPanel": {
+      "multipleSelected": "Vybraných dní: {{count}}",
+      "titleSuffix": "úprava",
+      "multiHint": "(rovnaké nastavenia sa použijú na všetky vybrané dni)",
+      "holidayCheckbox": "Voľno (bez zvonenia)",
+      "templateDefaultOption": "Predvolená šablóna",
+      "noteLabel": "Poznámka",
+      "notePlaceholder": "napr. Skrátené vyučovanie"
+    }
+  },
+  "templates": {
+    "heading": "Šablóny zvonenia",
+    "newButton": "Nová šablóna",
+    "defaultInfo": {
+      "prefix": "",
+      "highlight": "Predvolená",
+      "suffix": "šablóna sa stiahne do zariadenia ako offline záloha."
+    },
+    "noDefaultWarning": "Nie je nastavená predvolená šablóna!",
+    "defaultBadge": "Predvolená",
+    "lockedBadge": "Uzamknutá",
+    "bellsCount": "{{count}} signálov",
+    "viewButton": "Zobraziť",
+    "setDefaultTitle": "Nastaviť ako offline predvolenú",
+    "setDefaultShort": "Predvolená",
+    "newTemplateTitle": "Nová šablóna",
+    "nameLabel": "Názov šablóny",
+    "namePlaceholder": "napr. Skrátený deň",
+    "tableHeaders": {
+      "time": "Čas",
+      "type": "Typ",
+      "sound": "Zvuk"
+    },
+    "bellType": {
+      "main": "Hlavné",
+      "signal": "Signálne"
+    },
+    "commitButton": "✓ Hotovo",
+    "commitRowTitle": "Prijať a vložiť riadok",
+    "discardRowTitle": "Zrušiť riadok",
+    "addBellButton": "Pridať signál",
+    "pendingHint": {
+      "prefix": "Nastavte čas a potom stlačte",
+      "suffix": "na vloženie"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Využitie úložiska",
+    "available": "Dostupné: {{available}}",
+    "uploadButton": "Nahrať MP3",
+    "uploadingButton": "Nahrávanie...",
+    "noFreeSpace": "Žiadne voľné miesto!",
+    "defaultBadge": "Predvolené",
+    "previewButton": "Vypočuť si",
+    "previewTitle": "Ukážka",
+    "closePlayerTitle": "Zavrieť prehrávač"
+  },
+  "confirm": {
+    "loadHolidays": "Načítať sviatky pre rok {{year}}?",
+    "deleteTemplate": "Vymazať šablónu „{{name}}“?",
+    "setDefaultTemplate": "Nastaviť šablónu „{{name}}“ ako predvolenú?",
+    "saveDay": "Uložiť zmeny?",
+    "discardChanges": "Existujú neuložené zmeny. Naozaj ich chcete zahodiť?",
+    "deleteSound": "Vymazať zvukový súbor „{{filename}}“?"
+  },
+  "success": {
+    "daysSaved": "Uložených dní: {{count}}.",
+    "holidaysLoaded": "Načítaných sviatkov: {{count}}.",
+    "templateSaved": "Šablóna uložená.",
+    "templateDeleted": "Šablóna vymazaná.",
+    "templateSetDefault": "„{{name}}“ nastavená ako predvolená.",
+    "soundUploaded": "Zvukový súbor nahraný!",
+    "soundDeleted": "Zvukový súbor vymazaný!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Nepodarilo sa načítať šablóny.",
+    "loadCalendarFailed": "Nepodarilo sa načítať kalendár.",
+    "loadSoundsFailed": "Nepodarilo sa načítať zvukové súbory.",
+    "lockConflict": "Niekto iný už upravuje rozvrh zvonenia.",
+    "lockFailed": "Nepodarilo sa získať zámok úpravy.",
+    "saveFailed": "Uloženie sa nepodarilo.",
+    "loadHolidaysFailed": "Nepodarilo sa načítať sviatky.",
+    "pendingBellUnfinished": "Dokončite pridávanie rozpracovaného signálu (✓ Hotovo alebo ✕).",
+    "templateNameRequired": "Názov šablóny je povinný.",
+    "deleteFailed": "Vymazanie sa nepodarilo.",
+    "setDefaultFailed": "Nepodarilo sa nastaviť ako predvolenú.",
+    "notEnoughSpace": "Nedostatok miesta! Dostupné: {{available}}, potrebné: {{needed}}",
+    "uploadFailed": "Chyba nahrávania"
+  },
+  "shared": {
+    "saveButton": "Uložiť",
+    "savingButton": "Ukladanie..."
+  }
+}

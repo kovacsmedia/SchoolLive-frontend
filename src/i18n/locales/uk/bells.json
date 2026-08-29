@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Керування календарем, шаблонами та звуковими файлами",
+    "endEditing": "Завершити редагування",
+    "lockActive": "Активне блокування редагування",
+    "loadingCalendar": "Завантаження календаря...",
+    "tabs": {
+      "calendar": "Календар",
+      "templates": "Шаблони",
+      "sounds": "Звукові файли"
+    }
+  },
+  "calendar": {
+    "today": "Сьогодні",
+    "loadHolidaysButton": "Завантажити свята",
+    "hint": "Натисніть на день, щоб редагувати. Shift: вибір діапазону, Ctrl/Cmd: вибір кількох днів.",
+    "holidayTitle": "Вихідний день",
+    "normalTitle": "Навчальний день",
+    "holidayBadge": "Вихідний",
+    "weekendBadge": "Вихідні",
+    "weekdays": {
+      "mon": "Пн",
+      "tue": "Вт",
+      "wed": "Ср",
+      "thu": "Чт",
+      "fri": "Пт",
+      "sat": "Сб",
+      "sun": "Нд"
+    },
+    "months": {
+      "january": "Січень",
+      "february": "Лютий",
+      "march": "Березень",
+      "april": "Квітень",
+      "may": "Травень",
+      "june": "Червень",
+      "july": "Липень",
+      "august": "Серпень",
+      "september": "Вересень",
+      "october": "Жовтень",
+      "november": "Листопад",
+      "december": "Грудень"
+    },
+    "dayPanel": {
+      "multipleSelected": "Вибрано днів: {{count}}",
+      "titleSuffix": "редагування",
+      "multiHint": "(ті самі налаштування застосуються до всіх вибраних днів)",
+      "holidayCheckbox": "Вихідний (без дзвінків)",
+      "templateDefaultOption": "Стандартний шаблон",
+      "noteLabel": "Примітка",
+      "notePlaceholder": "напр. Скорочені уроки"
+    }
+  },
+  "templates": {
+    "heading": "Шаблони розкладу дзвінків",
+    "newButton": "Новий шаблон",
+    "defaultInfo": {
+      "prefix": "",
+      "highlight": "Стандартний",
+      "suffix": "шаблон завантажується на пристрій як офлайн-резерв."
+    },
+    "noDefaultWarning": "Стандартний шаблон не встановлено!",
+    "defaultBadge": "Стандартний",
+    "lockedBadge": "Заблоковано",
+    "bellsCount": "{{count}} сигналів",
+    "viewButton": "Переглянути",
+    "setDefaultTitle": "Встановити як офлайн-стандартний",
+    "setDefaultShort": "Стандартний",
+    "newTemplateTitle": "Новий шаблон",
+    "nameLabel": "Назва шаблону",
+    "namePlaceholder": "напр. Скорочений день",
+    "tableHeaders": {
+      "time": "Час",
+      "type": "Тип",
+      "sound": "Звук"
+    },
+    "bellType": {
+      "main": "Основний",
+      "signal": "Сигнальний"
+    },
+    "commitButton": "✓ Готово",
+    "commitRowTitle": "Прийняти та вставити рядок",
+    "discardRowTitle": "Скасувати рядок",
+    "addBellButton": "Додати сигнал",
+    "pendingHint": {
+      "prefix": "Встановіть час, потім натисніть",
+      "suffix": "щоб вставити"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Використання сховища",
+    "available": "Доступно: {{available}}",
+    "uploadButton": "Завантажити MP3",
+    "uploadingButton": "Завантаження...",
+    "noFreeSpace": "Немає вільного місця!",
+    "defaultBadge": "Стандартний",
+    "previewButton": "Прослухати",
+    "previewTitle": "Попередній перегляд",
+    "closePlayerTitle": "Закрити програвач"
+  },
+  "confirm": {
+    "loadHolidays": "Завантажити свята за {{year}} рік?",
+    "deleteTemplate": "Видалити шаблон «{{name}}»?",
+    "setDefaultTemplate": "Встановити шаблон «{{name}}» як стандартний?",
+    "saveDay": "Зберегти зміни?",
+    "discardChanges": "Є незбережені зміни. Ви впевнені, що хочете скасувати їх?",
+    "deleteSound": "Видалити звуковий файл «{{filename}}»?"
+  },
+  "success": {
+    "daysSaved": "Збережено днів: {{count}}.",
+    "holidaysLoaded": "Завантажено свят: {{count}}.",
+    "templateSaved": "Шаблон збережено.",
+    "templateDeleted": "Шаблон видалено.",
+    "templateSetDefault": "«{{name}}» встановлено як стандартний.",
+    "soundUploaded": "Звуковий файл завантажено!",
+    "soundDeleted": "Звуковий файл видалено!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Не вдалося завантажити шаблони.",
+    "loadCalendarFailed": "Не вдалося завантажити календар.",
+    "loadSoundsFailed": "Не вдалося завантажити звукові файли.",
+    "lockConflict": "Хтось інший вже редагує розклад дзвінків.",
+    "lockFailed": "Не вдалося отримати блокування редагування.",
+    "saveFailed": "Не вдалося зберегти.",
+    "loadHolidaysFailed": "Не вдалося завантажити свята.",
+    "pendingBellUnfinished": "Завершіть додавання поточного сигналу (✓ Готово або ✕).",
+    "templateNameRequired": "Назва шаблону обов'язкова.",
+    "deleteFailed": "Не вдалося видалити.",
+    "setDefaultFailed": "Не вдалося встановити як стандартний.",
+    "notEnoughSpace": "Недостатньо місця! Доступно: {{available}}, потрібно: {{needed}}",
+    "uploadFailed": "Помилка завантаження"
+  },
+  "shared": {
+    "saveButton": "Зберегти",
+    "savingButton": "Збереження..."
+  }
+}

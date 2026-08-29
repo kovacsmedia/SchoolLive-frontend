@@ -1,0 +1,70 @@
+{
+  "errors": {
+    "unknown": "Невідома помилка",
+    "nameRequired": "Назва закладу обов'язкова.",
+    "backendError": "Помилка бекенду",
+    "deactivateFailed": "Не вдалося деактивувати.",
+    "deleteFailed": "Не вдалося видалити."
+  },
+  "page": {
+    "subtitle": "Керування закладами на рівні тенанта та їхніми налаштуваннями."
+  },
+  "search": {
+    "placeholder": "Пошук…"
+  },
+  "actions": {
+    "newTenant": "Новий заклад",
+    "inactiveHidden": "Неактивні приховано",
+    "inactiveVisible": "Показати неактивні"
+  },
+  "table": {
+    "nameHeader": "Заклад",
+    "actionsHeader": "Дії",
+    "emptyTitle": "Немає закладів",
+    "viewDetailsAction": "Деталі",
+    "editAction": "Редагувати",
+    "deactivateAction": "Деактивувати"
+  },
+  "status": {
+    "active": "Активний",
+    "inactive": "Неактивний"
+  },
+  "modal": {
+    "creating": "Створення…",
+    "create": "Створити",
+    "editTitle": "Редагування: {{name}}",
+    "saving": "Збереження…"
+  },
+  "confirm": {
+    "deactivateMessage": "Деактивувати цей заклад?\n\n{{name}}",
+    "hardDeleteMessage": "Остаточно видалити цей заклад? Цю дію неможливо скасувати!\nУсі користувачі, пристрої та дані будуть видалені!\n\n{{name}}"
+  },
+  "fields": {
+    "phone": "Телефон",
+    "email": "Ел. пошта",
+    "address": "Адреса",
+    "eduId": "Освітній ідентифікатор",
+    "status": "Статус",
+    "domain": "Домен",
+    "director": "Директор",
+    "createdAt": "Створено"
+  },
+  "detail": {
+    "closeAction": "Закрити"
+  },
+  "form": {
+    "nameLabel": "Назва закладу *",
+    "namePlaceholder": "напр. Загальноосвітня школа №1",
+    "domainLabel": "Домен / піддомен",
+    "domainPlaceholder": "напр. shkola1.schoollive.hu",
+    "activeLabel": "Активний заклад",
+    "contactSectionTitle": "Контактна особа / Директор",
+    "directorNameLabel": "Ім'я директора",
+    "directorNamePlaceholder": "напр. Іван Петренко",
+    "phonePlaceholder": "+380 50 123 4567",
+    "emailPlaceholder": "director@shkola.ua",
+    "otherSectionTitle": "Інші дані",
+    "addressPlaceholder": "вул. Шкільна 1, Київ",
+    "eduIdPlaceholder": "032456"
+  }
+}

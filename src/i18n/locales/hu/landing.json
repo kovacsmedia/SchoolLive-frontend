@@ -1,0 +1,48 @@
+{
+  "errors": {
+    "generic": "Hiba történt.",
+    "sendFailed": "Az e-mail küldése nem sikerült."
+  },
+  "nav": {
+    "login": "Bejelentkezés →"
+  },
+  "hero": {
+    "tag": "🏫 Iskolai kommunikációs rendszer",
+    "titlePrefix": "Egyszerűbb iskolai",
+    "titleHighlight": "kommunikáció",
+    "description": "A SchoolLive segít, hogy az iskolai üzenetek mindig időben, érthetően és megbízhatóan eljussanak oda, ahol szükség van rájuk — kevesebb félreértés, gyorsabb reagálás, nyugodtabb mindennapok.",
+    "ctaPrimary": "🚀 Belépés a rendszerbe",
+    "ctaSecondary": "Tudj meg többet ↗"
+  },
+  "features": {
+    "bells":    { "desc": "Automatikus, pontos jelzések az iskola napirendje szerint. Naptárba szervezett sablonokkal, ünnepnapokkal." },
+    "messages": { "title": "Azonnali üzenetek", "desc": "Küldj szöveges hangüzenetet az épület bármely részébe másodpercek alatt, TTS hanggal." },
+    "radio":    { "title": "Iskolarádió", "desc": "Zenét és műsorokat ütemezve, az egész épületbe egyszerre – közvetlenül a böngészőből vezérelve." },
+    "devices":  { "title": "Több eszköz", "desc": "Minden hangszóró és kijelző egy helyen, valós idejű státusszal, csoportokba rendezve." },
+    "security": { "title": "Biztonságos", "desc": "Szerepkörök, hozzáférés-kezelés, intézményi szétválasztás, auditált műveletek." }
+  },
+  "cta": {
+    "title": "🎯 Szeretné kipróbálni az Ön intézményében is?",
+    "description": "Kérjen ingyenes próbalehetőséget — díjmentes bevezető, személyes bemutatóval!",
+    "contactButton": "📩 Kapcsolatfelvétel"
+  },
+  "contactModal": {
+    "title": "📩 Kapcsolatfelvétel",
+    "subtitle": "Töltse ki az alábbi űrlapot, és hamarosan felvesszük Önnel a kapcsolatot!",
+    "sending": "⏳ Küldés…",
+    "submit": "📨 Elküldés",
+    "success": {
+      "title": "Köszönjük az érdeklődést!",
+      "message": "Üzenetét megkaptuk, hamarosan felvesszük Önnel a kapcsolatot."
+    },
+    "fields": {
+      "name":        { "label": "Az Ön neve *", "placeholder": "pl. Kiss János" },
+      "institution": { "label": "Intézménye", "placeholder": "pl. Ilosvai Selymes Péter Általános Iskola" },
+      "email":       { "label": "E-mail cím *", "placeholder": "pl. kiss.janos@iskola.hu" },
+      "phone":       { "label": "Telefonszám", "placeholder": "pl. +36 30 123 4567" }
+    }
+  },
+  "footer": {
+    "tagline": "Iskolai kommunikációs rendszer"
+  }
+}

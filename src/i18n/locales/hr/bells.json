@@ -1,0 +1,137 @@
+{
+  "page": {
+    "subtitle": "Upravljanje kalendarom, predlošcima i zvučnim datotekama",
+    "endEditing": "Završi uređivanje",
+    "lockActive": "Aktivna brava za uređivanje",
+    "loadingCalendar": "Učitavanje kalendara...",
+    "tabs": {
+      "calendar": "Kalendar",
+      "templates": "Predlošci",
+      "sounds": "Zvučne datoteke"
+    }
+  },
+  "calendar": {
+    "today": "Danas",
+    "loadHolidaysButton": "Učitaj praznike",
+    "hint": "Kliknite na dan za uređivanje. Shift: odabir raspona, Ctrl/Cmd: odabir više dana.",
+    "holidayTitle": "Neradni dan",
+    "normalTitle": "Nastavni dan",
+    "holidayBadge": "Slobodno",
+    "weekendBadge": "Vikend",
+    "weekdays": {
+      "mon": "Pon",
+      "tue": "Uto",
+      "wed": "Sri",
+      "thu": "Čet",
+      "fri": "Pet",
+      "sat": "Sub",
+      "sun": "Ned"
+    },
+    "months": {
+      "january": "Siječanj",
+      "february": "Veljača",
+      "march": "Ožujak",
+      "april": "Travanj",
+      "may": "Svibanj",
+      "june": "Lipanj",
+      "july": "Srpanj",
+      "august": "Kolovoz",
+      "september": "Rujan",
+      "october": "Listopad",
+      "november": "Studeni",
+      "december": "Prosinac"
+    },
+    "dayPanel": {
+      "multipleSelected": "Odabrano dana: {{count}}",
+      "titleSuffix": "uređivanje",
+      "multiHint": "(iste postavke primijenit će se na sve odabrane dane)",
+      "holidayCheckbox": "Slobodno (bez zvona)",
+      "templateDefaultOption": "Zadani predložak",
+      "noteLabel": "Napomena",
+      "notePlaceholder": "npr. Skraćeni sati"
+    }
+  },
+  "templates": {
+    "heading": "Predlošci rasporeda zvona",
+    "newButton": "Novi predložak",
+    "defaultInfo": {
+      "prefix": "",
+      "highlight": "Zadani",
+      "suffix": "predložak preuzima se na uređaj kao offline rezerva."
+    },
+    "noDefaultWarning": "Nije postavljen zadani predložak!",
+    "defaultBadge": "Zadano",
+    "lockedBadge": "Zaključano",
+    "bellsCount": "{{count}} signala",
+    "viewButton": "Prikaži",
+    "setDefaultTitle": "Postavi kao offline zadano",
+    "setDefaultShort": "Zadano",
+    "newTemplateTitle": "Novi predložak",
+    "nameLabel": "Naziv predloška",
+    "namePlaceholder": "npr. Skraćeni dan",
+    "tableHeaders": {
+      "time": "Vrijeme",
+      "type": "Tip",
+      "sound": "Zvuk"
+    },
+    "bellType": {
+      "main": "Glavno",
+      "signal": "Signalno"
+    },
+    "commitButton": "✓ Gotovo",
+    "commitRowTitle": "Prihvati i umetni redak",
+    "discardRowTitle": "Odbaci redak",
+    "addBellButton": "Dodaj signal",
+    "pendingHint": {
+      "prefix": "Postavite vrijeme, zatim pritisnite",
+      "suffix": "za umetanje"
+    }
+  },
+  "sounds": {
+    "storageUsage": "Iskorištenost prostora",
+    "available": "Dostupno: {{available}}",
+    "uploadButton": "Prenesi MP3",
+    "uploadingButton": "Prijenos...",
+    "noFreeSpace": "Nema slobodnog prostora!",
+    "defaultBadge": "Zadano",
+    "previewButton": "Poslušaj",
+    "previewTitle": "Pregled",
+    "closePlayerTitle": "Zatvori player"
+  },
+  "confirm": {
+    "loadHolidays": "Učitati praznike za {{year}}. godinu?",
+    "deleteTemplate": "Izbrisati predložak „{{name}}”?",
+    "setDefaultTemplate": "Postaviti predložak „{{name}}” kao zadani?",
+    "saveDay": "Spremiti promjene?",
+    "discardChanges": "Postoje nespremljene promjene. Jeste li sigurni da ih želite odbaciti?",
+    "deleteSound": "Izbrisati zvučnu datoteku „{{filename}}”?"
+  },
+  "success": {
+    "daysSaved": "Spremljeno dana: {{count}}.",
+    "holidaysLoaded": "Učitano praznika: {{count}}.",
+    "templateSaved": "Predložak spremljen.",
+    "templateDeleted": "Predložak izbrisan.",
+    "templateSetDefault": "„{{name}}” postavljen kao zadani.",
+    "soundUploaded": "Zvučna datoteka prenesena!",
+    "soundDeleted": "Zvučna datoteka izbrisana!"
+  },
+  "errors": {
+    "loadTemplatesFailed": "Učitavanje predložaka nije uspjelo.",
+    "loadCalendarFailed": "Učitavanje kalendara nije uspjelo.",
+    "loadSoundsFailed": "Učitavanje zvučnih datoteka nije uspjelo.",
+    "lockConflict": "Netko drugi već uređuje raspored zvona.",
+    "lockFailed": "Dobivanje brave za uređivanje nije uspjelo.",
+    "saveFailed": "Spremanje nije uspjelo.",
+    "loadHolidaysFailed": "Učitavanje praznika nije uspjelo.",
+    "pendingBellUnfinished": "Dovršite dodavanje trenutnog signala (✓ Gotovo ili ✕).",
+    "templateNameRequired": "Naziv predloška je obavezan.",
+    "deleteFailed": "Brisanje nije uspjelo.",
+    "setDefaultFailed": "Postavljanje kao zadano nije uspjelo.",
+    "notEnoughSpace": "Nema dovoljno prostora! Dostupno: {{available}}, potrebno: {{needed}}",
+    "uploadFailed": "Pogreška prijenosa"
+  },
+  "shared": {
+    "saveButton": "Spremi",
+    "savingButton": "Spremanje..."
+  }
+}

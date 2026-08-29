@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import { apiFetch } from "../lib/api";
 
 type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
 type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
 type UserDto = { id:string; email:string; displayName?:string|null; role:BackendRole; tenantId?:string|null; orgUnitId?:string|null; isActive?:boolean; lastLoginAt?:string|null; createdAt?:string|null; };
 
-const UI_ROLE_OPTIONS: Array<{uiRole:UiRole;label:string;description:string;backendRole:BackendRole}> = [
-  { uiRole:"ADMIN",       label:"Admin",        description:"Tenant admin: teljes körű tenant jogosultság.", backendRole:"TENANT_ADMIN" },
-  { uiRole:"EDITOR",      label:"Szerkesztő",   description:"Üzenetküldés, ütemezett jelzések kezelése.",   backendRole:"ORG_ADMIN" },
-  { uiRole:"CONTRIBUTOR", label:"Közreműködő",  description:"Azonnali üzenetek küldése.",                    backendRole:"OPERATOR" },
-  { uiRole:"PLAYER",      label:"Player",       description:"Player nézet jogosultsága.",                    backendRole:"PLAYER" },
+const UI_ROLE_OPTIONS: Array<{uiRole:UiRole;labelKey:string;descriptionKey:string;backendRole:BackendRole}> = [
+  { uiRole:"ADMIN",       labelKey:"uiRoles.ADMIN.label",       descriptionKey:"uiRoles.ADMIN.description",       backendRole:"TENANT_ADMIN" },
+  { uiRole:"EDITOR",      labelKey:"uiRoles.EDITOR.label",      descriptionKey:"uiRoles.EDITOR.description",      backendRole:"ORG_ADMIN" },
+  { uiRole:"CONTRIBUTOR", labelKey:"uiRoles.CONTRIBUTOR.label", descriptionKey:"uiRoles.CONTRIBUTOR.description", backendRole:"OPERATOR" },
+  { uiRole:"PLAYER",      labelKey:"uiRoles.PLAYER.label",      descriptionKey:"uiRoles.PLAYER.description",      backendRole:"PLAYER" },
 ];
 
 type UserMessage = {
@@ -19,9 +21,10 @@ type UserMessage = {
 
 function formatDT(iso?:string|null) { if (!iso) return "–"; const d=new Date(iso); return isNaN(d.getTime())?"–":d.toLocaleString("hu-HU"); }
 function safeErr(e:unknown):string {
+  const unknownError = i18n.t("errors.unknown", { ns:"users" });
   if (typeof e==="string") return e;
-  if (e&&typeof e==="object") { const a=e as any; return a?.data?.message||a?.data?.error||a?.message||"Ismeretlen hiba"; }
-  return "Ismeretlen hiba";
+  if (e&&typeof e==="object") { const a=e as any; return a?.data?.message||a?.data?.error||a?.message||unknownError; }
+  return unknownError;
 }
 function uiToBackend(uiRole:UiRole):BackendRole { return UI_ROLE_OPTIONS.find(x=>x.uiRole===uiRole)?.backendRole??"OPERATOR"; }
 function backendToUi(role:BackendRole):UiRole {
@@ -121,70 +124,72 @@ function UserForm({ form, setForm, isEdit }: {
   setForm: React.Dispatch<React.SetStateAction<UserFormState>>;
   isEdit: boolean;
 }) {
+  const { t } = useTranslation(["users", "common"]);
   return (
     <>
       <div className="us-grid2">
         <div>
-          <label className="us-label">E-mail cím *</label>
+          <label className="us-label">{t("form.emailLabel")}</label>
           <input
             className="us-input"
             type="email"
             value={form.email}
             onChange={e => setForm(s => ({ ...s, email: e.target.value }))}
-            placeholder="pl. tanar@iskola.hu"
+            placeholder={t("form.emailPlaceholder")}
           />
         </div>
         <div>
-          <label className="us-label">Megjelenített név</label>
+          <label className="us-label">{t("form.displayNameLabel")}</label>
           <input
             className="us-input"
             value={form.displayName}
             onChange={e => setForm(s => ({ ...s, displayName: e.target.value }))}
-            placeholder="pl. Kiss Péter"
+            placeholder={t("form.displayNamePlaceholder")}
           />
-          <div className="us-hint">Opcionális</div>
+          <div className="us-hint">{t("form.displayNameHint")}</div>
         </div>
       </div>
       <div className="us-grid2">
         <div>
-          <label className="us-label">Szerepkör</label>
+          <label className="us-label">{t("form.roleLabel")}</label>
           <select
             className="us-select"
             value={form.uiRole}
             onChange={e => setForm(s => ({ ...s, uiRole: e.target.value as UiRole }))}
           >
-            {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{r.label}</option>)}
+            {UI_ROLE_OPTIONS.map(r => <option key={r.uiRole} value={r.uiRole}>{t(r.labelKey)}</option>)}
           </select>
-          <div className="us-hint">{UI_ROLE_OPTIONS.find(r => r.uiRole === form.uiRole)?.description}</div>
+          <div className="us-hint">{t(UI_ROLE_OPTIONS.find(r => r.uiRole === form.uiRole)?.descriptionKey ?? "")}</div>
         </div>
         <div>
-          <label className="us-label">Státusz</label>
+          <label className="us-label">{t("form.statusLabel")}</label>
           <label className="us-check-row" style={{ marginTop: 10 }}>
             <input
               type="checkbox"
               checked={form.isActive}
               onChange={e => setForm(s => ({ ...s, isActive: e.target.checked }))}
             />
-            Aktív felhasználó
+            {t("form.activeCheckbox")}
           </label>
         </div>
       </div>
       <div>
-        <label className="us-label">Jelszó</label>
+        <label className="us-label">{t("form.passwordLabel")}</label>
         <input
           type="password"
           className="us-input"
           value={form.password}
           onChange={e => setForm(s => ({ ...s, password: e.target.value }))}
-          placeholder="Minimum 6 karakter"
+          placeholder={t("form.passwordPlaceholder")}
         />
-        <div className="us-hint">{isEdit ? "Ha üres, nem változik." : "Kötelező új felhasználónál."}</div>
+        <div className="us-hint">{isEdit ? t("form.passwordHintEdit") : t("form.passwordHintCreate")}</div>
       </div>
     </>
   );
 }
 
 export default function Users() {
+  const { t } = useTranslation(["users", "common"]);
   const [loading, setLoading] = useState(false);
   const [users, setUsers]     = useState<UserDto[]>([]);
   const [error, setError]     = useState<string|null>(null);
@@ -239,51 +244,51 @@ export default function Users() {
 
   async function submitCreate() {
     setError(null);
-    if (!form.email.trim()) { setError("E-mail megadása kötelező."); return; }
-    if (!form.password.trim()) { setError("Jelszó megadása kötelező."); return; }
+    if (!form.email.trim()) { setError(t("errors.emailRequired")); return; }
+    if (!form.password.trim()) { setError(t("errors.passwordRequired")); return; }
     setBusyAction("create");
     try {
       const r = await apiFetch<{ok:boolean}>("/admin/users",{ method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({ email:form.email.trim(), displayName:form.displayName.trim()||null, role:uiToBackend(form.uiRole), password:form.password, isActive:form.isActive }) });
-      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      if (!r?.ok) throw new Error(t("errors.backendNotOk"));
       setIsCreateOpen(false); await loadUsers();
-    } catch (e) { setError("Nem sikerült létrehozni. "+safeErr(e)); }
+    } catch (e) { setError(t("errors.createFailed")+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
   async function submitUpdate() {
     if (!selectedUser) return; setError(null);
-    if (!form.email.trim()) { setError("E-mail kötelező."); return; }
+    if (!form.email.trim()) { setError(t("errors.emailRequiredShort")); return; }
     setBusyAction("update");
     try {
       const payload:Record<string,unknown> = { email:form.email.trim(), displayName:form.displayName.trim()||null, role:uiToBackend(form.uiRole), isActive:form.isActive };
       if (form.password.trim()) payload.password=form.password;
       const r = await apiFetch<{ok:boolean}>(`/admin/users/${selectedUser.id}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
-      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      if (!r?.ok) throw new Error(t("errors.backendNotOk"));
       setIsEditOpen(false); setSelectedUser(null); await loadUsers();
-    } catch (e) { setError("Nem sikerült módosítani. "+safeErr(e)); }
+    } catch (e) { setError(t("errors.updateFailed")+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
   async function doDeactivate(u:UserDto) {
-    if (!window.confirm(`Biztosan deaktiválod ezt a felhasználót?\n${u.email}\n\nA fiók megmarad, de a felhasználó nem tud bejelentkezni.`)) return;
+    if (!window.confirm(t("confirm.deactivateMessage", { email: u.email }))) return;
     setError(null); setBusyAction("deactivate");
     try {
       const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ isActive: false }) });
-      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      if (!r?.ok) throw new Error(t("errors.backendNotOk"));
       await loadUsers();
-    } catch (e) { setError("Nem sikerült deaktiválni. "+safeErr(e)); }
+    } catch (e) { setError(t("errors.deactivateFailed")+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
   async function doDelete(u:UserDto) {
-    if (!window.confirm(`⚠️ VÉGLEGES TÖRLÉS ⚠️\n\nBiztosan törlöd ezt a felhasználót?\n${u.email}\n\nEz a művelet nem visszavonható!`)) return;
+    if (!window.confirm(t("confirm.deleteMessage", { email: u.email }))) return;
     setError(null); setBusyAction("delete");
     try {
       const r = await apiFetch<{ok:boolean}>(`/admin/users/${u.id}?permanent=true`,{ method:"DELETE" });
-      if (!r?.ok) throw new Error("A backend nem ok státusszal válaszolt.");
+      if (!r?.ok) throw new Error(t("errors.backendNotOk"));
       await loadUsers();
-    } catch (e) { setError("Nem sikerült törölni. "+safeErr(e)); }
+    } catch (e) { setError(t("errors.deleteFailed")+safeErr(e)); }
     finally { setBusyAction(null); }
   }
 
@@ -293,12 +298,12 @@ export default function Users() {
 
       <div className="us-hdr">
         <div>
-          <div className="us-title">👥 Felhasználók</div>
-          <div className="us-subtitle">Intézményi felhasználók és jogosultságok kezelése.</div>
+          <div className="us-title">👥 {t("common:nav.users")}</div>
+          <div className="us-subtitle">{t("header.subtitle")}</div>
         </div>
         <div className="us-actions">
-          <input className="us-search" placeholder="🔍 Keresés…" value={q} onChange={e => setQ(e.target.value)} />
-          <button className="us-btn us-btn-primary" onClick={openCreate} disabled={loading} type="button">＋ Új felhasználó</button>
+          <input className="us-search" placeholder={`🔍 ${t("common:actions.search")}…`} value={q} onChange={e => setQ(e.target.value)} />
+          <button className="us-btn us-btn-primary" onClick={openCreate} disabled={loading} type="button">{t("actions.addUser")}</button>
           <button className="us-btn us-btn-ghost" onClick={() => void loadUsers()} disabled={loading} type="button">🔄</button>
         </div>
       </div>
@@ -310,20 +315,20 @@ export default function Users() {
           <table className="us-table">
             <thead>
               <tr>
-                <th>E-mail</th><th>Név</th><th>Státusz</th><th>Szerepkör</th><th>Létrehozva</th><th>Utolsó belépés</th><th style={{ textAlign:"right" }}>Műveletek</th>
+                <th>{t("table.emailHeader")}</th><th>{t("table.nameHeader")}</th><th>{t("table.statusHeader")}</th><th>{t("table.roleHeader")}</th><th>{t("table.createdAtHeader")}</th><th>{t("table.lastLoginHeader")}</th><th style={{ textAlign:"right" }}>{t("table.actionsHeader")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr><td colSpan={7} style={{ textAlign:"center", padding:"40px", color:"var(--sl-muted)" }}>
-                  <span style={{ fontSize:22 }}>⏳</span><div style={{ fontSize:13, marginTop:8 }}>Betöltés…</div>
+                  <span style={{ fontSize:22 }}>⏳</span><div style={{ fontSize:13, marginTop:8 }}>{t("common:actions.loading")}</div>
                 </td></tr>
               )}
               {!loading && filtered.length === 0 && (
                 <tr><td colSpan={7}>
                   <div className="us-empty">
                     <div style={{ fontSize:40, marginBottom:10 }}>👤</div>
-                    <div style={{ fontWeight:700, fontFamily:"'Nunito',sans-serif" }}>Nincs találat</div>
+                    <div style={{ fontWeight:700, fontFamily:"'Nunito',sans-serif" }}>{t("table.noResults")}</div>
                   </div>
                 </td></tr>
               )}
@@ -346,7 +351,7 @@ export default function Users() {
                       <span className="us-badge" style={active
                         ? {background:"#f0fdf4",color:"#15803d",borderColor:"#bbf7d0"}
                         : {background:"#fef2f2",color:"#dc2626",borderColor:"#fecaca"}}>
-                        {active ? "✓ Aktív" : "✗ Inaktív"}
+                        {active ? t("status.active") : t("status.inactive")}
                       </span>
                     </td>
                     <td><span className="us-badge" style={{ background:rc.bg, color:rc.color, borderColor:rc.border }}>{u.role}</span></td>
@@ -355,15 +360,15 @@ export default function Users() {
                     <td style={{ textAlign:"right" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openMessages(u)} type="button">📧</button>
-                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ Szerkeszt</button>
+                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ {t("common:actions.edit")}</button>
                         {canDelete && !isSelf && active && (
                           <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="deactivate"} type="button">
-                            ⏸ Deaktivál
+                            {t("actions.deactivate")}
                           </button>
                         )}
                         {canDelete && !isSelf && (
                           <button className="us-btn us-btn-danger-solid us-btn-sm" onClick={() => void doDelete(u)} disabled={busyAction==="delete"} type="button">
-                            🗑 Töröl
+                            🗑 {t("common:actions.delete")}
                           </button>
                         )}
                       </div>
@@ -378,14 +383,14 @@ export default function Users() {
 
       {/* Create modal */}
       {isCreateOpen && (
-        <Modal title="Új felhasználó" icon="👤" onClose={() => setIsCreateOpen(false)}>
+        <Modal title={t("modals.createTitle")} icon="👤" onClose={() => setIsCreateOpen(false)}>
           <div className="us-modal-body">
             <UserForm form={form} setForm={setForm} isEdit={false} />
           </div>
           <div className="us-modal-footer">
-            <button className="us-btn us-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">Mégse</button>
+            <button className="us-btn us-btn-ghost" onClick={() => setIsCreateOpen(false)} disabled={busyAction==="create"} type="button">{t("common:actions.cancel")}</button>
             <button className="us-btn us-btn-primary" onClick={() => void submitCreate()} disabled={busyAction==="create"} type="button">
-              {busyAction==="create" ? "⏳ Létrehozás…" : "✅ Létrehoz"}
+              {busyAction==="create" ? t("actions.creating") : t("actions.create")}
             </button>
           </div>
         </Modal>
@@ -393,18 +398,18 @@ export default function Users() {
 
       {/* Edit modal */}
       {isEditOpen && selectedUser && (
-        <Modal title={`Szerkesztés: ${selectedUser.email}`} icon="✏️" onClose={() => setIsEditOpen(false)}>
+        <Modal title={t("modals.editTitle", { email: selectedUser.email })} icon="✏️" onClose={() => setIsEditOpen(false)}>
           <div className="us-modal-body">
             <UserForm form={form} setForm={setForm} isEdit={true} />
             <div className="us-meta-row">
-              <span>Létrehozva: {formatDT(selectedUser.createdAt)}</span>
-              <span>Utolsó belépés: {formatDT(selectedUser.lastLoginAt)}</span>
+              <span>{t("table.createdAtHeader")}: {formatDT(selectedUser.createdAt)}</span>
+              <span>{t("table.lastLoginHeader")}: {formatDT(selectedUser.lastLoginAt)}</span>
             </div>
           </div>
           <div className="us-modal-footer">
-            <button className="us-btn us-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">Mégse</button>
+            <button className="us-btn us-btn-ghost" onClick={() => setIsEditOpen(false)} disabled={busyAction==="update"} type="button">{t("common:actions.cancel")}</button>
             <button className="us-btn us-btn-primary" onClick={() => void submitUpdate()} disabled={busyAction==="update"} type="button">
-              {busyAction==="update" ? "⏳ Mentés…" : "💾 Mentés"}
+              {busyAction==="update" ? t("actions.saving") : `💾 ${t("common:actions.save")}`}
             </button>
           </div>
         </Modal>
@@ -412,14 +417,14 @@ export default function Users() {
 
       {/* Messages modal */}
       {isMessagesOpen && selectedUser && (
-        <Modal title={`Üzenetek: ${selectedUser.email}`} icon="📧" onClose={() => setIsMessagesOpen(false)}>
+        <Modal title={t("modals.messagesTitle", { email: selectedUser.email })} icon="📧" onClose={() => setIsMessagesOpen(false)}>
           <div className="us-modal-body">
             {userMsgLoading ? (
-              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>⏳ Betöltés…</div>
+              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>⏳ {t("common:actions.loading")}</div>
             ) : userMessages.length === 0 ? (
               <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>
                 <div style={{fontSize:28,marginBottom:8}}>📭</div>
-                Még nem küldött üzenetet ez a felhasználó.
+                {t("messages.empty")}
               </div>
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
@@ -442,8 +447,8 @@ export default function Users() {
             )}
           </div>
           <div className="us-modal-footer">
-            <span style={{fontSize:12,color:"var(--sl-muted)"}}>{userMessages.length} üzenet</span>
-            <button className="us-btn us-btn-ghost" onClick={() => setIsMessagesOpen(false)} type="button">Bezár</button>
+            <span style={{fontSize:12,color:"var(--sl-muted)"}}>{t("messages.count", { count: userMessages.length })}</span>
+            <button className="us-btn us-btn-ghost" onClick={() => setIsMessagesOpen(false)} type="button">{t("common:actions.close")}</button>
           </div>
         </Modal>
       )}
