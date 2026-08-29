@@ -425,8 +425,8 @@ export default function AppShell() {
             : isSuperAdmin ? <div className="asl-inst-badge warn">{t("appshell:chooseTenantBadge")}</div> : null
           }
         </div>
-        <div className="asl-nav-area"><NavLinks /></div>
-        <div className="asl-sidebar-footer"><UserCard /></div>
+        <div className="asl-nav-area">{NavLinks({})}</div>
+        <div className="asl-sidebar-footer">{UserCard()}</div>
       </aside>
 
       {/* Mobile drawer */}
@@ -449,9 +449,9 @@ export default function AppShell() {
             </div>
           )}
           <div style={{ padding:"12px 10px", flex:1 }}>
-            <NavLinks onNavigate={() => setNavOpen(false)} />
+            {NavLinks({ onNavigate: () => setNavOpen(false) })}
           </div>
-          <div className="asl-sidebar-footer"><UserCard /></div>
+          <div className="asl-sidebar-footer">{UserCard()}</div>
         </aside>
       </>}
 
