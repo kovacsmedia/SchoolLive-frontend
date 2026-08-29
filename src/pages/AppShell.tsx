@@ -376,9 +376,16 @@ export default function AppShell() {
     if (!SUPPORTED_LOCALES.includes(next as SupportedLocale)) return;
     applyLocale(next);
     apiSetLocale(next).catch(() => {
-      // fire-and-forget – a UI-t nem blokkoljuk, ha a perzisztálás elhasal
-      // (pl. átmeneti hálózati hiba), a nyelv akkor is átvált lokálisan
+      // fire-and-forget – a localStorage-ba applyLocale már szinkron írt,
+      // a lenti reload attól függetlenül a helyes nyelvvel indul újra
     });
+    // Teljes újratöltés: a react-i18next élőben lecseréli a UI-szövegeket,
+    // de az ebből származtatott, csak inicializáláskor/effektusban kiszámolt
+    // állapotok (pl. Messages composer alapértelmezett TTS-hangja a UI-nyelv
+    // szerint) megbízhatóbban állnak be egy tiszta újraindítással, mint hogy
+    // minden érintett oldalon külön figyelnünk kelljen az i18n.language
+    // változására.
+    window.location.reload();
   }
 
   const UserCard = () => (
