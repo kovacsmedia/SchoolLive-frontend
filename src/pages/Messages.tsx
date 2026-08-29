@@ -77,6 +77,16 @@ function voiceLabel(t: (k:string)=>string, code: string | null | undefined): str
   return code;
 }
 
+// Composer alapértelmezett hangja a UI-nyelv (i18n.language) alapján: magyar
+// felület esetén a 3 magyar Piper-hang egyike (Anna marad az induló
+// választás), bármely más felületi nyelv esetén magának a nyelvnek a Piper
+// hangja (ld. tts.service.ts VOICES map — a nyelvkód közvetlenül hangkulcs
+// is). Így egy szlovák felületű user alapból szlovák hangon küld, nem
+// (rossz kiejtésű) magyar Anna-hangon.
+function defaultVoiceForLocale(locale: string): string {
+  return locale === "hu" ? "anna" : locale;
+}
+
 const CSS = `
   .ms-page{max-width:860px;font-family:'Nunito','Segoe UI',sans-serif}
   .ms-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
@@ -163,7 +173,7 @@ function fmtRecTime(sec: number): string {
 }
 
 export default function Messages() {
-  const { t } = useTranslation(["messages", "common"]);
+  const { t, i18n } = useTranslation(["messages", "common"]);
   const { state } = useAuth();
   const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
   const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
@@ -181,7 +191,14 @@ export default function Messages() {
   // TTS state
   const [composerMode, setComposerMode] = useState<ComposerMode>("tts");
   const [text, setText]   = useState("");
-  const [voice, setVoice] = useState("anna");
+  const [voice, setVoice] = useState(() => defaultVoiceForLocale(i18n.language));
+
+  // Ha a user menet közben vált felületi nyelvet (nyelvválasztó az AppShell-ben),
+  // a composer hangja is kövesse — hacsak épp nem egy fordítás/sablon állította be.
+  useEffect(() => {
+    setVoice(defaultVoiceForLocale(i18n.language));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language]);
 
   // Fordítás popover (TTS-üzenet-fordítás, ld. terv "Lokalizáció" szakasz F)
   const [translateOpen, setTranslateOpen]   = useState(false);
@@ -399,7 +416,7 @@ export default function Messages() {
   }, []);
 
   function resetComposer() {
-    setText(""); setVoice("anna"); setScheduleType("immediate"); setCustomTime("");
+    setText(""); setVoice(defaultVoiceForLocale(i18n.language)); setScheduleType("immediate"); setCustomTime("");
     setTargetType("ALL"); setTargetId(""); setSendError(null); setSendSuccess(false);
     setTemplateName(""); setTemplateMsg(null);
     setComposerMode("tts");
@@ -557,7 +574,10 @@ export default function Messages() {
     try {
       const res = await apiPost<{ ok: true; translatedText: string }>("/messages/translate", { text: text.trim(), targetLang });
       setText(res.translatedText);
-      setVoice(targetLang);
+      // Magyarra fordításnál nincs 3-as hangválasztó (ld. lent, csak hu UI-nál
+      // jelenik meg) — fix Imre hangot használunk, hogy más nyelvű felhasználó
+      // sablonos "alapértelmezett" magyar hangot kapjon, nem esetlegeset.
+      setVoice(targetLang === "hu" ? "imre" : targetLang);
       setTranslateOpen(false);
     } catch (e: any) {
       setTranslateError(e?.message ?? t("messages:translate.failed"));
@@ -768,10 +788,10 @@ export default function Messages() {
               <div>
                 <div className="ms-label">🎙️ {t("messages:composer.voiceLabel")}</div>
                 <div className="ms-row">
-                  {["anna","berta","imre"].map(val => (
+                  {i18n.language === "hu" && ["anna","berta","imre"].map(val => (
                     <div key={val} className={"ms-chip"+(voice===val?" active":"")} onClick={() => setVoice(val)}>{voiceLabel(t, val)}</div>
                   ))}
-                  {(SUPPORTED_LOCALES as readonly string[]).includes(voice) && (
+                  {!(i18n.language === "hu" && ["anna","berta","imre"].includes(voice)) && (
                     <div className={"ms-chip active"}>{voiceLabel(t, voice)}</div>
                   )}
                 </div>
