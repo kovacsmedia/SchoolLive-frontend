@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Tondatei-Bibliothek",
-    "netradio": "Internetradio"
+    "netradio": "Internetradio",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Ziel",
@@ -56,6 +57,21 @@
       "error": "Wiedergabe fehlgeschlagen",
       "idle": "Sofortwiedergabe (auf dem aktuell gewählten Ziel)"
     }
+  },
+  "youtube": {
+    "description": "Suche nach einem YouTube-Video oder füge einen Link ein. Im eingebetteten Player kannst du es lokal ansehen/spulen, lautlos für alle anderen — der Button „Live senden“ startet es tatsächlich auf den Schullautsprechern.",
+    "searchPlaceholder": "Auf YouTube suchen…",
+    "urlPlaceholder": "…oder YouTube-Link einfügen",
+    "loadUrlButton": "Laden",
+    "clearSelection": "Anderes Video",
+    "goLiveButton": "Live senden",
+    "scheduleButton": "Zeitplan"
+  },
+  "live": {
+    "play": "Fortsetzen",
+    "pause": "Pause",
+    "stop": "Live-Sendung stoppen",
+    "onAirBadge": "Auf Sendung"
   },
   "schedule": {
     "tooltip": "Planen",

@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Biblioteka plików dźwiękowych",
-    "netradio": "Radio internetowe"
+    "netradio": "Radio internetowe",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Cel",
@@ -56,6 +57,21 @@
       "error": "Odtwarzanie nie powiodło się",
       "idle": "Odtwórz teraz (na aktualnie wybranym celu)"
     }
+  },
+  "youtube": {
+    "description": "Wyszukaj film na YouTube albo wklej link. W osadzonym odtwarzaczu możesz go lokalnie obejrzeć/przewinąć, bezgłośnie dla innych — przycisk „Wyślij na żywo” faktycznie uruchamia go na szkolnych głośnikach.",
+    "searchPlaceholder": "Szukaj na YouTube…",
+    "urlPlaceholder": "…lub wklej link YouTube",
+    "loadUrlButton": "Wczytaj",
+    "clearSelection": "Inny film",
+    "goLiveButton": "Wyślij na żywo",
+    "scheduleButton": "Zaplanuj"
+  },
+  "live": {
+    "play": "Wznów",
+    "pause": "Pauza",
+    "stop": "Zatrzymaj transmisję na żywo",
+    "onAirBadge": "Na żywo"
   },
   "schedule": {
     "tooltip": "Zaplanuj",

@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Hangfájl könyvtár",
-    "netradio": "Internetrádió"
+    "netradio": "Internetrádió",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Cél",
@@ -56,6 +57,21 @@
       "error": "A lejátszás nem sikerült",
       "idle": "Azonnali lejátszás (az aktuálisan kiválasztott célon)"
     }
+  },
+  "youtube": {
+    "description": "Keress rá egy YouTube videóra, vagy illessz be egy linket. A beágyazott lejátszóban helyben, a többiek felé némán nézheted/tekerheted meg – az „Élő adásba küldés\" gombbal indul csak el az iskolai hangszórókon.",
+    "searchPlaceholder": "Keresés YouTube-on…",
+    "urlPlaceholder": "…vagy illessz be egy YouTube linket",
+    "loadUrlButton": "Betöltés",
+    "clearSelection": "Másik videó",
+    "goLiveButton": "Élő adásba küldés",
+    "scheduleButton": "Időzítés"
+  },
+  "live": {
+    "play": "Folytatás",
+    "pause": "Szünet",
+    "stop": "Élő adás leállítása",
+    "onAirBadge": "Élő adásban"
   },
   "schedule": {
     "tooltip": "Ütemezés",

@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Knižnica zvukových súborov",
-    "netradio": "Internetové rádio"
+    "netradio": "Internetové rádio",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Cieľ",
@@ -56,6 +57,21 @@
       "error": "Prehrávanie zlyhalo",
       "idle": "Okamžité prehrávanie (na aktuálne zvolenom cieli)"
     }
+  },
+  "youtube": {
+    "description": "Vyhľadaj YouTube video, alebo vlož odkaz. V zabudovanom prehrávači si ho môžeš lokálne pozrieť/pretočiť, potichu pre všetkých ostatných — tlačidlo „Odoslať naživo“ ho skutočne spustí na školských reproduktoroch.",
+    "searchPlaceholder": "Hľadať na YouTube…",
+    "urlPlaceholder": "…alebo vlož odkaz na YouTube",
+    "loadUrlButton": "Načítať",
+    "clearSelection": "Iné video",
+    "goLiveButton": "Odoslať naživo",
+    "scheduleButton": "Naplánovať"
+  },
+  "live": {
+    "play": "Pokračovať",
+    "pause": "Pozastaviť",
+    "stop": "Zastaviť živé vysielanie",
+    "onAirBadge": "Vysiela sa"
   },
   "schedule": {
     "tooltip": "Naplánovať",

@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Sound file library",
-    "netradio": "Internet radio"
+    "netradio": "Internet radio",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Target",
@@ -56,6 +57,21 @@
       "error": "Playback failed",
       "idle": "Play now (on the currently selected target)"
     }
+  },
+  "youtube": {
+    "description": "Search for a YouTube video, or paste a link. In the embedded player you can watch/scrub it locally, silently to everyone else — the \"Send live\" button is what actually starts it on the school speakers.",
+    "searchPlaceholder": "Search YouTube…",
+    "urlPlaceholder": "…or paste a YouTube link",
+    "loadUrlButton": "Load",
+    "clearSelection": "Different video",
+    "goLiveButton": "Send live",
+    "scheduleButton": "Schedule"
+  },
+  "live": {
+    "play": "Resume",
+    "pause": "Pause",
+    "stop": "Stop live broadcast",
+    "onAirBadge": "On air"
   },
   "schedule": {
     "tooltip": "Schedule",

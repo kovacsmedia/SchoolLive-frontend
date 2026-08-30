@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Bibliotecă de fișiere audio",
-    "netradio": "Radio pe internet"
+    "netradio": "Radio pe internet",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Țintă",
@@ -56,6 +57,21 @@
       "error": "Redarea a eșuat",
       "idle": "Redare imediată (pe ținta selectată curent)"
     }
+  },
+  "youtube": {
+    "description": "Caută un videoclip YouTube sau lipește un link. În playerul încorporat îl poți viziona/derula local, în tăcere pentru ceilalți — butonul „Trimite live” îl pornește efectiv pe difuzoarele școlii.",
+    "searchPlaceholder": "Caută pe YouTube…",
+    "urlPlaceholder": "…sau lipește un link YouTube",
+    "loadUrlButton": "Încarcă",
+    "clearSelection": "Alt videoclip",
+    "goLiveButton": "Trimite live",
+    "scheduleButton": "Programează"
+  },
+  "live": {
+    "play": "Continuă",
+    "pause": "Pauză",
+    "stop": "Oprește transmisia live",
+    "onAirBadge": "În direct"
   },
   "schedule": {
     "tooltip": "Programează",

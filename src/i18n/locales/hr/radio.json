@@ -11,7 +11,8 @@
   },
   "tabs": {
     "library": "Knjižnica zvučnih datoteka",
-    "netradio": "Internetski radio"
+    "netradio": "Internetski radio",
+    "youtube": "YouTube"
   },
   "target": {
     "label": "Cilj",
@@ -56,6 +57,21 @@
       "error": "Reprodukcija nije uspjela",
       "idle": "Trenutna reprodukcija (na trenutno odabranom cilju)"
     }
+  },
+  "youtube": {
+    "description": "Pretraži YouTube video ili zalijepi link. U ugrađenom playeru možeš ga lokalno gledati/premotavati, nečujno za ostale — gumb „Pošalji uživo” ga stvarno pokreće na školskim zvučnicima.",
+    "searchPlaceholder": "Pretraživanje na YouTubeu…",
+    "urlPlaceholder": "…ili zalijepi YouTube link",
+    "loadUrlButton": "Učitaj",
+    "clearSelection": "Drugi video",
+    "goLiveButton": "Pošalji uživo",
+    "scheduleButton": "Zakazivanje"
+  },
+  "live": {
+    "play": "Nastavi",
+    "pause": "Pauza",
+    "stop": "Zaustavi prijenos uživo",
+    "onAirBadge": "Uživo"
   },
   "schedule": {
     "tooltip": "Zakaži",
