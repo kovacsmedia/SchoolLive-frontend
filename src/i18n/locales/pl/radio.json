@@ -27,6 +27,7 @@
     "description": "Przewiń listę, wybierz stację i — jeśli dostępny — substream, a następnie naciśnij ▶. Cel i adresy URL strumieni możesz zmienić poniżej lub przyciskiem Edytuj.",
     "emptyList": "Lista radiowa jest pusta – użyj przycisku „Przywróć domyślne”.",
     "urlMissing": "brak URL",
+    "previewTooltip": "Lokalne podsłuchanie (słyszysz tylko ty, nie na szkolnych głośnikach)",
     "playTooltip": {
       "connecting": "Otwieranie strumienia...",
       "playing": "Odtwarzane – naciśnij ponownie, aby wysłać jeszcze raz",

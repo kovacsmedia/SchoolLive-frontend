@@ -27,6 +27,7 @@
     "description": "Scroll through the list, pick the station and — if available — a substream, then press ▶. You can change the target and stream URLs below, or with the Edit button.",
     "emptyList": "The radio list is empty – use the \"Restore defaults\" button.",
     "urlMissing": "URL missing",
+    "previewTooltip": "Local listen-in (only for you, not on the school speakers)",
     "playTooltip": {
       "connecting": "Opening stream...",
       "playing": "Playing – press again to resend",

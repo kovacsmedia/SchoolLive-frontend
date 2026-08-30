@@ -27,6 +27,7 @@
     "description": "Prechádzajte zoznamom, vyberte stanicu a — ak je k dispozícii — substream, potom stlačte ▶. Cieľ a URL adresy streamov môžete zmeniť nižšie alebo tlačidlom Upraviť.",
     "emptyList": "Zoznam rádií je prázdny – použite tlačidlo „Obnoviť predvolené“.",
     "urlMissing": "chýba URL",
+    "previewTooltip": "Lokálne odpočúvanie (počuješ len ty, nie na školských reproduktoroch)",
     "playTooltip": {
       "connecting": "Otváranie streamu...",
       "playing": "Hrá – opätovným stlačením znova odošlete",

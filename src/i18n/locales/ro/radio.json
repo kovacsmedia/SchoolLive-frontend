@@ -27,6 +27,7 @@
     "description": "Derulați lista, alegeți postul și — dacă există — un substream, apoi apăsați ▶. Ținta și adresele URL ale stream-urilor pot fi modificate mai jos sau cu butonul Editare.",
     "emptyList": "Lista de radiouri este goală – folosiți butonul „Restaurare implicită”.",
     "urlMissing": "URL lipsă",
+    "previewTooltip": "Ascultare locală (auzi doar tu, nu pe difuzoarele școlii)",
     "playTooltip": {
       "connecting": "Se deschide stream-ul...",
       "playing": "Se redă – apăsați din nou pentru retrimitere",

@@ -27,6 +27,7 @@
     "description": "Prelistajte popis, odaberite postaju i — ako postoji — substream, zatim pritisnite ▶. Cilj i URL adrese streamova možete promijeniti ispod ili gumbom za uređivanje.",
     "emptyList": "Popis radiopostaja je prazan – upotrijebite gumb „Vrati zadano”.",
     "urlMissing": "nedostaje URL",
+    "previewTooltip": "Lokalno slušanje (čuješ samo ti, ne na školskim zvučnicima)",
     "playTooltip": {
       "connecting": "Otvaranje streama...",
       "playing": "Svira – pritisnite ponovno za ponovno slanje",

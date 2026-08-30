@@ -27,6 +27,7 @@
     "description": "Görgesd át a listát, válaszd ki az állomást és — ha van — egy alstreamet, majd nyomd a ▶ gombot. A célt és a stream URL-eket alább, illetve a Szerkesztés gombbal módosíthatod.",
     "emptyList": "Üres a rádiólista – használd a \"Visszaállítás alapra\" gombot.",
     "urlMissing": "URL hiányzik",
+    "previewTooltip": "Helyi belehallgatás (csak neked szól, az iskolai hangszórókon nem)",
     "playTooltip": {
       "connecting": "Stream megnyitása folyamatban...",
       "playing": "Szól – újraküldéshez nyomd meg",

@@ -633,6 +633,11 @@ export default function SchoolRadio() {
   const [netRadios, setNetRadios] = useState<NetRadio[]>(() => loadNetRadiosFromLS());
   // Per-állomás: melyik stream van kiválasztva (label vagy index). Map<id, index>
   const [streamPick, setStreamPick] = useState<Record<string, number>>({});
+  // ── Új: helyi belehallgatás (a Hangfájl könyvtár <audio controls> előnézet
+  // mintájára) – NÉMA a többiek felé, csak a saját böngészőben szól. A ▶ gomb
+  // (playStation) VÁLTOZATLANUL az élő adásba küldést végzi, ez a fül teljesen
+  // additív mellé kerül.
+  const [netPreviewId, setNetPreviewId] = useState<string | null>(null);
   // Per-állomás státusz a ▶ gomb vizualizációjához:
   //   "connecting" - épp indítjuk (zöld villogás)
   //   "playing"    - sikerült indítani, fut (folyamatos zöld)
@@ -795,6 +800,10 @@ export default function SchoolRadio() {
     setYtLiveGoingLive(true);
     setYtLiveError(null);
     try {
+      // Az élő adás onnan a pozíciótól induljon, ahol az előnézetablakban áll –
+      // ezt MOST, indítás előtt olvassuk ki, mielőtt a helyi lejátszó a
+      // "🔴 Élő adásba küldés" utáni állapotváltásokkal esetleg továbbmegy.
+      const startAtSec = Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0));
       const watchUrl = `https://www.youtube.com/watch?v=${ytLiveVideoId}`;
       const resolved = await apiFetch<{ ok: boolean; url: string; title: string; durationSec: number | null }>(
         `/radio/yt-live-url?url=${encodeURIComponent(watchUrl)}`
@@ -812,6 +821,17 @@ export default function SchoolRadio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      // A `/radio/play-stream` mindig 0-tól indít – az előnézetben álló
+      // pozícióra a MÁR MEGLÉVŐ élő-seek mechanizmussal ugrunk azonnal
+      // (ugyanaz a kill-és-újraindítás-adott-pozícióról minta, mint egy
+      // user által kezdeményezett tekerésnél).
+      if (startAtSec > 0) {
+        await apiFetch("/radio/live/seek", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ positionSec: startAtSec }),
+        });
+      }
       setYtLiveIsLive(true);
       setManualNowPlaying({ name: resolved.title || ytLiveTitle, source: "stream" });
     } catch (e: any) {
@@ -2244,6 +2264,13 @@ export default function SchoolRadio() {
                           {stateLabel}
                         </button>
                         <div className="sr-radio-actions">
+                          <button type="button"
+                            className={`sr-btn sr-btn-sm ${netPreviewId === r.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
+                            onClick={() => setNetPreviewId(netPreviewId === r.id ? null : r.id)}
+                            disabled={!r.streams[safeIdx]?.url}
+                            title={t("netradio.previewTooltip")}>
+                            🎧
+                          </button>
                           <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                             onClick={() => openEditStation(r)}
                             title={t("netradio.editTooltip")}>
@@ -2255,6 +2282,13 @@ export default function SchoolRadio() {
                             🗑
                           </button>
                         </div>
+
+                        {netPreviewId === r.id && r.streams[safeIdx]?.url && (
+                          <div className="sr-player" style={{gridColumn:"1/-1"}}>
+                            <div className="sr-player-name">🎧 {r.name}{r.streams[safeIdx].label && r.streams[safeIdx].label !== "Főadás" ? " · " + r.streams[safeIdx].label : ""}</div>
+                            <audio controls autoPlay src={r.streams[safeIdx].url} preload="none" style={{ width: "100%", height: 32 }} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

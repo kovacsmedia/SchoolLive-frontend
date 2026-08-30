@@ -27,6 +27,7 @@
     "description": "Blättern Sie durch die Liste, wählen Sie den Sender und — falls vorhanden — einen Substream, und drücken Sie dann ▶. Ziel und Stream-URLs können Sie unten oder mit der Schaltfläche „Bearbeiten“ ändern.",
     "emptyList": "Die Radioliste ist leer – verwenden Sie die Schaltfläche „Standard wiederherstellen“.",
     "urlMissing": "URL fehlt",
+    "previewTooltip": "Lokales Reinhören (nur für dich, nicht auf den Schullautsprechern)",
     "playTooltip": {
       "connecting": "Stream wird geöffnet...",
       "playing": "Läuft – zum erneuten Senden erneut drücken",
