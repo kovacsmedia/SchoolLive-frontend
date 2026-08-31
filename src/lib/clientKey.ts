@@ -28,12 +28,13 @@ function safeSet(key: string, value: string) {
 }
 
 export function getClientKey(): string {
-  let key = safeGet(CLIENT_KEY_STORAGE);
-  if (!key) {
-    key = (crypto as any)?.randomUUID?.() ?? `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    safeSet(CLIENT_KEY_STORAGE, key);
-  }
-  return key;
+  const existing = safeGet(CLIENT_KEY_STORAGE);
+  if (existing) return existing;
+
+  const generated: string =
+    (crypto as any)?.randomUUID?.() ?? `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  safeSet(CLIENT_KEY_STORAGE, generated);
+  return generated;
 }
 
 /** Rövid, ember-olvasható böngésző/OS leírás a User-Agentből – csak
