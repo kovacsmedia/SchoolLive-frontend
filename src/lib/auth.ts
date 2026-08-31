@@ -1,5 +1,6 @@
 // src/lib/auth.ts
 import { apiFetch, apiPost } from "./api";
+import { getClientKey } from "./clientKey";
 
 /**
  * Backward-compatible exports for existing AuthContext usage:
@@ -99,7 +100,12 @@ export function clearSession() {
  * Login and store token
  */
 export async function login(email: string, password: string): Promise<LoginResponse> {
-  const res = await apiPost<LoginResponse>("/auth/login", { email, password });
+  // A clientKey (böngészőnként stabil, localStorage-ban tárolt azonosító)
+  // teszi lehetővé, hogy a backend a bejelentkezett kliensek listájában
+  // (multi-session – ld. auth.controller.ts GET /auth/sessions) meg tudja
+  // különböztetni "ezt a böngészőt" a többi, ugyanazzal a fiókkal
+  // bejelentkezettől (pl. egy másik teremben futó webplayertől).
+  const res = await apiPost<LoginResponse>("/auth/login", { email, password, clientKey: getClientKey() });
   if (res?.accessToken) setAccessToken(res.accessToken);
   return res;
 }

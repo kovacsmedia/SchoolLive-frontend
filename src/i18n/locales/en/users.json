@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "New user",
     "editTitle": "Edit: {{email}}",
-    "messagesTitle": "Messages: {{email}}"
+    "messagesTitle": "Messages: {{email}}",
+    "sessionsTitle": "Logged-in clients: {{email}}"
   },
   "form": {
     "emailLabel": "Email address *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "This user hasn't sent any messages yet.",
     "count": "{{count}} messages"
+  },
+  "sessions": {
+    "empty": "No clients are currently logged in.",
+    "count": "{{count}} active session(s)",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Browser",
+    "lastSeen": "Last active",
+    "since": "Logged in",
+    "revokeTooltip": "Log out (this client only)",
+    "revokeConfirm": "Log out this client? Only this one session ends — the user's other logged-in devices stay unaffected."
   },
   "confirm": {
     "deactivateMessage": "Are you sure you want to deactivate this user?\n{{email}}\n\nThe account will remain but the user won't be able to log in.",

@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Nowy użytkownik",
     "editTitle": "Edycja: {{email}}",
-    "messagesTitle": "Wiadomości: {{email}}"
+    "messagesTitle": "Wiadomości: {{email}}",
+    "sessionsTitle": "Zalogowani klienci: {{email}}"
   },
   "form": {
     "emailLabel": "Adres e-mail *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Ten użytkownik nie wysłał jeszcze żadnej wiadomości.",
     "count": "{{count}} wiadomości"
+  },
+  "sessions": {
+    "empty": "Obecnie żaden klient nie jest zalogowany.",
+    "count": "{{count}} aktywnych sesji",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Przeglądarka",
+    "lastSeen": "Ostatnia aktywność",
+    "since": "Zalogowano",
+    "revokeTooltip": "Wyloguj (tylko ten klient)",
+    "revokeConfirm": "Wylogować tego klienta? Zakończy się tylko ta jedna sesja — pozostałe zalogowane urządzenia użytkownika pozostaną bez zmian."
   },
   "confirm": {
     "deactivateMessage": "Czy na pewno chcesz dezaktywować tego użytkownika?\n{{email}}\n\nKonto pozostanie, ale użytkownik nie będzie mógł się zalogować.",

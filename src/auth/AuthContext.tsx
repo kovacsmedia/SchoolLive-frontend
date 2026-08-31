@@ -203,9 +203,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } as AuthState);
 
   const logout = useCallback(() => {
-    // KRITIKUS: a backend `User.activeSessionId` mezőjét is törölni kell,
-    // különben a felhasználó 60 sec-ig nem tud újra-bejelentkezni
-    // (auth.service.ts 60 sec inaktivitási küszöb a single-session enforcement-en).
+    // A backend-en is töröljük a SAJÁT munkamenetet (UserSession sor) –
+    // enélkül a lista tele szemetelődne lejárt/bezárt fülekkel. Multi-session
+    // óta ez CSAK ezt az egy klienst érinti, a user esetleges többi aktív
+    // munkamenete (pl. másik teremben futó webplayer) változatlan marad.
     //
     // A `/auth/logout` endpoint sendBeacon kompat – body-token-t is fogad.
     // Fire-and-forget POST (a re-login-t nem várjuk meg, a navigációt nem
@@ -320,19 +321,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // vezet a logoutra). Amíg a fül látható/aktív, periodikusan lecseréljük a
   // tokent a POST /auth/refresh végponton, jelszó újbóli megadása nélkül.
   // Ha a fül háttérben van, NEM frissítünk – így egy ténylegesen inaktív
-  // (bezárt/háttérbe küldött) munkamenet a natural TTL szerint lejár, a
-  // felhasználó pedig valóban ki lesz léptetve, nem "fantom-bejelentkezve".
+  // (bezárt/háttérbe küldött) admin-munkamenet a natural TTL szerint lejár.
+  //
+  // KIVÉTEL: a PLAYER szerepkörű webplayer-kliens SOHA nem eshet ki magától
+  // (user explicit kérés) – egy teremben futó kijelző/lejátszó tab jellemzően
+  // NEM az OS-fókuszban lévő ablak (kioszk-monitoron fut, más gépről nézik
+  // stb.), a `document.visibilityState` emiatt nála nem megbízható "aktív-e
+  // valójában" jelzés. A PLAYER-fiók ezért a láthatóságtól FÜGGETLENÜL,
+  // mindig frissít.
+  const currentRole = state.status === "authed" ? (state.user as any)?.role ?? null : null;
+
   useEffect(() => {
     if (state.status !== "authed") return;
 
+    const isPlayer = currentRole === "PLAYER";
     const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 15 perces TTL-hez bőven belül
 
     const tryRefresh = () => {
-      if (document.visibilityState !== "visible") return;
+      if (!isPlayer && document.visibilityState !== "visible") return;
       refreshAccessToken().catch(() => {
         // A token már érvénytelen (pl. időközben mégis lejárt, vagy a
-        // szerver-oldali session törlődött) – tiszta, teljes logout, hogy a
-        // felhasználó azonnal újra be tudjon lépni.
+        // szerver-oldali munkamenet explicit megszűnt) – tiszta, teljes
+        // logout, hogy a felhasználó azonnal újra be tudjon lépni.
         logout();
       });
     };
@@ -348,7 +358,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [state.status, logout]);
+  }, [state.status, currentRole, logout]);
 
   /**
    * SUPER_ADMIN idle timeout – KIKAPCSOLVA (user kérés).

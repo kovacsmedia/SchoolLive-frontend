@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { apiFetch } from "../lib/api";
+import { friendlyUserAgent } from "../lib/clientKey";
 
 type BackendRole = "SUPER_ADMIN"|"TENANT_ADMIN"|"ORG_ADMIN"|"TEACHER"|"OPERATOR"|"PLAYER"|string;
 type UiRole = "ADMIN"|"EDITOR"|"CONTRIBUTOR"|"PLAYER";
@@ -17,6 +18,11 @@ const UI_ROLE_OPTIONS: Array<{uiRole:UiRole;labelKey:string;descriptionKey:strin
 type UserMessage = {
   id: string; title: string; text?: string | null; type: string;
   targetType: string; scheduledAt: string | null; playedAt: string | null; createdAt: string;
+};
+
+type UserSessionDto = {
+  id: string; clientType: string; clientKey: string | null; userAgent: string | null;
+  createdAt: string; lastSeenAt: string;
 };
 
 function formatDT(iso?:string|null) { if (!iso) return "–"; const d=new Date(iso); return isNaN(d.getTime())?"–":d.toLocaleString("hu-HU"); }
@@ -199,6 +205,10 @@ export default function Users() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [userMessages,    setUserMessages]    = useState<UserMessage[]>([]);
   const [userMsgLoading,  setUserMsgLoading]  = useState(false);
+  const [isSessionsOpen, setIsSessionsOpen]     = useState(false);
+  const [userSessions,    setUserSessions]      = useState<UserSessionDto[]>([]);
+  const [userSessionsLoading, setUserSessionsLoading] = useState(false);
+  const [sessionRevokeBusyId, setSessionRevokeBusyId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser]   = useState<UserDto|null>(null);
   const [form, setForm] = useState<UserFormState>({ email:"", displayName:"", uiRole:"CONTRIBUTOR", password:"", isActive:true });
   const [busyAction, setBusyAction] = useState<null|"create"|"update"|"delete"|"deactivate">(null);
@@ -216,6 +226,29 @@ export default function Users() {
       setUserMessages(r.messages ?? []);
     } catch { setUserMessages([]); }
     finally { setUserMsgLoading(false); }
+  }
+
+  async function openSessions(user: UserDto) {
+    setSelectedUser(user);
+    setUserSessions([]);
+    setIsSessionsOpen(true);
+    setUserSessionsLoading(true);
+    try {
+      const r = await apiFetch<{ ok: boolean; sessions: UserSessionDto[] }>(`/admin/users/${user.id}/sessions`);
+      setUserSessions(r.sessions ?? []);
+    } catch { setUserSessions([]); }
+    finally { setUserSessionsLoading(false); }
+  }
+
+  async function revokeUserSession(sessionRowId: string) {
+    if (!selectedUser) return;
+    if (!window.confirm(t("sessions.revokeConfirm"))) return;
+    setSessionRevokeBusyId(sessionRowId);
+    try {
+      await apiFetch(`/admin/users/${selectedUser.id}/sessions/${sessionRowId}`, { method: "DELETE" });
+      setUserSessions(prev => prev.filter(s => s.id !== sessionRowId));
+    } catch (e) { setError(safeErr(e)); }
+    finally { setSessionRevokeBusyId(null); }
   }
 
   async function loadUsers() {
@@ -360,6 +393,7 @@ export default function Users() {
                     <td style={{ textAlign:"right" }}>
                       <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openMessages(u)} type="button">📧</button>
+                        <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => void openSessions(u)} type="button">🔌</button>
                         <button className="us-btn us-btn-ghost us-btn-sm" onClick={() => openEdit(u)} disabled={!!busyAction} type="button">✏️ {t("common:actions.edit")}</button>
                         {canDelete && !isSelf && active && (
                           <button className="us-btn us-btn-danger us-btn-sm" onClick={() => void doDeactivate(u)} disabled={busyAction==="deactivate"} type="button">
@@ -449,6 +483,58 @@ export default function Users() {
           <div className="us-modal-footer">
             <span style={{fontSize:12,color:"var(--sl-muted)"}}>{t("messages.count", { count: userMessages.length })}</span>
             <button className="us-btn us-btn-ghost" onClick={() => setIsMessagesOpen(false)} type="button">{t("common:actions.close")}</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Sessions modal – multi-session: az adott fiókkal bejelentkezett
+          ÖSSZES kliens (pl. egy megosztott PLAYER-fiók esetén az összes
+          teremben futó webplayer-példány), egyenként kijelentkeztethetően. */}
+      {isSessionsOpen && selectedUser && (
+        <Modal title={t("modals.sessionsTitle", { email: selectedUser.email })} icon="🔌" onClose={() => setIsSessionsOpen(false)}>
+          <div className="us-modal-body">
+            {userSessionsLoading ? (
+              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>⏳ {t("common:actions.loading")}</div>
+            ) : userSessions.length === 0 ? (
+              <div style={{textAlign:"center",padding:"24px 0",color:"var(--sl-muted)",fontSize:13}}>
+                <div style={{fontSize:28,marginBottom:8}}>🔌</div>
+                {t("sessions.empty")}
+              </div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:400,overflowY:"auto"}}>
+                {userSessions.map(s => (
+                  <div key={s.id} style={{padding:"10px 14px",border:"1px solid var(--sl-border)",borderRadius:11,background:"var(--sl-bg)",display:"flex",alignItems:"center",gap:10,justifyContent:"space-between"}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                        <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,fontWeight:700,
+                          background: s.clientType==="webplayer" ? "#f0fdf4" : "#eff6ff",
+                          color:      s.clientType==="webplayer" ? "#15803d" : "#1d4ed8",
+                          border:     s.clientType==="webplayer" ? "1px solid #bbf7d0" : "1px solid #bfdbfe"}}>
+                          {s.clientType==="webplayer" ? t("sessions.webplayerBadge") : t("sessions.webBadge")}
+                        </span>
+                        <span style={{fontSize:13,fontWeight:700,color:"var(--sl-text)"}}>{friendlyUserAgent(s.userAgent)}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"var(--sl-muted)",display:"flex",gap:12,flexWrap:"wrap"}}>
+                        <span>🕐 {t("sessions.lastSeen")}: {formatDT(s.lastSeenAt)}</span>
+                        <span>📅 {t("sessions.since")}: {formatDT(s.createdAt)}</span>
+                      </div>
+                    </div>
+                    <button
+                      className="us-btn us-btn-danger us-btn-sm"
+                      title={t("sessions.revokeTooltip")}
+                      disabled={sessionRevokeBusyId === s.id}
+                      onClick={() => void revokeUserSession(s.id)}
+                      type="button">
+                      {sessionRevokeBusyId === s.id ? "⏳" : "🔌"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="us-modal-footer">
+            <span style={{fontSize:12,color:"var(--sl-muted)"}}>{t("sessions.count", { count: userSessions.length })}</span>
+            <button className="us-btn us-btn-ghost" onClick={() => setIsSessionsOpen(false)} type="button">{t("common:actions.close")}</button>
           </div>
         </Modal>
       )}

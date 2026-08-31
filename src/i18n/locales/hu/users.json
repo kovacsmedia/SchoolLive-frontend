@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Új felhasználó",
     "editTitle": "Szerkesztés: {{email}}",
-    "messagesTitle": "Üzenetek: {{email}}"
+    "messagesTitle": "Üzenetek: {{email}}",
+    "sessionsTitle": "Bejelentkezett kliensek: {{email}}"
   },
   "form": {
     "emailLabel": "E-mail cím *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Még nem küldött üzenetet ez a felhasználó.",
     "count": "{{count}} üzenet"
+  },
+  "sessions": {
+    "empty": "Nincs jelenleg bejelentkezett kliens.",
+    "count": "{{count}} aktív munkamenet",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Böngésző",
+    "lastSeen": "Utoljára aktív",
+    "since": "Bejelentkezve",
+    "revokeTooltip": "Kijelentkeztetés (csak ez a kliens)",
+    "revokeConfirm": "Kijelentkezteted ezt a klienst? Csak ez az egy munkamenet szűnik meg, a felhasználó többi bejelentkezett eszköze változatlan marad."
   },
   "confirm": {
     "deactivateMessage": "Biztosan deaktiválod ezt a felhasználót?\n{{email}}\n\nA fiók megmarad, de a felhasználó nem tud bejelentkezni.",

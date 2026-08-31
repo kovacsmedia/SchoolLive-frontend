@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Novi korisnik",
     "editTitle": "Uređivanje: {{email}}",
-    "messagesTitle": "Poruke: {{email}}"
+    "messagesTitle": "Poruke: {{email}}",
+    "sessionsTitle": "Prijavljeni klijenti: {{email}}"
   },
   "form": {
     "emailLabel": "E-mail adresa *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Ovaj korisnik još nije poslao nijednu poruku.",
     "count": "{{count}} poruka"
+  },
+  "sessions": {
+    "empty": "Trenutno nijedan klijent nije prijavljen.",
+    "count": "{{count}} aktivnih sesija",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Preglednik",
+    "lastSeen": "Zadnja aktivnost",
+    "since": "Prijavljen od",
+    "revokeTooltip": "Odjava (samo ovaj klijent)",
+    "revokeConfirm": "Odjaviti ovog klijenta? Završit će se samo ova jedna sesija — ostali prijavljeni uređaji korisnika ostaju nepromijenjeni."
   },
   "confirm": {
     "deactivateMessage": "Jeste li sigurni da želite deaktivirati ovog korisnika?\n{{email}}\n\nRačun će ostati, ali korisnik se neće moći prijaviti.",

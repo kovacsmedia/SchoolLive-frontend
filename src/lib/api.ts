@@ -138,12 +138,16 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = f
         d?.error ??
         `HTTP ${res.status} (${res.statusText})`;
 
-      // A user időközben (helyes jelszóval) máshonnan bejelentkezett – ez a
-      // munkamenet itt AZONNAL, teljesen érvénytelen. Bárhonnan jöjjön is a
-      // kérés, azonnal töröljük a helyi auth-állapotot és login-ra
-      // navigálunk – nem várjuk meg a köv. periodikus refresh-tick-et
+      // Ez a munkamenet EXPLICIT megszűnt (a user maga jelentkeztette ki innen
+      // egy másik eszközről, vagy admin force-logoutolta / deaktiválta a
+      // fiókot) – FONTOS: ez a multi-session bevezetése óta NEM azt jelenti,
+      // hogy "valaki más bejelentkezett" (több kliens egyszerre, egymást nem
+      // kiütve maradhat bejelentkezve, ld. auth.service.ts login()), hanem
+      // hogy EZ a konkrét session-sor lett törölve a szerveren. Bárhonnan
+      // jöjjön is a kérés, azonnal töröljük a helyi auth-állapotot és
+      // login-ra navigálunk – nem várjuk meg a köv. periodikus refresh-tick-et
       // (AuthContext), ami akár percekig is eltarthatna.
-      if (res.status === 401 && d?.error === "session_superseded") {
+      if (res.status === 401 && d?.error === "session_revoked") {
         try {
           sessionStorage.removeItem("accessToken");
           localStorage.removeItem("accessToken");

@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Utilizator nou",
     "editTitle": "Editare: {{email}}",
-    "messagesTitle": "Mesaje: {{email}}"
+    "messagesTitle": "Mesaje: {{email}}",
+    "sessionsTitle": "Clienți conectați: {{email}}"
   },
   "form": {
     "emailLabel": "Adresă de e-mail *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Acest utilizator nu a trimis încă niciun mesaj.",
     "count": "{{count}} mesaje"
+  },
+  "sessions": {
+    "empty": "Momentan niciun client nu este conectat.",
+    "count": "{{count}} sesiuni active",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Browser",
+    "lastSeen": "Ultima activitate",
+    "since": "Conectat din",
+    "revokeTooltip": "Deconectare (doar acest client)",
+    "revokeConfirm": "Deconectezi acest client? Se încheie doar această sesiune — celelalte dispozitive conectate ale utilizatorului rămân neafectate."
   },
   "confirm": {
     "deactivateMessage": "Sigur doriți să dezactivați acest utilizator?\n{{email}}\n\nContul va rămâne, dar utilizatorul nu se va putea autentifica.",

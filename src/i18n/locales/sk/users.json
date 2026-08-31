@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Nový používateľ",
     "editTitle": "Úprava: {{email}}",
-    "messagesTitle": "Správy: {{email}}"
+    "messagesTitle": "Správy: {{email}}",
+    "sessionsTitle": "Prihlásené klienty: {{email}}"
   },
   "form": {
     "emailLabel": "E-mailová adresa *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Tento používateľ zatiaľ neodoslal žiadnu správu.",
     "count": "{{count}} správ"
+  },
+  "sessions": {
+    "empty": "Momentálne nie je prihlásený žiadny klient.",
+    "count": "{{count}} aktívnych relácií",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Prehliadač",
+    "lastSeen": "Naposledy aktívny",
+    "since": "Prihlásený od",
+    "revokeTooltip": "Odhlásiť (len tento klient)",
+    "revokeConfirm": "Odhlásiť tohto klienta? Skončí sa len táto jedna relácia — ostatné prihlásené zariadenia používateľa zostanú nedotknuté."
   },
   "confirm": {
     "deactivateMessage": "Naozaj chcete deaktivovať tohto používateľa?\n{{email}}\n\nÚčet zostane zachovaný, ale používateľ sa nebude môcť prihlásiť.",

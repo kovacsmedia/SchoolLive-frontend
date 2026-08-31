@@ -26,7 +26,8 @@
   "modals": {
     "createTitle": "Neuer Benutzer",
     "editTitle": "Bearbeiten: {{email}}",
-    "messagesTitle": "Nachrichten: {{email}}"
+    "messagesTitle": "Nachrichten: {{email}}",
+    "sessionsTitle": "Angemeldete Clients: {{email}}"
   },
   "form": {
     "emailLabel": "E-Mail-Adresse *",
@@ -63,6 +64,16 @@
   "messages": {
     "empty": "Dieser Benutzer hat noch keine Nachricht gesendet.",
     "count": "{{count}} Nachrichten"
+  },
+  "sessions": {
+    "empty": "Derzeit ist kein Client angemeldet.",
+    "count": "{{count}} aktive Sitzung(en)",
+    "webplayerBadge": "🔊 Webplayer",
+    "webBadge": "🖥️ Browser",
+    "lastSeen": "Zuletzt aktiv",
+    "since": "Angemeldet seit",
+    "revokeTooltip": "Abmelden (nur dieser Client)",
+    "revokeConfirm": "Diesen Client abmelden? Nur diese eine Sitzung endet — die anderen angemeldeten Geräte des Benutzers bleiben unberührt."
   },
   "confirm": {
     "deactivateMessage": "Möchten Sie diesen Benutzer wirklich deaktivieren?\n{{email}}\n\nDas Konto bleibt bestehen, aber der Benutzer kann sich nicht mehr anmelden.",
