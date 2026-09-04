@@ -46,10 +46,21 @@ function generateUUID(): string {
   });
 }
 
+// Ugyanaz a tároló-kulcs, mint a modern webplayer (VirtualPlayer.tsx)
+// clientKey.ts-e – így a login-kor küldött UserSession.clientKey és a
+// device-regisztrációkor küldött Device.clientId egyezik, a
+// device.lifecycle.ts pedig a 10 perces offline-timeoutnál a HELYES
+// munkamenetet zárja le. A korábbi, külön "vpClientId" kulcs alatt tárolt
+// azonosítót egyszer átvesszük, hogy a már regisztrált eszköz ne "újként"
+// jelenjen meg.
 function getOrCreateClientId(): string {
-  const KEY = "vpClientId";
+  const KEY = "sl_client_key";
+  const LEGACY_KEY = "vpClientId";
   let id = localStorage.getItem(KEY);
-  if (!id) { id = generateUUID(); localStorage.setItem(KEY, id); }
+  if (!id) {
+    id = localStorage.getItem(LEGACY_KEY) || generateUUID();
+    localStorage.setItem(KEY, id);
+  }
   return id;
 }
 
@@ -686,9 +697,9 @@ export default function VirtualPlayerLegacy() {
     // ACK
     xhrFetch("/player/device/ack", {
       method: "POST",
-      body: JSON.stringify({ commandId: cmd.id }),
+      body: JSON.stringify({ commandId: cmd.id, clientId: clientId }),
     }).catch(function() {});
-  }, [playAudio, playBell, fetchBells, showMsg, dismissMsg]);
+  }, [playAudio, playBell, fetchBells, showMsg, dismissMsg, clientId]);
 
   // ── Csengetési rend lekérdezése ───────────────────────────────────────────
   const connectWS = useCallback(function() {
@@ -910,7 +921,7 @@ export default function VirtualPlayerLegacy() {
     let failCount = 0;
     const poll = function() {
       xhrFetch<{ ok: boolean; status: string; command: { id: string; payload: CommandPayload } | null }>(
-        "/player/device/poll", { method: "POST", body: "{}" }
+        "/player/device/poll", { method: "POST", body: JSON.stringify({ clientId: clientId }) }
       )
         .then(function(res) {
           failCount = 0;

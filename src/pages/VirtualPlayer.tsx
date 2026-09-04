@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import { SnapWsClient } from "../lib/snapWsClient";
+import { getClientKey } from "../lib/clientKey";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────────
 type PlayerStatus = "registering" | "pending" | "active";
@@ -27,12 +28,12 @@ interface HudState {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function getOrCreateClientId(): string {
-  const KEY = "vpClientId";
-  let id = localStorage.getItem(KEY);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(KEY, id); }
-  return id;
-}
+// A clientId a megosztott clientKey.ts-ből jön (nem saját "vpClientId"
+// tárolóból) – ez teszi lehetővé, hogy a login-kor küldött
+// UserSession.clientKey és a device-regisztrációkor küldött Device.clientId
+// UGYANAZ legyen, így a device.lifecycle.ts a 10 perces offline-timeoutnál
+// a HELYES munkamenetet tudja lezárni (ld. clientKey.ts komment a régi
+// "vpClientId" kulcsról való egyszeri átvételről).
 async function getPublicIp(): Promise<string> {
   try {
     const r = await fetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(4000) });
@@ -224,7 +225,7 @@ const CSS = `
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function VirtualPlayer() {
   const { t } = useTranslation(["virtualPlayer", "common"]);
-  const clientId = getOrCreateClientId();
+  const clientId = getClientKey();
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [status,     setStatus]     = useState<PlayerStatus>("registering");

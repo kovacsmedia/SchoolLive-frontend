@@ -10,6 +10,15 @@
 
 const CLIENT_KEY_STORAGE = "sl_client_key";
 
+// A webplayer (VirtualPlayer.tsx) korábban EZ alatt a kulcs alatt tárolta a
+// saját clientId-ját (Device.clientId-hez, /player/device/register-hez).
+// Multi-session óta a UserSession.clientKey-nek EGYEZNIE kell ezzel (hogy a
+// device.lifecycle.ts a 10 perces offline-timeoutnál a HELYES munkamenetet
+// tudja lezárni) – ezért itt migráljuk át, ahelyett hogy egy vadonatúj (a
+// meglévő Device-rekordtól eltérő) azonosítót generálnánk, ami a webplayert
+// egy admin szemszögéből "új eszközként" jelentetné meg feleslegesen.
+const LEGACY_VP_CLIENT_ID_STORAGE = "vpClientId";
+
 function safeGet(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -31,8 +40,12 @@ export function getClientKey(): string {
   const existing = safeGet(CLIENT_KEY_STORAGE);
   if (existing) return existing;
 
+  // Egyszeri migráció a webplayer korábbi, külön tárolt clientId-járól (ld.
+  // fenti komment) – csak akkor generálunk teljesen új azonosítót, ha ez
+  // sincs (első futás / nem webplayer kliens).
+  const legacy = safeGet(LEGACY_VP_CLIENT_ID_STORAGE);
   const generated: string =
-    (crypto as any)?.randomUUID?.() ?? `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    legacy || (crypto as any)?.randomUUID?.() || `ck-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   safeSet(CLIENT_KEY_STORAGE, generated);
   return generated;
 }
