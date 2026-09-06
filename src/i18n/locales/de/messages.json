@@ -91,6 +91,11 @@
     "generating": "Wird erzeugt…",
     "uploading": "Wird hochgeladen…"
   },
+  "preview": {
+    "button": "Generieren & anhören",
+    "generating": "Wird generiert…",
+    "downloadButton": "Herunterladen"
+  },
   "history": {
     "loadFailed": "Laden fehlgeschlagen",
     "deleteConfirmSingle": "Diese Nachricht löschen?",

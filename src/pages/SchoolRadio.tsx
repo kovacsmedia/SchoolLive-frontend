@@ -1360,7 +1360,7 @@ export default function SchoolRadio() {
   // ── Upload (könyvtár) ─────────────────────────────────────────────────────
   async function handleUpload(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!["mp3", "wav", "ogg", "m4a", "aac"].includes(ext)) {
+    if (!["mp3", "wav", "ogg", "m4a", "aac", "opus"].includes(ext)) {
       setError(t("errors.invalidFileType"));
       return;
     }
@@ -1695,7 +1695,7 @@ export default function SchoolRadio() {
   // ── Playlist builder – Upload a listába ───────────────────────────────────
   async function handlePlUpload(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    if (!["mp3", "wav", "ogg", "m4a", "aac"].includes(ext)) {
+    if (!["mp3", "wav", "ogg", "m4a", "aac", "opus"].includes(ext)) {
       setPlError(t("errors.audioOnly"));
       return;
     }
@@ -2372,7 +2372,7 @@ export default function SchoolRadio() {
               <div className="sr-upload-txt">
                 {uploading ? t("library.uploading", { pct: uploadPct }) : t("library.uploadPrompt")}
               </div>
-              <div className="sr-upload-sub">MP3, WAV, OGG, M4A, AAC</div>
+              <div className="sr-upload-sub">MP3, WAV, OGG, M4A, AAC, OPUS</div>
             </div>
 
             {uploading && (

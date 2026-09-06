@@ -91,6 +91,11 @@
     "generating": "Generowanie…",
     "uploading": "Przesyłanie…"
   },
+  "preview": {
+    "button": "Wygeneruj i odsłuchaj",
+    "generating": "Generowanie…",
+    "downloadButton": "Pobierz"
+  },
   "history": {
     "loadFailed": "Ładowanie nie powiodło się",
     "deleteConfirmSingle": "Usunąć tę wiadomość?",

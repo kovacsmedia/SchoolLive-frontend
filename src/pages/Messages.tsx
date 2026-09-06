@@ -214,6 +214,19 @@ export default function Messages() {
   const [sendError, setSendError]   = useState<string|null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
 
+  // ── Csak-generálás/előhallgatás/letöltés (küldés nélkül) ────────────────────
+  const [previewing,      setPreviewing]      = useState(false);
+  const [previewUrl,      setPreviewUrl]      = useState<string | null>(null);
+  const [previewFilename, setPreviewFilename] = useState<string | null>(null);
+  const [previewError,    setPreviewError]    = useState<string | null>(null);
+
+  // Ha a szöveg változik, a régi előnézet már nem tartozik hozzá a
+  // láthatóhoz – ne tűnjön úgy, mintha az AKTUÁLIS szöveget hallgatná vissza.
+  useEffect(() => {
+    setPreviewUrl(null); setPreviewFilename(null); setPreviewError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
   // Sablon state
   const [templates, setTemplates]   = useState<Template[]>([]);
   const [templateName, setTemplateName] = useState("");
@@ -422,6 +435,7 @@ export default function Messages() {
     setComposerMode("tts");
     setRecState("idle"); setRecBlob(null); setRecAudioUrl(null); setRecError(null); setRecSeconds(0);
     setPreBellSoundId("");
+    setPreviewUrl(null); setPreviewFilename(null); setPreviewError(null);
   }
 
   // ── Felvétel logika ────────────────────────────────────────────────────────
@@ -492,6 +506,46 @@ export default function Messages() {
       return new Date(`${today}T${customTime}:00`).toISOString();
     }
     return null;
+  }
+
+  // A previewUrl az API-domainről jön (más origin, mint a frontend) – a
+  // sima <a download> attribútumot a böngészők cross-origin URL-nél
+  // figyelmen kívül hagyják (csak megnyitja a fájlt, nem tölti le). Ezért
+  // blob-ként lekérjük, és arra tesszük rá a download-ot – ez origin-
+  // függetlenül működik.
+  async function downloadPreview() {
+    if (!previewUrl) return;
+    try {
+      const res = await fetch(previewUrl);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = previewFilename ?? "uzenet.opus";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (e: any) {
+      setPreviewError(e?.message ?? t("messages:errors.sendFailed"));
+    }
+  }
+
+  // Csak legenerálja a TTS-hangot (a POST /messages/tts-preview-vel) —
+  // NEM küld semmit egyetlen eszközre sem, nincs hozzá Message-rekord. A
+  // visszakapott fileUrl-t <audio controls> előnézetben lehet visszahallgatni,
+  // ill. letölteni.
+  async function generatePreview() {
+    if (!text.trim()) { setPreviewError(t("messages:errors.textRequired")); return; }
+    setPreviewError(null); setPreviewing(true);
+    try {
+      const r = await apiPost<{ ok: boolean; fileUrl: string; filename: string }>("/messages/tts-preview", {
+        text: text.trim(), voice,
+        preBellSoundId: preBellSoundId || undefined,
+      });
+      setPreviewUrl(r.fileUrl); setPreviewFilename(r.filename);
+    } catch (e: any) { setPreviewError(e?.message ?? t("messages:errors.sendFailed")); }
+    finally { setPreviewing(false); }
   }
 
   async function sendTTS() {
@@ -795,6 +849,22 @@ export default function Messages() {
                     <div className={"ms-chip active"}>{voiceLabel(t, voice)}</div>
                   )}
                 </div>
+              </div>
+
+              {/* Csak-generálás/előhallgatás/letöltés – küldés nélkül */}
+              <div>
+                <button type="button" className="ms-btn ms-btn-ghost" onClick={() => void generatePreview()} disabled={previewing || !text.trim()}>
+                  {previewing ? `⏳ ${t("messages:preview.generating")}` : `🎧 ${t("messages:preview.button")}`}
+                </button>
+                {previewError && <div className="ms-alert ms-alert-error" style={{marginTop:8}}><span>⚠️</span>{previewError}</div>}
+                {previewUrl && (
+                  <div className="ms-row" style={{marginTop:8,alignItems:"center",gap:10}}>
+                    <audio controls src={previewUrl} style={{flex:1,minWidth:220,maxWidth:380}} />
+                    <button type="button" className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => void downloadPreview()}>
+                      ⬇ {t("messages:preview.downloadButton")}
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

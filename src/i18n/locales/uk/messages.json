@@ -91,6 +91,11 @@
     "generating": "Генерування…",
     "uploading": "Завантаження…"
   },
+  "preview": {
+    "button": "Згенерувати та прослухати",
+    "generating": "Генерація…",
+    "downloadButton": "Завантажити"
+  },
   "history": {
     "loadFailed": "Завантаження не вдалося",
     "deleteConfirmSingle": "Видалити це повідомлення?",

@@ -91,6 +91,11 @@
     "generating": "Generiranje…",
     "uploading": "Prijenos…"
   },
+  "preview": {
+    "button": "Generiraj i preslušaj",
+    "generating": "Generiranje…",
+    "downloadButton": "Preuzmi"
+  },
   "history": {
     "loadFailed": "Učitavanje nije uspjelo",
     "deleteConfirmSingle": "Izbrisati ovu poruku?",

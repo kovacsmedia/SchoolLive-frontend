@@ -91,6 +91,11 @@
     "generating": "Se generează…",
     "uploading": "Se încarcă…"
   },
+  "preview": {
+    "button": "Generează și ascultă",
+    "generating": "Se generează…",
+    "downloadButton": "Descarcă"
+  },
   "history": {
     "loadFailed": "Încărcarea a eșuat",
     "deleteConfirmSingle": "Ștergeți acest mesaj?",

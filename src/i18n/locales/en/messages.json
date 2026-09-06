@@ -91,6 +91,11 @@
     "generating": "Generating…",
     "uploading": "Uploading…"
   },
+  "preview": {
+    "button": "Generate & listen back",
+    "generating": "Generating…",
+    "downloadButton": "Download"
+  },
   "history": {
     "loadFailed": "Loading failed",
     "deleteConfirmSingle": "Delete this message?",

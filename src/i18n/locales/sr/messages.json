@@ -91,6 +91,11 @@
     "generating": "Генерисање…",
     "uploading": "Отпремање…"
   },
+  "preview": {
+    "button": "Генериши и преслушај",
+    "generating": "Генерисање…",
+    "downloadButton": "Преузми"
+  },
   "history": {
     "loadFailed": "Учитавање није успело",
     "deleteConfirmSingle": "Обрисати ову поруку?",

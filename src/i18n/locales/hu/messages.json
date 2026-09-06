@@ -91,6 +91,11 @@
     "generating": "Generálás…",
     "uploading": "Feltöltés…"
   },
+  "preview": {
+    "button": "Generálás és visszahallgatás",
+    "generating": "Generálás…",
+    "downloadButton": "Letöltés"
+  },
   "history": {
     "loadFailed": "Betöltés sikertelen",
     "deleteConfirmSingle": "Törlöd ezt az üzenetet?",

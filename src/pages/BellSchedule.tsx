@@ -681,7 +681,7 @@ export default function BellSchedule() {
           <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t("sounds.available", { available: fmtBytes(available) })}</div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <input ref={fileInputRef} type="file" accept=".mp3,audio/mpeg" style={{ display: "none" }}
+          <input ref={fileInputRef} type="file" accept=".mp3,.opus,audio/*" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadSound(f); e.target.value = ""; }} />
           <button className="sl-btn sl-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading || available <= 0}>
             {uploading ? t("sounds.uploadingButton") : `📤 ${t("sounds.uploadButton")}`}

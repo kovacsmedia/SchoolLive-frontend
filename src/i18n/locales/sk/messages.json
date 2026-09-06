@@ -91,6 +91,11 @@
     "generating": "Generovanie…",
     "uploading": "Nahrávanie…"
   },
+  "preview": {
+    "button": "Vygenerovať a vypočuť",
+    "generating": "Generovanie…",
+    "downloadButton": "Stiahnuť"
+  },
   "history": {
     "loadFailed": "Načítanie zlyhalo",
     "deleteConfirmSingle": "Vymazať túto správu?",
