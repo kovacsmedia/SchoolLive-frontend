@@ -11,14 +11,17 @@
 //   • Webkit prefix-es CSS
 // ────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, useCallback } from "react";
+import { getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode } from "../lib/api";
 
 // ─── Konstansok ───────────────────────────────────────────────────────────────
-const API_BASE = "https://api.schoollive.hu";
+// Multi-node: a host NEM lehet konstans (ld. VirtualPlayer.tsx azonos
+// kommentjét) – rebalancing után a régi node-hoz próbálna csatlakozni.
+const API_BASE = () => getApiBaseUrl();
 const POLL_INTERVAL_MS   = 5000;
 const BEACON_INTERVAL_MS = 30000;
 const BELL_SYNC_INTERVAL_MS = 60000;
 const BELL_TICK_INTERVAL_MS = 5000;
-const WS_URL             = "wss://api.schoollive.hu/sync";
+const WS_URL             = () => getWsUrl("/sync");
 const WS_RECONNECT_MS    = 3000;
 
 // ─── Típusok ─────────────────────────────────────────────────────────────────
@@ -77,7 +80,7 @@ function xhrFetch<T>(
   return new Promise(function(resolve, reject) {
     const xhr = new XMLHttpRequest();
     const method = (options && options.method) || "GET";
-    xhr.open(method, API_BASE + path, true);
+    xhr.open(method, API_BASE() + path, true);
     xhr.setRequestHeader("Content-Type", "application/json");
     const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", "Bearer " + token);
@@ -491,6 +494,18 @@ export default function VirtualPlayerLegacy() {
     showMsg({ action: "PLAY_URL", url: rs.url, title: "Iskolarádió", source: "RADIO" });
   }, [showMsg]);
 
+  // A hangfájlok tényleges URL-jei a /bells/today `soundUrls` mezőjéből.
+  // A tenant-szeparált tárolás (audio/bells/<tenantId>/…) óta a kliens NEM
+  // rakhatja össze magától az utat; ha a szerver nem küldött térképet (régi
+  // backend), visszaesünk a régi, lapos alakra.
+  const soundUrlsRef = useRef<Record<string, string>>({});
+  const tenantIdRef  = useRef<string | null>(null);
+  const bellSoundUrl = useCallback(function(name: string): string {
+    const u = soundUrlsRef.current[name];
+    if (!u) return API_BASE() + "/audio/bells/" + name;
+    return (u.indexOf("http://") === 0 || u.indexOf("https://") === 0) ? u : API_BASE() + u;
+  }, []);
+
   // ── Bell lejátszás (szabad <audio> slot keresés) ──────────────────────────
   const playBell = useCallback((soundFile: string) => {
     // Főhang szüneteltetése ha rádió megy
@@ -501,7 +516,7 @@ export default function VirtualPlayerLegacy() {
     }
 
     setBellBanner(true);
-    const url = API_BASE + "/audio/bells/" + soundFile;
+    const url = bellSoundUrl(soundFile);
     const v   = volumeRef.current / 10;
 
     // Szabad slot keresése
@@ -542,7 +557,7 @@ export default function VirtualPlayerLegacy() {
       if (!document.getElementById(id)) {
         const el = document.createElement("audio");
         el.id       = id;
-        el.src      = API_BASE + "/audio/bells/" + name;
+        el.src      = bellSoundUrl(name);
         el.preload  = "auto";
         el.style.display = "none";
         document.body.appendChild(el);
@@ -551,8 +566,9 @@ export default function VirtualPlayerLegacy() {
   }, []);
 
   const fetchBells = useCallback(() => {
-    xhrFetch<{ ok: boolean; bells?: BellEntry[] }>("/bells/today")
+    xhrFetch<{ ok: boolean; bells?: BellEntry[]; soundUrls?: Record<string, string> }>("/bells/today")
       .then(function(r) {
+        if (r.soundUrls) soundUrlsRef.current = r.soundUrls;
         if (r.bells && r.bells.length > 0) {
           setBells(r.bells);
           preloadBellSounds(r.bells);
@@ -577,7 +593,7 @@ export default function VirtualPlayerLegacy() {
       count++;
       const t0 = Date.now();
       const xhr = new XMLHttpRequest();
-      xhr.open("GET", API_BASE + "/time", true);
+      xhr.open("GET", API_BASE() + "/time", true);
       xhr.timeout = 2000;
       xhr.onreadystatechange = function() {
         if (xhr.readyState !== 4) return;
@@ -706,8 +722,16 @@ export default function VirtualPlayerLegacy() {
     if (wsRef.current && wsRef.current.readyState === 1) return;
     const token = getToken();
     if (!token) return;
+    // tenantId a JWT payloadból – a 4009 → /cluster/locate fallbackhoz.
     try {
-      const ws = new WebSocket(WS_URL + "?token=" + encodeURIComponent(token));
+      const part = token.split(".")[1];
+      if (part) {
+        const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload && typeof payload.tenantId === "string") tenantIdRef.current = payload.tenantId;
+      }
+    } catch (e) { /* nem kritikus */ }
+    try {
+      const ws = new WebSocket(WS_URL() + "?token=" + encodeURIComponent(token));
       wsRef.current = ws;
       ws.onopen = function() {
         console.log("[VP-LEGACY-SYNC] WebSocket csatlakozva");
@@ -716,6 +740,16 @@ export default function VirtualPlayerLegacy() {
       ws.onmessage = function(evt: MessageEvent) {
         try {
           const msg = JSON.parse(evt.data);
+          // Multi-node: a régi (még élő) node ezt küldi, MIELŐTT 4009-cel
+          // bontaná a kapcsolatot. Átállítjuk a base URL-t – a lenti
+          // reconnect már az új node felé megy.
+          if (msg.type === "NODE_REASSIGNED") {
+            if (msg.hostname) {
+              console.log("[VP-LEGACY-SYNC] NODE_REASSIGNED → " + msg.hostname);
+              setApiBaseHost(msg.hostname);
+            }
+            return;
+          }
           if (msg.type === "HELLO") {
             serverOffsetRef.current = new Date(msg.serverNow).getTime() - Date.now();
             return;
@@ -739,6 +773,17 @@ export default function VirtualPlayerLegacy() {
       };
       ws.onclose = function(evt: CloseEvent) {
         wsRef.current = null;
+        // 4009 = "Tenant not hosted on this node". Ha a NODE_REASSIGNED push
+        // nem érkezett meg (a régi node hirtelen halt meg), a /cluster/locate
+        // mondja meg, hova kell csatlakozni.
+        if (evt.code === 4009) {
+          const tid = tenantIdRef.current;
+          if (tid) {
+            locateNode(tid).then(function(host) {
+              if (host) setApiBaseHost(host);
+            });
+          }
+        }
         wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
         console.log("[VP-LEGACY-SYNC] WS lezárva (" + evt.code + ")");
       };

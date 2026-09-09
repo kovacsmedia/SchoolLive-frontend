@@ -36,6 +36,56 @@ function getBaseUrl(): string {
   return base.endsWith("/") ? base.slice(0, -1) : base;
 }
 
+/**
+ * Az ÉPPEN érvényes API base URL (a 409-es node-átirányítás override-jával
+ * együtt). A WebSocket-alapú részek (VirtualPlayer `/sync` és `/snap-stream`)
+ * ezt használják, hogy ne essenek szét a HTTP-réteg node-tudatosságától –
+ * korábban bedrótozott `wss://api.schoollive.hu` konstansaik voltak, így egy
+ * rebalancing után örökre a régi node-hoz próbáltak csatlakozni.
+ */
+export function getApiBaseUrl(): string {
+  return getBaseUrl();
+}
+
+/** `wss://…` / `ws://…` alak az aktuális API base-ből, adott path-fel. */
+export function getWsUrl(path: string): string {
+  const base = getBaseUrl();
+  const ws = base.startsWith("https://")
+    ? `wss://${base.slice("https://".length)}`
+    : base.startsWith("http://")
+      ? `ws://${base.slice("http://".length)}`
+      : base;
+  return `${ws}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/**
+ * Multi-node: a WS-oldal is átállíthatja a base URL-t, ha a backend
+ * NODE_REASSIGNED üzenetet küld vagy 4009-cel bont. Ugyanaz az override,
+ * amit a HTTP 409-es ág használ – így a HTTP és a WS mindig ugyanarra a
+ * node-ra mutat.
+ */
+export function setApiBaseHost(hostname: string): void {
+  if (!hostname) return;
+  const next = `https://${hostname}`;
+  if (_baseUrlOverride === next) return;
+  _baseUrlOverride = next;
+  console.log(`[api] node-váltás → ${next}`);
+}
+
+/** GET /cluster/locate – hitelesítés nélküli; ha a NODE_REASSIGNED push nem
+ *  érkezett meg (pl. a régi node hirtelen halt meg), ebből derül ki, hova
+ *  kell csatlakozni. Hibánál null. */
+export async function locateNode(tenantId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${getBaseUrl()}/cluster/locate?tenantId=${encodeURIComponent(tenantId)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { hostname?: string };
+    return typeof data?.hostname === "string" ? data.hostname : null;
+  } catch {
+    return null;
+  }
+}
+
 function joinUrl(base: string, path: string): string {
   if (!base) return path;
   if (!path.startsWith("/")) return `${base}/${path}`;

@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "../lib/api";
+import { apiFetch, getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode } from "../lib/api";
 import { SnapWsClient } from "../lib/snapWsClient";
 import { getClientKey } from "../lib/clientKey";
 
@@ -69,9 +69,15 @@ function calcFontSize(text: string): string {
 }
 
 // ─── Konfiguráció ─────────────────────────────────────────────────────────────
-const API_BASE        = "https://api.schoollive.hu";
-const SYNC_WS_URL     = "wss://api.schoollive.hu/sync";
-const SNAP_WS_URL     = "wss://api.schoollive.hu/snap-stream";
+// Multi-node: a host NEM lehet konstans. Korábban itt bedrótozott
+// `api.schoollive.hu` állt, ezért egy tenant-átrendezés (rebalancing) után a
+// webplayer örökre a régi node-hoz próbált csatlakozni: a `/sync` 4009-cel
+// bontott, a `/snap-stream` némán elhalt, és semmi nem hozta vissza. Az
+// api.ts ugyanazt az override-ot használja a HTTP 409-es ágon, tehát a HTTP
+// és a WS mindig ugyanarra a node-ra mutat.
+const API_BASE    = () => getApiBaseUrl();
+const SYNC_WS_URL = () => getWsUrl("/sync");
+const SNAP_WS_URL = () => getWsUrl("/snap-stream");
 const WS_RECONNECT_MS = 3_000;
 
 // ─── Audio context (singleton) ────────────────────────────────────────────────
@@ -251,6 +257,12 @@ export default function VirtualPlayer() {
   // WS 4002 (lejárt token) esetén – ref-en át, hogy ne kelljen a connectWS
   // useCallback deps-jébe felvenni / deklarációs sorrendtől függővé tenni.
   const reloginPlayerRef = useRef<() => Promise<void>>(async () => {});
+  // Ugyanezért ref-en át (deklarációs sorrend + useCallback deps): a
+  // connectWS-nek node-váltáskor el kell dobnia a snap-klienst.
+  const stopSnapClientRef = useRef<() => void>(() => {});
+  // A tenantId a JWT payloadból jön – a /cluster/locate fallbackhoz kell,
+  // amikor 4009-et kapunk NODE_REASSIGNED push nélkül (a régi node meghalt).
+  const tenantIdRef = useRef<string | null>(null);
   const bellBannerTimer = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const hudDismissTimer = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const volumeRef       = useRef(volume);
@@ -305,7 +317,7 @@ export default function VirtualPlayer() {
     if (snapClientRef.current) return;
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
     if (!token) return;
-    const url = `${SNAP_WS_URL}?token=${encodeURIComponent(token)}`;
+    const url = `${SNAP_WS_URL()}?token=${encodeURIComponent(token)}`;
     const ctx = getAudioCtx();
     const initialGain = mutedRef.current ? 0 : sliderToLinearGain(volumeRef.current);
     const client = new SnapWsClient({
@@ -326,6 +338,7 @@ export default function VirtualPlayer() {
     snapClientRef.current = null;
     setSnapConnected(false);
   }, []);
+  stopSnapClientRef.current = stopSnapClient;
 
   // ── /sync WS – HUD vezérlés + HELLO + SET_VOLUME/MUTE/SYNC_OFFSET ────────
   const connectWS = useCallback(() => {
@@ -333,7 +346,17 @@ export default function VirtualPlayer() {
     const token = sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
     if (!token) return;
 
-    const ws = new WebSocket(`${SYNC_WS_URL}?token=${encodeURIComponent(token)}&clientId=${encodeURIComponent(clientId)}`);
+    // tenantId a JWT payloadból – a 4009 → /cluster/locate fallbackhoz kell.
+    try {
+      const part = token.split(".")[1];
+      if (part) {
+        const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64)) as { tenantId?: string | null };
+        if (typeof payload?.tenantId === "string") tenantIdRef.current = payload.tenantId;
+      }
+    } catch { /* nem kritikus – csak a locate fallback marad ki */ }
+
+    const ws = new WebSocket(`${SYNC_WS_URL()}?token=${encodeURIComponent(token)}&clientId=${encodeURIComponent(clientId)}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -348,6 +371,21 @@ export default function VirtualPlayer() {
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data);
+
+        // Multi-node: a régi (még élő) node ezt küldi el, MIELŐTT a
+        // rebalancing miatt 4009-cel bontaná a kapcsolatot. Azonnal
+        // átállítjuk a base URL-t, és eldobjuk a snap-klienst is – a
+        // reconnect (ld. onclose) már az új node felé megy, és a
+        // `startSnapClient` is az új `/snap-stream` URL-t fogja használni.
+        if (msg.type === "NODE_REASSIGNED") {
+          const host = msg.hostname;
+          if (typeof host === "string" && host) {
+            console.log(`[VP] NODE_REASSIGNED → ${host}`);
+            setApiBaseHost(host);
+            stopSnapClientRef.current?.();
+          }
+          return;
+        }
 
         if (msg.type === "HELLO") {
           // snapDeviceId = a valódi Device.id (a backend a userId+tenantId-ből
@@ -451,6 +489,21 @@ export default function VirtualPlayer() {
       // csendes relogin, mielőtt újracsatlakoznánk. Korábban ezt csak a
       // beacon HTTP 401 válasza jelezte.
       if (evt.code === 4002) void reloginPlayerRef.current();
+
+      // 4009 = "Tenant not hosted on this node". Ha a NODE_REASSIGNED push
+      // megjött, a base URL már át van állítva, és a lenti reconnect az új
+      // node-ra megy. Ha NEM jött meg (pl. a régi node hirtelen halt meg),
+      // a /cluster/locate-ből kérdezzük meg, hova kell mennünk.
+      if (evt.code === 4009) {
+        stopSnapClientRef.current?.();
+        const tenantId = tenantIdRef.current;
+        if (tenantId) {
+          void locateNode(tenantId).then((host) => {
+            if (host) setApiBaseHost(host);
+          });
+        }
+      }
+
       wsReconnectRef.current = setTimeout(connectWS, WS_RECONNECT_MS);
     };
 
@@ -467,7 +520,7 @@ export default function VirtualPlayer() {
       const storedCreds = localStorage.getItem("vpCredentials");
       if (!storedCreds) return;
       const { email, password } = JSON.parse(storedCreds) as { email: string; password: string };
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetch(`${API_BASE()}/auth/login`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
@@ -515,7 +568,7 @@ export default function VirtualPlayer() {
       if (!token) return;
       try {
         navigator.sendBeacon(
-          `${API_BASE}/auth/logout`,
+          `${API_BASE()}/auth/logout`,
           new Blob([JSON.stringify({ token })], { type: "application/json" })
         );
       } catch {}
