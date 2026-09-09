@@ -144,6 +144,23 @@ function resolveTenantId(token: string): string | null {
   return null;
 }
 
+/**
+ * A webplayer (PLAYER szerepkör) SOSEM kerülhet magától a bejelentkező
+ * képernyőre – egy teremben futó kijelzőt senki nem fog kézzel visszaléptetni.
+ * Ha a szerver `session_revoked`-ot ad, a VirtualPlayer itt regisztrált
+ * kezelője csendben újra bejelentkezik a localStorage-ban tárolt
+ * hitelesítő adatokkal, és a felhasználó ebből semmit nem vesz észre.
+ *
+ * Ha nincs regisztrált kezelő (admin felület), marad a régi viselkedés:
+ * token törlése + navigálás a /login-ra.
+ */
+type SessionRevokedHandler = () => void | Promise<void>;
+let _sessionRevokedHandler: SessionRevokedHandler | null = null;
+
+export function setSessionRevokedHandler(h: SessionRevokedHandler | null): void {
+  _sessionRevokedHandler = h;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = false): Promise<T> {
   const baseUrl = getBaseUrl();
   if (!baseUrl) {
@@ -198,14 +215,21 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = f
       // login-ra navigálunk – nem várjuk meg a köv. periodikus refresh-tick-et
       // (AuthContext), ami akár percekig is eltarthatna.
       if (res.status === 401 && d?.error === "session_revoked") {
-        try {
-          sessionStorage.removeItem("accessToken");
-          localStorage.removeItem("accessToken");
-          sessionStorage.removeItem("activeTenantId");
-          localStorage.removeItem("activeTenantId");
-        } catch { /* ignore */ }
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.href = "/login";
+        if (_sessionRevokedHandler) {
+          // Webplayer: csendes újra-bejelentkezés, NINCS login-képernyő és
+          // NINCS token-törlés (a relogin úgyis felülírja). Ld. a fenti
+          // magyarázatot.
+          try { void _sessionRevokedHandler(); } catch { /* ignore */ }
+        } else {
+          try {
+            sessionStorage.removeItem("accessToken");
+            localStorage.removeItem("accessToken");
+            sessionStorage.removeItem("activeTenantId");
+            localStorage.removeItem("activeTenantId");
+          } catch { /* ignore */ }
+          if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+            window.location.href = "/login";
+          }
         }
       }
 

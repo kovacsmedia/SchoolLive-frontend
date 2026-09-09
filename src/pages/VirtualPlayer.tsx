@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch, getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode } from "../lib/api";
+import { apiFetch, getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode, setSessionRevokedHandler } from "../lib/api";
 import { SnapWsClient } from "../lib/snapWsClient";
 import { getClientKey } from "../lib/clientKey";
 
@@ -533,6 +533,15 @@ export default function VirtualPlayer() {
     } catch (e) { console.warn("[VP] reloginPlayer hiba:", e); }
   }, []);
   reloginPlayerRef.current = reloginPlayer;
+
+  // A webplayer SOSEM kerülhet magától a bejelentkező képernyőre. Ha a
+  // szerver visszavonta a munkamenetet (pl. a device 10 perces offline
+  // timeoutja miatt), az api.ts ezt a kezelőt hívja login-navigálás helyett,
+  // és csendben újra bejelentkezünk a tárolt hitelesítő adatokkal.
+  useEffect(() => {
+    setSessionRevokedHandler(() => reloginPlayerRef.current());
+    return () => setSessionRevokedHandler(null);
+  }, []);
 
   // ── Reg + status ─────────────────────────────────────────────────────────
   const register = useCallback(async () => {

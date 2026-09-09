@@ -15,7 +15,10 @@ function safeSet(s:Storage,k:string,v:string){try{s.setItem(k,v)}catch{}}
 function safeRemove(s:Storage,k:string){try{s.removeItem(k)}catch{}}
 
 const NAV_ITEMS = [
-  {to:"/app/devices",  nsKey:"nav.devices", icon:"🔊", roles:["all"]},
+  // Az OPERATOR (UI-ban "Közreműködő") KIZÁRÓLAG az Üzenetek lapot látja –
+  // ezért az eszközök már nem "all". A route-ot az App.tsx `RequireRole`-ja
+  // is őrzi, hogy a beírt URL se nyissa meg.
+  {to:"/app/devices",  nsKey:"nav.devices", icon:"🔊", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN","TEACHER"]},
   {to:"/app/messages", nsKey:"nav.messages", icon:"📢", roles:["all"]},
   {to:"/app/radio",    nsKey:"nav.radio",   icon:"📻", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},
   {to:"/app/bells",    nsKey:"nav.bells",   icon:"🔔", roles:["SUPER_ADMIN","TENANT_ADMIN","ORG_ADMIN"]},

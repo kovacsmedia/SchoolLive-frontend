@@ -256,14 +256,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    try {
-      const userRaw = await fetchMe();
-      assertValidMe(userRaw);
-      enforceTokenStoragePolicy(userRaw);
-      applyLocale((userRaw as any)?.locale);
-      dispatch({ type: "AUTHED", user: userRaw });
-    } catch {
-      logout();
+    // CSAK egyértelmű hitelesítési hiba (401) léptet ki. Minden más – hálózati
+    // hiba, időtúllépés, 5xx, épp futó backend-deploy – ÁTMENETI, és a
+    // meglévő token attól még érvényes. Korábban bármelyik hibára `logout()`
+    // futott, tehát egy deploy alatt újratöltött webplayer a login-képernyőn
+    // kötött ki, holott senki nem nyúlt hozzá.
+    //
+    // Átmeneti hibánál LOADING állapotban maradunk és újrapróbálunk – egy
+    // teremben futó kijelzőnél a "csatlakozás..." állapot minden szempontból
+    // jobb, mint a bejelentkező képernyő.
+    let attempt = 0;
+    for (;;) {
+      try {
+        const userRaw = await fetchMe();
+        assertValidMe(userRaw);
+        enforceTokenStoragePolicy(userRaw);
+        applyLocale((userRaw as any)?.locale);
+        dispatch({ type: "AUTHED", user: userRaw });
+        return;
+      } catch (e: any) {
+        const status = e?.status;
+
+        if (status === 401) {
+          // A token/munkamenet tényleg érvénytelen – itt van értelme kilépni.
+          logout();
+          return;
+        }
+
+        attempt++;
+        const delayMs = Math.min(30_000, 2_000 * attempt);   // 2s, 4s, … max 30s
+        console.warn(
+          `[auth] /auth/me atmeneti hiba (status=${status ?? "n/a"}), ` +
+          `ujraprobalas ${Math.round(delayMs / 1000)} mp mulva`, e
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
     }
   }, [logout]);
 
@@ -339,11 +366,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const tryRefresh = () => {
       if (!isPlayer && document.visibilityState !== "visible") return;
-      refreshAccessToken().catch(() => {
-        // A token már érvénytelen (pl. időközben mégis lejárt, vagy a
-        // szerver-oldali munkamenet explicit megszűnt) – tiszta, teljes
-        // logout, hogy a felhasználó azonnal újra be tudjon lépni.
-        logout();
+      refreshAccessToken().catch((e) => {
+        // SOSEM léptetünk ki egy sikertelen frissítés miatt.
+        //
+        // Korábban itt `logout()` állt, és ez volt a "a webplayer magától
+        // kilép pár perc múlva" hiba KÖZVETLEN oka: a szerveroldali
+        // `POST /auth/refresh` minden hívásnál hibára futott, az 5 percenkénti
+        // tick elkapta, és kidobta a felhasználót – pedig a MEGLÉVŐ token
+        // teljesen érvényes volt.
+        //
+        // Egy sikertelen frissítés önmagában semmit nem bizonyít: lehet
+        // hálózati zavar, backend-újraindítás (deploy!), 5xx vagy időtúllépés.
+        // A JWT_ACCESS_TTL amúgy is gyakorlatilag lejárat nélküli, tehát a
+        // régi token tovább használható. Ha a munkamenetet TÉNYLEG
+        // visszavonták, azt a következő API-hívás 401 + `session_revoked`
+        // válasza jelzi – azt az ágat az api.ts kezeli (a webplayernél
+        // csendes újra-bejelentkezéssel, nem login-képernyővel).
+        console.warn("[auth] token frissites sikertelen – a meglevo tokennel folytatjuk:", e);
       });
     };
 
