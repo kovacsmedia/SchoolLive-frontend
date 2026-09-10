@@ -448,6 +448,18 @@ export default function VirtualPlayer() {
           } else if (act === "SET_SYNC_OFFSET") {
             const off = msg.offsetMs;
             if (typeof off === "number") snapClientRef.current?.setSyncOffset(off);
+          } else if (act === "REBOOT") {
+            // Az adminfelület "Újraindítás" gombja. A böngészőben ez az oldal
+            // újratöltése – a bejelentkezés NEM vész el (a token és a
+            // vpCredentials a localStorage-ben marad, ld. reloginPlayer), így
+            // a webplayer a követelménynek megfelelően nem lép ki.
+            console.log("[VP] REBOOT parancs – oldal újratöltése");
+            if (msg.commandId) {
+              try {
+                ws.send(JSON.stringify({ type: "CMD_ACK", commandId: msg.commandId, ok: true }));
+              } catch { /* a reload úgyis jön */ }
+            }
+            setTimeout(() => window.location.reload(), 600);
           }
         };
 

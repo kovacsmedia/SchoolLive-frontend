@@ -97,7 +97,13 @@
     "resetTooltip": "Vrátiť do režimu provisioningu",
     "resetButton": "Reset",
     "resetConfirm": "Vrátiť do režimu provisioningu?\n{{name}}\n\nZariadenie stratí svoj aktivovaný stav.",
-    "deleteConfirm": "Vymazať? ({{name}})"
+    "deleteConfirm": "Vymazať? ({{name}})",
+    "rebootButton": "Reštart",
+    "rebootTooltip": "Reštartovať zariadenie (soft reset)",
+    "rebootOffline": "Reštartovať možno len zariadenie online",
+    "rebootConfirm": "Reštartovať zariadenie?\n{{name}}\n\nNastavenia a stiahnutý rozvrh zvonenia zostanú zachované.",
+    "rebootSent": "Reštart odoslaný: {{name}}",
+    "confirmAgain": "Naozaj? Kliknite znova"
   },
   "sync": {
     "title": "Snap offset synchronizácie",

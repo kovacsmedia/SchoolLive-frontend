@@ -97,7 +97,13 @@
     "resetTooltip": "Vrati na način provisioninga",
     "resetButton": "Reset",
     "resetConfirm": "Vratiti na način provisioninga?\n{{name}}\n\nUređaj će izgubiti status aktivacije.",
-    "deleteConfirm": "Izbrisati? ({{name}})"
+    "deleteConfirm": "Izbrisati? ({{name}})",
+    "rebootButton": "Ponovno pokretanje",
+    "rebootTooltip": "Ponovno pokreni uređaj (soft reset)",
+    "rebootOffline": "Ponovno se može pokrenuti samo uređaj koji je online",
+    "rebootConfirm": "Ponovno pokrenuti uređaj?\n{{name}}\n\nPostavke i preuzeti raspored zvona ostaju sačuvani.",
+    "rebootSent": "Ponovno pokretanje poslano: {{name}}",
+    "confirmAgain": "Sigurno? Kliknite ponovno"
   },
   "sync": {
     "title": "Snap pomak sinkronizacije",

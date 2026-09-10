@@ -97,7 +97,13 @@
     "resetTooltip": "Przywróć tryb provisioningu",
     "resetButton": "Reset",
     "resetConfirm": "Przywrócić tryb provisioningu?\n{{name}}\n\nUrządzenie utraci status aktywacji.",
-    "deleteConfirm": "Usunąć? ({{name}})"
+    "deleteConfirm": "Usunąć? ({{name}})",
+    "rebootButton": "Uruchom ponownie",
+    "rebootTooltip": "Ponowne uruchomienie urządzenia (soft reset)",
+    "rebootOffline": "Ponownie uruchomić można tylko urządzenie online",
+    "rebootConfirm": "Uruchomić urządzenie ponownie?\n{{name}}\n\nUstawienia i pobrany harmonogram dzwonków zostaną zachowane.",
+    "rebootSent": "Wysłano ponowne uruchomienie: {{name}}",
+    "confirmAgain": "Na pewno? Kliknij ponownie"
   },
   "sync": {
     "title": "Przesunięcie synchronizacji Snap",

@@ -97,7 +97,13 @@
     "resetTooltip": "In den Provisioning-Modus zurücksetzen",
     "resetButton": "Reset",
     "resetConfirm": "In den Provisioning-Modus zurücksetzen?\n{{name}}\n\nDas Gerät verliert seinen aktivierten Status.",
-    "deleteConfirm": "Löschen? ({{name}})"
+    "deleteConfirm": "Löschen? ({{name}})",
+    "rebootButton": "Neustart",
+    "rebootTooltip": "Gerät neu starten (Soft-Reset)",
+    "rebootOffline": "Nur ein Online-Gerät kann neu gestartet werden",
+    "rebootConfirm": "Gerät neu starten?\n{{name}}\n\nEinstellungen und der heruntergeladene Klingelplan bleiben erhalten.",
+    "rebootSent": "Neustart an {{name}} gesendet",
+    "confirmAgain": "Sicher? Erneut klicken"
   },
   "sync": {
     "title": "Snap-Sync-Versatz",

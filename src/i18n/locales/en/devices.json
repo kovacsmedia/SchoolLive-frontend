@@ -97,7 +97,13 @@
     "resetTooltip": "Reset to provisioning mode",
     "resetButton": "Reset",
     "resetConfirm": "Reset to provisioning mode?\n{{name}}\n\nThe device will lose its activated status.",
-    "deleteConfirm": "Delete? ({{name}})"
+    "deleteConfirm": "Delete? ({{name}})",
+    "rebootButton": "Restart",
+    "rebootTooltip": "Restart device (soft reset)",
+    "rebootOffline": "Only an online device can be restarted",
+    "rebootConfirm": "Restart this device?\n{{name}}\n\nSettings and the downloaded bell schedule are kept.",
+    "rebootSent": "Restart sent to {{name}}",
+    "confirmAgain": "Sure? Click again"
   },
   "sync": {
     "title": "Snap sync offset",

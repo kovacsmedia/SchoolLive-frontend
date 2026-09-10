@@ -97,7 +97,13 @@
     "resetTooltip": "Resetează la modul de provisioning",
     "resetButton": "Resetare",
     "resetConfirm": "Resetați la modul de provisioning?\n{{name}}\n\nDispozitivul își va pierde statusul de activare.",
-    "deleteConfirm": "Ștergeți? ({{name}})"
+    "deleteConfirm": "Ștergeți? ({{name}})",
+    "rebootButton": "Repornire",
+    "rebootTooltip": "Repornirea dispozitivului (soft reset)",
+    "rebootOffline": "Doar un dispozitiv online poate fi repornit",
+    "rebootConfirm": "Reporniți dispozitivul?\n{{name}}\n\nSetările și orarul de sonerie descărcat se păstrează.",
+    "rebootSent": "Repornire trimisă către {{name}}",
+    "confirmAgain": "Sigur? Faceți clic din nou"
   },
   "sync": {
     "title": "Decalaj de sincronizare Snap",

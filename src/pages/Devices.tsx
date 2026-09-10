@@ -299,6 +299,15 @@ function fmtBytes(b: unknown): string {
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
 }
 
+// Az "élesített" (megerősítésre váró) veszélyes gomb kinézete. Feltűnően
+// eltér az alapállapottól, hogy egyértelmű legyen: a következő kattintás hat.
+const ARMED_BTN_STYLE = {
+  background:  "linear-gradient(135deg,#f97316,#dc2626)",
+  color:       "#fff",
+  border:      "1.5px solid #dc2626",
+  fontWeight:  800,
+};
+
 function fmtResetReason(v: unknown): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
@@ -716,12 +725,60 @@ export default function Devices() {
     finally { setNativeActivateBusy(false); }
   }
 
+  // ── Kétlépcsős megerősítés a veszélyes gomboknál ──────────────────────────
+  //
+  // A Reset és a Törlés első kattintásra csak "élesedik": a gomb felirata
+  // megerősítést kér, és csak a MÁSODIK kattintás nyitja meg a natív confirm
+  // ablakot. Egy félrekattintás – vagy egy leragadt Enter, ami a confirm
+  // párbeszédet is azonnal nyugtázná – így nem tud eszközt törölni.
+  //
+  // Az élesítés ARM_TIMEOUT_MS után magától lejár, hogy a gomb ne maradjon
+  // "kilőtt" állapotban, ha a felhasználó közben mást csinál.
+  const ARM_TIMEOUT_MS = 5000;
+  const [armedAction, setArmedAction] = useState<string | null>(null);
+  const [rebootNotice, setRebootNotice] = useState<string | null>(null);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function armAction(key: string) {
+    if (armTimer.current) clearTimeout(armTimer.current);
+    setArmedAction(key);
+    armTimer.current = setTimeout(() => setArmedAction(null), ARM_TIMEOUT_MS);
+  }
+
+  function disarmAction() {
+    if (armTimer.current) { clearTimeout(armTimer.current); armTimer.current = null; }
+    setArmedAction(null);
+  }
+
+  useEffect(() => () => { if (armTimer.current) clearTimeout(armTimer.current); }, []);
+
+  // Ablakváltás/bezárás: az élesített állapot ne "ragadjon be" a következő
+  // eszköz Részletek ablakára.
+  useEffect(() => { disarmAction(); setRebootNotice(null); }, [detailsDeviceId]);
+
   // ── Reset provision ────────────────────────────────────────────────────────
   async function resetProvision(deviceId: string, name: string) {
     if (!window.confirm(t("details.resetConfirm", { name }))) return;
     try {
       await apiFetch(`/admin/devices/${deviceId}/reset-provision`, { method: "POST" });
       void loadDevices();
+    } catch (e) { setError(safeErrorMessage(e, t)); }
+  }
+
+  // ── Soft reset (távoli újraindítás) ───────────────────────────────────────
+  //
+  // Nem destruktív: az eszköz beállításai, a letöltött hangok és a
+  // csengetési rend megmaradnak – ezért ez egyetlen megerősítéssel megy.
+  // A backend csak ONLINE eszköznek küldi ki (offline-ra 409-et ad), mert
+  // egy órákkal később, váratlanul újrainduló hangszóró rosszabb, mint egy
+  // elmaradt újraindítás.
+  async function rebootDevice(deviceId: string, name: string) {
+    if (!window.confirm(t("details.rebootConfirm", { name }))) return;
+    try {
+      await apiFetch(`/admin/devices/${deviceId}/reboot`, { method: "POST" });
+      setError(null);
+      setRebootNotice(t("details.rebootSent", { name }));
+      setTimeout(() => setRebootNotice(null), 6000);
     } catch (e) { setError(safeErrorMessage(e, t)); }
   }
 
@@ -1363,21 +1420,49 @@ export default function Devices() {
               </div>
             )}
 
+            {rebootNotice && (
+              <div style={{
+                margin:"8px 0", padding:"8px 10px", borderRadius:8, fontSize:13,
+                background:"rgba(34,197,94,0.12)", border:"1px solid rgba(34,197,94,0.4)",
+              }}>
+                ✅ {rebootNotice}
+              </div>
+            )}
+
             <div className="dv-modal-footer" style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {/* Soft reset – nem destruktív, egy megerősítéssel megy. Csak
+                  online eszközre küldhető (a backend offline-ra 409-et ad). */}
+              <button className="dv-btn dv-btn-ghost" type="button"
+                title={d.isOnline ? t("details.rebootTooltip") : t("details.rebootOffline")}
+                disabled={!canWrite || !d.isOnline}
+                onClick={() => { void rebootDevice(d.deviceId, d.name); }}>
+                ⟳ {t("details.rebootButton")}
+              </button>
+
               {d.isNativePlayer && (
                 <button className="dv-btn dv-btn-ghost" type="button"
                   title={t("details.resetTooltip")}
                   disabled={!canWrite}
+                  style={armedAction === "reset" ? ARMED_BTN_STYLE : undefined}
                   onClick={() => {
+                    // Első kattintás: csak élesítés. Ld. armAction().
+                    if (armedAction !== "reset") { armAction("reset"); return; }
+                    disarmAction();
                     setDetailsDeviceId(null);
                     void resetProvision(d.deviceId, d.name);
                   }}>
-                  🔄 {t("details.resetButton")}
+                  {armedAction === "reset"
+                    ? `⚠ ${t("details.confirmAgain")}`
+                    : `🔄 ${t("details.resetButton")}`}
                 </button>
               )}
+
               <button className="dv-btn dv-btn-danger" type="button"
                 disabled={!canWrite}
+                style={armedAction === "delete" ? ARMED_BTN_STYLE : undefined}
                 onClick={async () => {
+                  if (armedAction !== "delete") { armAction("delete"); return; }
+                  disarmAction();
                   if (!window.confirm(t("details.deleteConfirm", { name: d.name }))) return;
                   try {
                     await apiFetch(`/admin/devices/${d.deviceId}`, { method:"DELETE" });
@@ -1385,7 +1470,9 @@ export default function Devices() {
                     void loadDevices();
                   } catch (e) { setError(safeErrorMessage(e, t)); }
                 }}>
-                🗑 {t("common:actions.delete")}
+                {armedAction === "delete"
+                  ? `⚠ ${t("details.confirmAgain")}`
+                  : `🗑 ${t("common:actions.delete")}`}
               </button>
               <button className="dv-btn dv-btn-ghost" type="button"
                 title="Újraindulások és hibák visszanézése"
@@ -1446,6 +1533,23 @@ export default function Devices() {
                       </span>
                     )}
                   </div>
+                  {eventsStatus.fsTotal != null && (() => {
+                    const tot  = Number(eventsStatus.fsTotal);
+                    const used = Number(eventsStatus.fsUsed);
+                    const pct  = tot > 0 ? Math.round((used / tot) * 100) : 0;
+                    // 90% fölött a csengetőhangok már nem tölthetők le –
+                    // ilyenkor az eszköz csak a gyári hangokkal tud csengetni.
+                    const tight = pct >= 90;
+                    return (
+                      <>
+                        <div style={{ color:"var(--sl-muted)" }}>Tárhely</div>
+                        <div style={{ color: tight ? "#b91c1c" : undefined, fontWeight: tight ? 700 : undefined }}>
+                          {fmtBytes(used)} / {fmtBytes(tot)} ({pct}%)
+                          {tight && " – megtelt, a hangok nem tölthetők le!"}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             )}

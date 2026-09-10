@@ -97,7 +97,13 @@
     "resetTooltip": "Visszaállítás provisioning módba",
     "resetButton": "Reset",
     "resetConfirm": "Visszaállítod provisioning módba?\n{{name}}\n\nAz eszköz elveszti aktivált státuszát.",
-    "deleteConfirm": "Törlöd? ({{name}})"
+    "deleteConfirm": "Törlöd? ({{name}})",
+    "rebootButton": "Újraindítás",
+    "rebootTooltip": "Eszköz újraindítása (soft reset)",
+    "rebootOffline": "Csak online eszköz indítható újra",
+    "rebootConfirm": "Újraindítod az eszközt?\n{{name}}\n\nA beállítások és a letöltött csengetési rend megmaradnak.",
+    "rebootSent": "{{name}} újraindítása elküldve",
+    "confirmAgain": "Biztos? Kattints újra"
   },
   "sync": {
     "title": "Snap szinkron-eltolás",
