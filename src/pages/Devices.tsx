@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
@@ -250,6 +250,62 @@ const CSS = `
   @media(max-width:600px){.dv-grid2{grid-template-columns:1fr}.dv-search{width:100%}}
 `;
 
+// ── Hibajelzések (eszköz-eseménynapló) ──────────────────────────────────────
+//
+// Egy TÁVOLI eszköznél a soros monitor nem elérhető, a `statusPayload` pedig
+// csak pillanatkép. A backend ezért újraindulás-eseményeket naplóz
+// (SyncEngine.recordRebootIfDetected), ez az ablak azokat mutatja meg.
+type DeviceEvent = {
+  id: string;
+  type: string;
+  resetReason: number | null;
+  uptimeSec: number | null;
+  freeHeap: number | null;
+  minFreeHeap: number | null;
+  firmwareVersion: string | null;
+  message: string | null;
+  createdAt: string;
+};
+
+// esp_reset_reason() → ember által olvasható ok. A watchdog- és pánik-okok a
+// lényegesek: ezek szoftverhibát jeleznek, a BROWNOUT viszont tápellátási gond.
+const RESET_REASONS: Record<number, { label: string; hint: string; bad: boolean }> = {
+  1: { label: "Bekapcsolás",        hint: "Tápfeszültség rákerült – normál indulás", bad: false },
+  2: { label: "Külső reset",        hint: "RST láb / szervizgomb",                   bad: false },
+  3: { label: "Szoftveres újraindítás", hint: "ESP.restart() – OTA vagy parancs",    bad: false },
+  4: { label: "PÁNIK / kivétel",    hint: "Programhiba (Guru Meditation)",           bad: true  },
+  5: { label: "Interrupt watchdog", hint: "Megszakítás-kezelő beragadt",             bad: true  },
+  6: { label: "Task watchdog",      hint: "Egy feladat túl sokáig blokkolt",         bad: true  },
+  7: { label: "Egyéb watchdog",     hint: "Watchdog reset",                          bad: true  },
+  8: { label: "Mélyalvás vége",     hint: "Deep sleep után ébredt",                  bad: false },
+  9: { label: "BROWNOUT",           hint: "Tápfeszültség beesett – hardver/táp gond", bad: true  },
+ 10: { label: "SDIO reset",         hint: "SDIO",                                    bad: false },
+};
+
+function fmtUptime(sec: unknown): string {
+  const s = Number(sec);
+  if (!Number.isFinite(s) || s < 0) return "—";
+  if (s < 60)    return `${Math.round(s)} mp`;
+  if (s < 3600)  return `${Math.floor(s / 60)} p ${Math.round(s % 60)} mp`;
+  if (s < 86400) return `${Math.floor(s / 3600)} ó ${Math.floor((s % 3600) / 60)} p`;
+  return `${Math.floor(s / 86400)} nap ${Math.floor((s % 86400) / 3600)} ó`;
+}
+
+function fmtBytes(b: unknown): string {
+  const n = Number(b);
+  if (!Number.isFinite(n)) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} kB`;
+  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function fmtResetReason(v: unknown): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  const r = RESET_REASONS[n];
+  return r ? r.label : `Ismeretlen (${n})`;
+}
+
 function Modal({ title, icon, children, onClose }: { title:string; icon:string; children:React.ReactNode; onClose:()=>void }) {
   return (
     <div className="dv-overlay" onClick={onClose}>
@@ -269,6 +325,31 @@ export default function Devices() {
   const { state } = useAuth();
   const role = state.status === "authed" ? (state.user as any)?.role ?? "" : "";
   const isSuperAdmin = role === "SUPER_ADMIN";
+
+  // Hibajelzések ablak állapota
+  const [eventsFor, setEventsFor] = useState<{ deviceId: string; name: string } | null>(null);
+  const [events, setEvents] = useState<DeviceEvent[]>([]);
+  const [eventsStatus, setEventsStatus] = useState<Record<string, any> | null>(null);
+  const [eventsBusy, setEventsBusy] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+
+  const loadEvents = useCallback(async (deviceId: string) => {
+    setEventsBusy(true);
+    setEventsError(null);
+    try {
+      const r = await apiFetch<{ ok: boolean; device: any; events: DeviceEvent[] }>(
+        `/admin/devices/${deviceId}/events?limit=100`
+      );
+      setEvents(r.events ?? []);
+      setEventsStatus((r.device?.statusPayload ?? null) as Record<string, any> | null);
+    } catch (e) {
+      setEventsError(safeErrorMessage(e, t));
+      setEvents([]);
+      setEventsStatus(null);
+    } finally {
+      setEventsBusy(false);
+    }
+  }, [t]);
   const canWrite = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
   const hwModelOptions = getHwModelOptions(t);
   const deviceClassOptions = getDeviceClassOptions(t);
@@ -1306,6 +1387,14 @@ export default function Devices() {
                 }}>
                 🗑 {t("common:actions.delete")}
               </button>
+              <button className="dv-btn dv-btn-ghost" type="button"
+                title="Újraindulások és hibák visszanézése"
+                onClick={() => {
+                  setEventsFor({ deviceId: d.deviceId, name: d.name });
+                  void loadEvents(d.deviceId);
+                }}>
+                🩺 Hibajelzések
+              </button>
               <div style={{ flex:1 }} />
               <button className="dv-btn dv-btn-ghost" type="button"
                 onClick={() => setDetailsDeviceId(null)}>{t("common:actions.close")}</button>
@@ -1328,6 +1417,109 @@ export default function Devices() {
           </Modal>
         );
       })()}
+
+      {/* ── Hibajelzések ablak ────────────────────────────────────────────── */}
+      {eventsFor && (
+        <Modal title={`Hibajelzések – ${eventsFor.name}`} icon="🩺"
+               onClose={() => { setEventsFor(null); setEvents([]); setEventsStatus(null); }}>
+          <div className="dv-modal-body">
+            {eventsError && <div className="dv-alert dv-alert-error"><span>⚠️</span>{eventsError}</div>}
+
+            {/* Aktuális állapot – a legutolsó beaconból */}
+            {eventsStatus && (
+              <div style={{
+                padding:"12px 14px", background:"#f8fafc",
+                border:"1.5px solid var(--sl-border)", borderRadius:11, marginBottom:14,
+              }}>
+                <div style={{ fontWeight:700, fontSize:13, marginBottom:8 }}>Jelenlegi állapot</div>
+                <div style={{ display:"grid", gridTemplateColumns:"max-content 1fr", gap:"5px 14px", fontSize:12.5 }}>
+                  <div style={{ color:"var(--sl-muted)" }}>Üzemidő</div>
+                  <div>{fmtUptime(eventsStatus.uptimeSec)}</div>
+                  <div style={{ color:"var(--sl-muted)" }}>Utolsó indulás oka</div>
+                  <div>{fmtResetReason(eventsStatus.resetReason)}</div>
+                  <div style={{ color:"var(--sl-muted)" }}>Szabad memória</div>
+                  <div>
+                    {fmtBytes(eventsStatus.freeHeap)}
+                    {eventsStatus.minFreeHeap != null && (
+                      <span style={{ color:"var(--sl-muted)" }}>
+                        {"  (mélypont: "}{fmtBytes(eventsStatus.minFreeHeap)}{")"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {eventsBusy && <div style={{ fontSize:13, color:"var(--sl-muted)" }}>Betöltés…</div>}
+
+            {!eventsBusy && events.length === 0 && !eventsError && (
+              <div style={{ fontSize:13, color:"var(--sl-muted)", padding:"18px 0", textAlign:"center" }}>
+                Nincs rögzített hibajelzés. Ez jó jel — az eszköz nem indult újra.
+                <div style={{ fontSize:11.5, marginTop:6 }}>
+                  (A napló csak akkor épül, ha az eszköz firmware-e küldi az üzemidőt –
+                  a régebbi verziók nem. Frissítés után jelennek meg az események.)
+                </div>
+              </div>
+            )}
+
+            {!eventsBusy && events.length > 0 && (
+              <>
+                <div style={{ fontWeight:700, fontSize:13, marginBottom:8 }}>
+                  Újraindulások ({events.length})
+                </div>
+                <div style={{ maxHeight:340, overflowY:"auto", border:"1.5px solid var(--sl-border)", borderRadius:10 }}>
+                  {events.map((ev, i) => {
+                    const r = ev.resetReason != null ? RESET_REASONS[ev.resetReason] : undefined;
+                    const bad = r?.bad === true;
+                    return (
+                      <div key={ev.id} style={{
+                        padding:"10px 12px", fontSize:12.5,
+                        borderTop: i === 0 ? "none" : "1px solid var(--sl-border)",
+                        background: bad ? "#fef2f2" : "transparent",
+                      }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                          <span style={{ fontWeight:700, color: bad ? "#b91c1c" : "var(--sl-text)" }}>
+                            {bad ? "⛔" : "🔄"} {r?.label ?? `Ismeretlen ok (${ev.resetReason ?? "?"})`}
+                          </span>
+                          <span style={{ color:"var(--sl-muted)", fontSize:11.5 }}>
+                            {new Date(ev.createdAt).toLocaleString("hu-HU")}
+                          </span>
+                        </div>
+                        {r?.hint && (
+                          <div style={{ color:"var(--sl-muted)", fontSize:11.5, marginTop:3 }}>{r.hint}</div>
+                        )}
+                        <div style={{ color:"var(--sl-muted)", fontSize:11.5, marginTop:3 }}>
+                          Előző futás: {fmtUptime(ev.uptimeSec)}
+                          {ev.minFreeHeap != null && ` · memória-mélypont: ${fmtBytes(ev.minFreeHeap)}`}
+                          {ev.firmwareVersion && ` · firmware: ${ev.firmwareVersion}`}
+                        </div>
+                        {ev.message && (
+                          <div style={{ fontFamily:"monospace", fontSize:11.5, marginTop:4 }}>{ev.message}</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize:11.5, color:"var(--sl-muted)", marginTop:8 }}>
+                  Sok, rövid „előző futás" idő újraindulási ciklust jelent. A watchdog és a pánik
+                  szoftverhibára utal, a BROWNOUT viszont tápellátási problémára.
+                </div>
+              </>
+            )}
+          </div>
+          <div className="dv-modal-footer">
+            <button className="dv-btn dv-btn-ghost" type="button"
+              onClick={() => void loadEvents(eventsFor.deviceId)} disabled={eventsBusy}>
+              ↻ Frissítés
+            </button>
+            <div style={{ flex:1 }} />
+            <button className="dv-btn dv-btn-ghost" type="button"
+              onClick={() => { setEventsFor(null); setEvents([]); setEventsStatus(null); }}>
+              {t("common:actions.close")}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {editDevice && (
         <Modal title={t("editModal.title")} icon="✏️" onClose={() => setEditDevice(null)}>
