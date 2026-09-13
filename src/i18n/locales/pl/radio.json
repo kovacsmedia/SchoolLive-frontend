@@ -113,7 +113,10 @@
     "eqMid": "Średnie",
     "eqHigh": "Wysokie",
     "eqReset": "Neutralnie",
-    "eqHint": "Matową taśmę lub płytę popraw podbiciem wysokich, dudniący dźwięk – obniżeniem średnich. Po mocnym podbiciu obserwuj wskaźnik wysterowania – jeśli wchodzi na czerwono, zmniejsz wzmocnienie wejścia."
+    "eqHint": "Matową taśmę lub płytę popraw podbiciem wysokich, dudniący dźwięk – obniżeniem średnich. Po mocnym podbiciu obserwuj wskaźnik wysterowania – jeśli wchodzi na czerwono, zmniejsz wzmocnienie wejścia.",
+    "monitorOn": "Pomiar działa",
+    "monitorStart": "Uruchom pomiar",
+    "meterHint": "Wskaźnik działa także poza emisją, aby ustawić poziom z wyprzedzeniem. Dobre ustawienie: szczyty między -12 a -6 dB, czerwień dotykają tylko najgłośniejsze fragmenty."
   },
   "schedule": {
     "tooltip": "Zaplanuj",

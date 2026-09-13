@@ -113,7 +113,10 @@
     "eqMid": "Mitten",
     "eqHigh": "Höhen",
     "eqReset": "Neutral",
-    "eqHint": "Dumpfes Band oder Platte: Höhen anheben. Kastiger Klang: Mitten absenken. Nach starker Anhebung die Aussteuerungsanzeige beachten – wird sie rot, die Eingangsverstärkung zurücknehmen."
+    "eqHint": "Dumpfes Band oder Platte: Höhen anheben. Kastiger Klang: Mitten absenken. Nach starker Anhebung die Aussteuerungsanzeige beachten – wird sie rot, die Eingangsverstärkung zurücknehmen.",
+    "monitorOn": "Messung läuft",
+    "monitorStart": "Messung starten",
+    "meterHint": "Die Anzeige läuft auch ohne Sendung, damit der Pegel vorab eingestellt werden kann. Gute Einstellung: Spitzen zwischen -12 und -6 dB, nur die lautesten Stellen berühren Rot."
   },
   "schedule": {
     "tooltip": "Planen",

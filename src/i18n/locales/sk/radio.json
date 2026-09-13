@@ -113,7 +113,10 @@
     "eqMid": "Stredy",
     "eqHigh": "Výšky",
     "eqReset": "Neutrál",
-    "eqHint": "Tupý pásik alebo platňu opravíte pridaním výšok, dutý zvuk ubratím stredov. Po silnom zdvihnutí sledujte indikátor vybudenia – ak je červený, uberte vstupné zosilnenie."
+    "eqHint": "Tupý pásik alebo platňu opravíte pridaním výšok, dutý zvuk ubratím stredov. Po silnom zdvihnutí sledujte indikátor vybudenia – ak je červený, uberte vstupné zosilnenie.",
+    "monitorOn": "Meranie beží",
+    "monitorStart": "Spustiť meranie",
+    "meterHint": "Indikátor beží aj bez vysielania, aby ste úroveň nastavili vopred. Dobré nastavenie: špičky medzi -12 a -6 dB, červenú zasiahnu len najhlasnejšie miesta."
   },
   "schedule": {
     "tooltip": "Naplánovať",

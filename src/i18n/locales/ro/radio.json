@@ -113,7 +113,10 @@
     "eqMid": "Medii",
     "eqHigh": "Înalte",
     "eqReset": "Neutru",
-    "eqHint": "Ridică înaltele pentru o bandă sau un disc mat; coboară mediile pentru un sunet închis. După o accentuare puternică urmărește indicatorul de nivel – dacă intră în roșu, redu amplificarea la intrare."
+    "eqHint": "Ridică înaltele pentru o bandă sau un disc mat; coboară mediile pentru un sunet închis. După o accentuare puternică urmărește indicatorul de nivel – dacă intră în roșu, redu amplificarea la intrare.",
+    "monitorOn": "Măsurare activă",
+    "monitorStart": "Pornește măsurarea",
+    "meterHint": "Indicatorul funcționează și fără emisie, ca să poți regla nivelul din timp. Setare bună: vârfurile între -12 și -6 dB, doar pasajele tari ating roșul."
   },
   "schedule": {
     "tooltip": "Programează",

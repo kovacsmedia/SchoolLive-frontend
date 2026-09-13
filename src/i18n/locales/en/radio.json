@@ -113,7 +113,10 @@
     "eqMid": "Mid",
     "eqHigh": "Treble",
     "eqReset": "Flat",
-    "eqHint": "Lift the treble for a dull tape or record; pull the mid down for a boxy sound. After a strong boost watch the level meter – if it goes red, reduce the input gain."
+    "eqHint": "Lift the treble for a dull tape or record; pull the mid down for a boxy sound. After a strong boost watch the level meter – if it goes red, reduce the input gain.",
+    "monitorOn": "Metering",
+    "monitorStart": "Start metering",
+    "meterHint": "The meter runs even off air so you can set the level in advance. A good setting: peaks between -12 and -6 dB, with only the loudest parts touching red."
   },
   "schedule": {
     "tooltip": "Schedule",

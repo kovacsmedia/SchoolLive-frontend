@@ -113,7 +113,10 @@
     "eqMid": "Srednji",
     "eqHigh": "Visoki",
     "eqReset": "Neutralno",
-    "eqHint": "Tupu vrpcu ili ploču popravi podizanjem visokih, a bačvast zvuk spuštanjem srednjih. Nakon jakog podizanja prati pokazivač razine – ako ode u crveno, smanji ulazno pojačanje."
+    "eqHint": "Tupu vrpcu ili ploču popravi podizanjem visokih, a bačvast zvuk spuštanjem srednjih. Nakon jakog podizanja prati pokazivač razine – ako ode u crveno, smanji ulazno pojačanje.",
+    "monitorOn": "Mjerenje radi",
+    "monitorStart": "Pokreni mjerenje",
+    "meterHint": "Pokazivač radi i bez emitiranja, da razinu možeš namjestiti unaprijed. Dobra postavka: vrhovi između -12 i -6 dB, crveno dodiruju samo najglasniji dijelovi."
   },
   "schedule": {
     "tooltip": "Zakaži",

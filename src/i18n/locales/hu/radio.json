@@ -113,7 +113,10 @@
     "eqMid": "Közép",
     "eqHigh": "Magas",
     "eqReset": "Semleges",
-    "eqHint": "Régi szalag vagy lemez tompaságát a magas sáv emelésével, a dobozos hangot a közép visszavételével javítod. Erős kiemelés után nézd a kivezérlésjelzőt – ha pirosba megy, vedd vissza a bemeneti erősítést."
+    "eqHint": "Régi szalag vagy lemez tompaságát a magas sáv emelésével, a dobozos hangot a közép visszavételével javítod. Erős kiemelés után nézd a kivezérlésjelzőt – ha pirosba megy, vedd vissza a bemeneti erősítést.",
+    "monitorOn": "Mérés fut",
+    "monitorStart": "Mérés indítása",
+    "meterHint": "A mérő adás nélkül is fut, hogy a szintet előre beállíthasd. Jó beállítás: a csúcsok -12 és -6 dB között mozognak, a pirosat csak hangos részek érintik."
   },
   "schedule": {
     "tooltip": "Ütemezés",

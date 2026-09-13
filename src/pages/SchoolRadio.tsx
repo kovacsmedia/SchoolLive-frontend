@@ -773,6 +773,11 @@ export default function SchoolRadio() {
   const [liveOn,         setLiveOn]         = useState(false);
   const [liveStarting,   setLiveStarting]   = useState(false);
   const [liveError,      setLiveError]      = useState<string | null>(null);
+  /* A MÉRÉS külön állapot az adástól: a fülre lépve elindul, hogy a szintet
+     élőbe menés ELŐTT be lehessen állítani. Saját hibája is van – egy
+     elutasított mikrofon-engedély nem "adáshiba". */
+  const [liveMonitorOn,    setLiveMonitorOn]    = useState(false);
+  const [liveMonitorError, setLiveMonitorError] = useState<string | null>(null);
   /** Bemeneti erősítés dB-ben (-12 … +24). 0 = változatlan. */
   const [liveGainDb,     setLiveGainDb]     = useState(0);
   /* Háromsávos hangszínszabályzó (-12 … +12 dB sávonként). Régi, mély- vagy
@@ -1281,11 +1286,6 @@ export default function SchoolRadio() {
     } catch { /* engedély nélkül üres marad – a default eszköz így is megy */ }
   }
 
-  useEffect(() => {
-    if (sourceTab === "live") void refreshLiveInputDevices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceTab]);
-
   /** Mérő-ciklus: RMS + csúcs csatornánként, dBFS-ben. */
   function liveMeterLoop() {
     const analysers = liveAnalysersRef.current;
@@ -1379,31 +1379,42 @@ export default function SchoolRadio() {
     }
   }
 
-  async function startLiveInput() {
-    if (liveOn || liveStarting) return;
-    setLiveError(null);
+  /**
+   * Alkalmas-e a böngésző élő bemenetre.
+   *
+   * A szerver oldali ffmpeg WebM/Opus folyamot vár (`-f webm`). A Safari
+   * MediaRecorder-e csak audio/mp4-et tud – ott a felvétel elindulna, de a
+   * szerveren dekódolhatatlan lenne, azaz néma "adás" menne ki. Inkább
+   * mondjuk meg előre, hogy ez a böngésző nem alkalmas.
+   */
+  function liveCaptureSupported(): boolean {
+    return (
+      !!navigator.mediaDevices?.getUserMedia &&
+      typeof MediaRecorder !== "undefined" &&
+      MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus") === true
+    );
+  }
 
-    /*
-     * A szerver oldali ffmpeg WebM/Opus folyamot vár (`-f webm`), ezért a
-     * konténer-támogatást ELŐRE megnézzük. A Safari MediaRecorder-e csak
-     * audio/mp4-et tud – ott a felvétel elindulna, de a szerveren
-     * dekódolhatatlan lenne, azaz néma "adás" menne ki. Inkább mondjuk meg
-     * előre, hogy ez a böngésző nem alkalmas.
-     */
-    if (
-      !navigator.mediaDevices?.getUserMedia ||
-      typeof MediaRecorder === "undefined" ||
-      !MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus")
-    ) {
-      setLiveError(t("live.unsupported"));
-      return;
-    }
-    if (liveTargetType !== "ALL" && !liveTargetId) {
-      setLiveError(t("errors.chooseTarget"));
-      return;
+  /*
+   * MONITOROZÁS – a jelút felépítése ADÁS NÉLKÜL.
+   *
+   * MIÉRT KÜLÖN: a szintet adás ELŐTT kell beállítani. Ha a kivezérlésjelző
+   * csak adásindításkor éledne, a felhasználó vakon menne élőbe, és csak a
+   * hangszórókból derülne ki, hogy a forrás túl halk vagy torzít.
+   *
+   * Ez az ág megnyitja a hangbemenetet, felépíti a teljes láncot (gain, EQ,
+   * analizátorok) és elindítja a mérőt – de a MediaRecorder és a WebSocket
+   * nincs benne, tehát a hang SEHOVA nem megy ki. Az „Adás indítása" ehhez
+   * csak hozzáadja a felvevőt és a kapcsolatot.
+   */
+  async function ensureLiveMonitor(): Promise<string | null> {
+    if (liveCtxRef.current) return null;                 // már fut
+    if (!liveCaptureSupported()) {
+      const msg = t("live.unsupported");
+      setLiveMonitorError(msg);
+      return msg;
     }
 
-    setLiveStarting(true);
     try {
       /*
        * A böngésző „hangkonferencia" alapértelmezései (visszhangszűrés,
@@ -1466,15 +1477,72 @@ export default function SchoolRadio() {
       split.connect(anL, 0);
       split.connect(anR, 1);
 
-      liveEqRef.current = [eqLow, eqMid, eqHigh];
-
       // A destination node-ot a gain-en tároljuk, hogy a felvevő-újraindítás
       // el tudja érni anélkül, hogy még egy refet vezetnénk be.
       (gain as any)._slDest = dest;
       liveGainRef.current = gain;
+      liveEqRef.current = [eqLow, eqMid, eqHigh];
       liveAnalysersRef.current = [anL, anR];
 
       if (liveRafRef.current === null) liveRafRef.current = requestAnimationFrame(liveMeterLoop);
+
+      setLiveMonitorOn(true);
+      setLiveMonitorError(null);
+      return null;
+    } catch (e: any) {
+      const msg =
+        e?.name === "NotAllowedError" ? t("live.permissionDenied")
+        : e?.name === "NotFoundError" ? t("live.noInputDevice")
+        : (e?.message ?? t("errors.unknown"));
+      stopLiveMonitor();
+      setLiveMonitorError(msg);
+      return msg;
+    }
+  }
+
+  /** A monitorozó lánc lebontása: mikrofon elengedése, mérő megállítása. */
+  function stopLiveMonitor() {
+    if (liveRafRef.current !== null) { cancelAnimationFrame(liveRafRef.current); liveRafRef.current = null; }
+    liveAnalysersRef.current = [];
+    resetLiveMeterBars();
+
+    liveStreamRef.current?.getTracks().forEach(tr => { try { tr.stop(); } catch { /* ignore */ } });
+    liveStreamRef.current = null;
+
+    const ctx = liveCtxRef.current;
+    liveCtxRef.current = null;
+    liveGainRef.current = null;
+    liveEqRef.current = [];
+    if (ctx && ctx.state !== "closed") { void ctx.close().catch(() => { /* ignore */ }); }
+
+    setLiveMonitorOn(false);
+  }
+
+  function resetLiveMeterBars() {
+    for (let ch = 0; ch < 2; ch++) {
+      const bar = liveMeterRef.current[ch];
+      if (bar) bar.style.width = "0%";
+      const pk = livePeakRef.current[ch];
+      if (pk) pk.style.left = "0%";
+      livePeakHoldRef.current[ch] = { db: -90, until: 0 };
+    }
+  }
+
+  async function startLiveInput() {
+    if (liveOn || liveStarting) return;
+    setLiveError(null);
+
+    if (liveTargetType !== "ALL" && !liveTargetId) {
+      setLiveError(t("errors.chooseTarget"));
+      return;
+    }
+
+    setLiveStarting(true);
+    try {
+      // A lánc jellemzően már fut (a fül megnyitásakor elindult a mérés);
+      // ha nem – pl. elutasított engedély után –, most próbáljuk újra.
+      const monitorErr = await ensureLiveMonitor();
+      if (monitorErr) { setLiveError(monitorErr); return; }
 
       const token =
         sessionStorage.getItem("accessToken") ??
@@ -1518,18 +1586,20 @@ export default function SchoolRadio() {
       setLiveOn(true);
       setManualNowPlaying({ name: t("live.nowPlayingName"), source: "stream" });
     } catch (e: any) {
-      setLiveError(
-        e?.name === "NotAllowedError" ? t("live.permissionDenied")
-        : e?.name === "NotFoundError" ? t("live.noInputDevice")
-        : (e?.message ?? t("errors.unknown"))
-      );
+      setLiveError(e?.message ?? t("errors.unknown"));
       stopLiveInput(true);
     } finally {
       setLiveStarting(false);
     }
   }
 
-  /** @param silent belső hívás (hibaág / WS-bontás) – ne nyúljunk a hibaüzenethez */
+  /**
+   * Az ADÁS leállítása. A monitorozó lánc SZÁNDÉKOSAN fut tovább: a
+   * kivezérlésjelzőnek adás után is mutatnia kell a forrást, hogy a
+   * következő indítás előtt lehessen szintet állítani.
+   *
+   * @param silent belső hívás (hibaág / WS-bontás) – ne nyúljunk a hibaüzenethez
+   */
   function stopLiveInput(silent = false) {
     try { liveRecRef.current?.stop(); } catch { /* ignore */ }
     liveRecRef.current = null;
@@ -1538,34 +1608,39 @@ export default function SchoolRadio() {
     liveWsRef.current = null;
     if (ws) { ws.onclose = null; try { ws.close(1000, "stopped"); } catch { /* ignore */ } }
 
-    if (liveRafRef.current !== null) { cancelAnimationFrame(liveRafRef.current); liveRafRef.current = null; }
-    liveAnalysersRef.current = [];
-    for (let ch = 0; ch < 2; ch++) {
-      const bar = liveMeterRef.current[ch];
-      if (bar) bar.style.width = "0%";
-      const pk = livePeakRef.current[ch];
-      if (pk) pk.style.left = "0%";
-      livePeakHoldRef.current[ch] = { db: -90, until: 0 };
-    }
-
-    liveStreamRef.current?.getTracks().forEach(tr => { try { tr.stop(); } catch { /* ignore */ } });
-    liveStreamRef.current = null;
-
-    const ctx = liveCtxRef.current;
-    liveCtxRef.current = null;
-    liveGainRef.current = null;
-    liveEqRef.current = [];
-    if (ctx && ctx.state !== "closed") { void ctx.close().catch(() => { /* ignore */ }); }
-
     setLiveOn(false);
     if (!silent) setLiveError(null);
     setManualNowPlaying(prev => (prev?.name === t("live.nowPlayingName") ? null : prev));
   }
 
+  /*
+   * A fülre lépve induljon a mérés, elhagyva álljon le – DE csak akkor, ha
+   * nem megy adás. Adás közben a felhasználó átválthat másik fülre (pl.
+   * megnézni egy ütemezést), a mikrofon és a lánc ilyenkor él tovább.
+   */
+  useEffect(() => {
+    if (sourceTab === "live") {
+      void refreshLiveInputDevices();
+      void ensureLiveMonitor();
+    } else if (!liveOn) {
+      stopLiveMonitor();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTab, liveOn]);
+
+  // Eszközváltás: a láncot újra kell építeni az új bemenetre. Adás közben a
+  // választó le van tiltva, ide csak monitorozás közben jutunk el.
+  useEffect(() => {
+    if (sourceTab !== "live" || liveOn || !liveCtxRef.current) return;
+    stopLiveMonitor();
+    void ensureLiveMonitor();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveDeviceId]);
+
   // Lapelhagyás / kilépés: a mikrofon nem maradhat nyitva, és a rádió sem
   // szólhat tovább egy már nem létező böngészőfül bemenetéről.
   useEffect(() => {
-    return () => { stopLiveInput(true); };
+    return () => { stopLiveInput(true); stopLiveMonitor(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3392,16 +3467,41 @@ export default function SchoolRadio() {
                     A gain UTÁN mér, tehát a piros tartomány valódi torzítást
                     jelez. A vékony függőleges vonal az utolsó 1,2 mp csúcsa. */}
                 <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
                     <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
                       📊 {t("live.meterLabel")}
                     </div>
-                    {liveOn && (
+                    {liveOn ? (
                       <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#dc2626"}}>
                         <span className="sr-live-dot" /> {t("live.onAir")}
                       </div>
+                    ) : liveMonitorOn ? (
+                      /*
+                       * SZÁNDÉKOSAN nincs se zöld, se pont.
+                       *
+                       * Státuszlámpa csak a TÉNYLEGES kimenetet jelezheti – az a
+                       * fenti villogó piros „ADÁSBAN". Egy zöld pont itt azt
+                       * sugallná, hogy megy a hang, holott a mérés csak
+                       * felkészülés: a jel sehova nem jut ki. Hogy fut-e a
+                       * mérés, azt amúgy is a mozgó sávok mutatják – ez a
+                       * felirat csak megnevezi az állapotot.
+                       */
+                      <div style={{fontSize:11,fontWeight:700,color:"var(--sl-muted)"}}>
+                        {t("live.monitorOn")}
+                      </div>
+                    ) : (
+                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                        onClick={() => { setLiveMonitorError(null); void ensureLiveMonitor(); }}>
+                        ▶ {t("live.monitorStart")}
+                      </button>
                     )}
                   </div>
+
+                  {liveMonitorError && !liveOn && (
+                    <div className="sr-alert sr-alert-error" style={{fontSize:12}}>
+                      <span>⚠️</span><span>{liveMonitorError}</span>
+                    </div>
+                  )}
                   {(["L","R"] as const).map((ch, i) => (
                     <div className="sr-vu-row" key={ch}>
                       <div className="sr-vu-label">{ch}</div>
@@ -3413,6 +3513,9 @@ export default function SchoolRadio() {
                   ))}
                   <div className="sr-vu-scale">
                     <span>-60</span><span>-40</span><span>-20</span><span>-12</span><span>-6</span><span>0 dB</span>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                    💡 {t("live.meterHint")}
                   </div>
                 </div>
 
