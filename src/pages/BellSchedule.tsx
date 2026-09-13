@@ -47,7 +47,7 @@ type PendingBell = {
 
 // 4 MB – az ESP32-S3-N16R8 LittleFS partícióján kb. ennyi marad a hangoknak.
 // (Backend-en is ugyanez a limit: bells.routes.ts MAX_TOTAL_BYTES.)
-const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 6 * 1024 * 1024;
 const MONTH_KEYS = [
   "january", "february", "march", "april", "may", "june",
   "july", "august", "september", "october", "november", "december",
