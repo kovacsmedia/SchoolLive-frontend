@@ -613,7 +613,6 @@ export default function SchoolRadio() {
    * (azonnali lejátszás, ütemezés) nincs rá szükség – csak elvette a helyet a
    * lényeg elől. Gombbal nyílik, a Hangfájl könyvtár feltöltő kerete alatt.
    */
-  const [plBuilderOpen, setPlBuilderOpen] = useState(false);
 
   // ── Playlist builder állapot ──────────────────────────────────────────────
   const [plItems, setPlItems] = useState<PlItem[]>([]);
@@ -647,7 +646,7 @@ export default function SchoolRadio() {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // ── Új: bal alsó panel tabok – Hangfájl könyvtár / Internetrádió ───────────
-  const [sourceTab, setSourceTab] = useState<"library" | "netradio" | "youtube">("library");
+  const [sourceTab, setSourceTab] = useState<"library" | "playlist" | "netradio" | "youtube">("library");
 
   // ── Új: internetrádió listája + kiválasztott állomás/stream/target ─────────
   const [netRadios, setNetRadios] = useState<NetRadio[]>(() => loadNetRadiosFromLS());
@@ -2049,6 +2048,13 @@ export default function SchoolRadio() {
                 🎵 {t("tabs.library")}
               </button>
               <button
+                className={`sr-tab${sourceTab === "playlist" ? " active" : ""}`}
+                type="button"
+                onClick={() => setSourceTab("playlist")}>
+                🎼 {t("playlist.openBuilderButton")}
+                {plItems.length > 0 ? ` (${plItems.length})` : ""}
+              </button>
+              <button
                 className={`sr-tab${sourceTab === "netradio" ? " active" : ""}`}
                 type="button"
                 onClick={() => setSourceTab("netradio")}>
@@ -2061,6 +2067,482 @@ export default function SchoolRadio() {
                 🎬 {t("tabs.youtube")}
               </button>
             </div>
+
+            {/* ── Lejátszási lista készítő tab ───────────────────────── */}
+            {sourceTab === "playlist" && (
+              <>
+              {/* A címet már a fülsáv adja – ide duplikálva csak zaj lenne.
+                  Marad a lista ürítése, és csak akkor, ha van mit üríteni. */}
+              {plItems.length > 0 && (
+                <div className="sr-panel-hdr" style={{ justifyContent: "flex-end" }}>
+                  <button
+                    className="sr-btn sr-btn-danger sr-btn-sm"
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(t("playlist.deleteConfirm"))) setPlItems([]);
+                    }}
+                  >
+                    🗑 {t("common:actions.delete")}
+                  </button>
+                </div>
+              )}
+
+              {/* Tabs */}
+              <div className="sr-tabs">
+                {([
+                  { id: "list", label: `📋 ${t("playlist.tabs.list")} (${plItems.length})` },
+                  { id: "yt-search", label: `🔍 ${t("playlist.tabs.youtubeSearch")}` },
+                  { id: "yt-url", label: `🔗 ${t("playlist.tabs.youtubeLink")}` },
+                  { id: "gdrive", label: `📁 ${t("playlist.tabs.googleDrive")}` },
+                  { id: "recording", label: `🎙️ ${t("playlist.tabs.recording")}` },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.id}
+                    className={`sr-tab${plTab === tab.id ? " active" : ""}`}
+                    type="button"
+                    onClick={() => setPlTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {plError && (
+                <div style={{ margin: "10px 14px 0" }} className="sr-alert sr-alert-error">
+                  ⚠️ {plError}
+                  <button
+                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#dc2626" }}
+                    onClick={() => setPlError(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {/* Lista tab */}
+              {plTab === "list" && (
+                <div style={{ padding: "12px 14px" }}>
+                  {plItems.length === 0 ? (
+                    <div className="sr-empty" style={{ padding: "28px 20px" }}>
+                      <div className="sr-empty-icon">🎼</div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>{t("playlist.emptyTitle")}</div>
+                      <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>
+                        {t("playlist.emptyHint")}
+                      </div>
+                    </div>
+                  ) : (
+                    plItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="sr-pl-item"
+                        draggable
+                        onDragStart={() => onDragStart(idx)}
+                        onDragOver={(e) => onDragOver(e, idx)}
+                      >
+                        <span className="sr-pl-drag">⠿</span>
+                        <span className="sr-pl-num">{idx + 1}</span>
+
+                        <div className="sr-pl-info">
+                          <div className="sr-pl-title" title={item.title}>
+                            {item.status === "fetching" ? "⏳ " : item.status === "error" ? "❌ " : ""}
+                            {item.title}
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                            <span
+                              className={`sr-pl-src sr-pl-src-${
+                                item.source === "youtube" ? "yt" : item.source === "gdrive" ? "gd" : item.source === "recording" ? "rec" : "up"
+                              }`}
+                            >
+                              {item.source === "youtube" ? "▶ YouTube" : item.source === "gdrive" ? `📁 ${t("playlist.sourceDrive")}` : item.source === "recording" ? `🎙️ ${t("playlist.sourceRecording")}` : `🎵 ${t("playlist.sourceUpload")}`}
+                            </span>
+                            <span className="sr-pl-dur">{fmtDuration(item.durationSec)}</span>
+                            {item.errorMsg && <span style={{ fontSize: 10, color: "#dc2626" }}>{item.errorMsg}</span>}
+                          </div>
+                        </div>
+
+                        {(item.audioPreviewUrl || item.source === "upload") && (
+                          <audio controls src={item.audioPreviewUrl} style={{ height: 24, width: 80 }} preload="none" />
+                        )}
+
+                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="sr-btn sr-btn-ghost sr-btn-sm"
+                            disabled={idx === 0}
+                            onClick={() =>
+                              setPlItems((prev) => {
+                                const n = [...prev];
+                                [n[idx - 1], n[idx]] = [n[idx], n[idx - 1]];
+                                return n;
+                              })
+                            }
+                          >
+                            ↑
+                          </button>
+
+                          <button
+                            type="button"
+                            className="sr-btn sr-btn-ghost sr-btn-sm"
+                            disabled={idx === plItems.length - 1}
+                            onClick={() =>
+                              setPlItems((prev) => {
+                                const n = [...prev];
+                                [n[idx], n[idx + 1]] = [n[idx + 1], n[idx]];
+                                return n;
+                              })
+                            }
+                          >
+                            ↓
+                          </button>
+
+                          <button
+                            type="button"
+                            className="sr-btn sr-btn-danger sr-btn-sm"
+                            onClick={() => setPlItems((prev) => prev.filter((_, j) => j !== idx))}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {/* Fájl feltöltés a listához */}
+                  <div style={{ marginTop: 10 }}>
+                    <input
+                      ref={plFileInputRef}
+                      type="file"
+                      accept="audio/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handlePlUpload(f);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="sr-btn sr-btn-ghost"
+                      style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
+                      onClick={() => plFileInputRef.current?.click()}
+                    >
+                      ＋ {t("playlist.uploadToListButton")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* YT keresés tab */}
+              {plTab === "yt-search" && (
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="sr-input"
+                      style={{ flex: 1 }}
+                      placeholder={t("playlist.youtubeSearchPlaceholder")}
+                      value={ytQuery}
+                      onChange={(e) => setYtQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && searchYt()}
+                    />
+                    <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" onClick={searchYt} disabled={ytSearching}>
+                      {ytSearching ? "⏳" : "🔍"}
+                    </button>
+                  </div>
+
+                  {ytResults.length > 0 && (
+                    <>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {ytResults.map((r) => (
+                          <div
+                            key={r.id}
+                            className={`sr-search-result${ytSelResult === r.id ? " sel" : ""}`}
+                            onClick={() => setYtSelResult(ytSelResult === r.id ? null : r.id)}
+                          >
+                            <img
+                              src={`https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`}
+                              alt=""
+                              className="sr-search-thumb"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div style={{ minWidth: 0 }}>
+                              <div className="sr-search-title">{r.title}</div>
+                              <div className="sr-search-meta">⏱ {r.duration}</div>
+                            </div>
+                            {ytSelResult === r.id && <span style={{ color: "#3b82f6", fontSize: 18 }}>✓</span>}
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        className="sr-btn sr-btn-primary"
+                        type="button"
+                        style={{ justifyContent: "center" }}
+                        disabled={!ytSelResult}
+                        onClick={addYtSearchResult}
+                      >
+                        ＋ {t("playlist.addToListButton")}
+                      </button>
+                    </>
+                  )}
+
+                  {ytResults.length === 0 && !ytSearching && ytQuery && (
+                    <div style={{ textAlign: "center", fontSize: 13, color: "var(--sl-muted)", padding: "12px 0" }}>
+                      {t("playlist.noResults")}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* YT URL tab */}
+              {plTab === "yt-url" && (
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
+                    {t("playlist.youtubeUrlHint")}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="sr-input"
+                      style={{ flex: 1 }}
+                      placeholder="https://youtube.com/watch?v=..."
+                      value={ytPasteUrl}
+                      onChange={(e) => setYtPasteUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addYtUrl()}
+                    />
+                    <button
+                      className="sr-btn sr-btn-ghost sr-btn-sm"
+                      type="button"
+                      onClick={async () => {
+                        const clip = await navigator.clipboard.readText().catch(() => "");
+                        if (clip) setYtPasteUrl(clip);
+                      }}
+                    >
+                      📋 {t("playlist.pasteButton")}
+                    </button>
+                  </div>
+
+                  <button
+                    className="sr-btn sr-btn-primary"
+                    type="button"
+                    style={{ justifyContent: "center" }}
+                    disabled={ytFetching || !ytPasteUrl.trim()}
+                    onClick={addYtUrl}
+                  >
+                    {ytFetching ? t("common:actions.loading") : `＋ ${t("common:actions.add")}`}
+                  </button>
+                </div>
+              )}
+
+              {/* Drive tab */}
+              {plTab === "gdrive" && (
+                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
+                    {t("playlist.googleDriveHint")}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="sr-input"
+                      style={{ flex: 1 }}
+                      placeholder="https://drive.google.com/..."
+                      value={driveUrl}
+                      onChange={(e) => setDriveUrl(e.target.value)}
+                    />
+                    <button
+                      className="sr-btn sr-btn-ghost sr-btn-sm"
+                      type="button"
+                      onClick={async () => {
+                        const clip = await navigator.clipboard.readText().catch(() => "");
+                        if (clip) setDriveUrl(clip);
+                      }}
+                    >
+                      📋
+                    </button>
+                  </div>
+
+                  <button
+                    className="sr-btn sr-btn-primary sr-btn-sm"
+                    type="button"
+                    style={{ justifyContent: "center" }}
+                    disabled={driveFetching || !driveUrl.trim()}
+                    onClick={fetchDrive}
+                  >
+                    {driveFetching ? t("common:actions.loading") : t("playlist.driveFetchButton")}
+                  </button>
+
+                  {driveFiles.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sl-muted)" }}>
+                        {t("playlist.driveFilesFound", { count: driveFiles.length })}
+                      </div>
+                      {driveFiles.map((f, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "7px 10px",
+                            border: "1px solid var(--sl-border)",
+                            borderRadius: 10,
+                            background: "var(--sl-bg)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              flex: 1,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            🎵 {f.name}
+                          </span>
+                          {f.durationSec && <span style={{ fontSize: 11, color: "var(--sl-muted)" }}>{fmtDuration(f.durationSec)}</span>}
+                          <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" onClick={() => addDriveFile(f)}>
+                            ＋
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hangfelvétel tab – mikrofon → blob → /radio/files upload → playlist item */}
+              {plTab === "recording" && (
+                <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
+                  <div style={{fontSize:12,color:"var(--sl-muted)"}}>
+                    {t("playlist.recordingHint")}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"22px 16px",border:"1.5px solid var(--sl-border)",borderRadius:14,background:"var(--sl-bg)"}}>
+                    {recRadioState === "idle" && (
+                      <>
+                        <div style={{fontSize:50,lineHeight:1}}>🎙️</div>
+                        <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>
+                          {t("playlist.recordingStartHint")}
+                        </div>
+                        <button className="sr-btn sr-btn-primary" type="button" onClick={() => void startRecRadio()}>
+                          ⏺ {t("playlist.recordingStartButton")}
+                        </button>
+                        {recRadioError && (
+                          <div className="sr-alert sr-alert-error" style={{margin:0}}>
+                            <span>⚠️</span><span>{recRadioError}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {recRadioState === "recording" && (
+                      <>
+                        <div style={{fontSize:50,lineHeight:1,color:"#ef4444",animation:"sr-pulse 1s ease-in-out infinite"}}>🎙️</div>
+                        <div style={{fontSize:30,fontWeight:900,fontFamily:"monospace",color:"#ef4444"}}>
+                          {String(Math.floor(recRadioSeconds/60)).padStart(2,"0")}:{String(recRadioSeconds%60).padStart(2,"0")}
+                        </div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#ef4444"}}>● {t("playlist.recordingInProgress")}</div>
+                        <button className="sr-btn sr-btn-danger" type="button" onClick={stopRecRadio}>
+                          ⏹ {t("playlist.recordingStopButton")}
+                        </button>
+                      </>
+                    )}
+                    {recRadioState === "recorded" && recRadioAudioUrl && (
+                      <>
+                        <div style={{fontSize:50,lineHeight:1}}>✅</div>
+                        <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>{t("playlist.recordingDoneHint")}</div>
+                        <audio controls src={recRadioAudioUrl} style={{width:"100%",maxWidth:380}} />
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
+                          <button className="sr-btn sr-btn-ghost" type="button" onClick={resetRecRadio} disabled={recRadioUploading}>
+                            🔄 {t("playlist.newRecordingButton")}
+                          </button>
+                          <button className="sr-btn sr-btn-primary" type="button" onClick={() => void addRecordingToPlaylist()} disabled={recRadioUploading}>
+                            {recRadioUploading ? t("playlist.uploading") : `＋ ${t("playlist.addRecordingToListButton")}`}
+                          </button>
+                        </div>
+                        {recRadioError && (
+                          <div className="sr-alert sr-alert-error" style={{margin:0}}>
+                            <span>⚠️</span><span>{recRadioError}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Összesítő + Összeállít */}
+              {plItems.filter((i) => i.status === "ready").length > 0 && (
+                <>
+                  <div className="sr-total-bar">
+                    <span>📋 {t("playlist.totalBar", { count: plItems.filter((i) => i.status === "ready").length })}</span>
+                    <span>{fmtDuration(plTotalSec)}</span>
+                  </div>
+
+                  <div style={{ padding: "10px 14px", display: "flex", gap: 8, alignItems: "center" }}>
+                    <input
+                      className="sr-input"
+                      style={{ flex: 1 }}
+                      placeholder={t("playlist.namePlaceholder")}
+                      value={plName}
+                      onChange={(e) => setPlName(stripAccents(e.target.value))}
+                    />
+                    <button
+                      className={`sr-btn sr-btn-primary${plBusy ? " sr-build-busy" : ""}`}
+                      type="button"
+                      disabled={plBusy}
+                      onClick={buildPlaylist}>
+                      {plBusy ? t("playlist.building") : t("playlist.buildButton")}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Kész összeállítás */}
+              {plBuiltUrl && plBuiltName && (
+                <div className="sr-built-result">
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>✅ {t("playlist.builtDone", { name: plBuiltName })}</div>
+                  <audio controls src={plBuiltUrl} style={{ width: "100%", height: 32, borderRadius: 8 }} preload="metadata" />
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <a href={plBuiltUrl} download={plBuiltName + ".mp3"} className="sr-btn sr-btn-ghost sr-btn-sm">
+                      ⬇ {t("playlist.downloadButton")}
+                    </a>
+
+                    {plBuiltFileId && (
+                      <button
+                        className="sr-btn sr-btn-primary sr-btn-sm"
+                        type="button"
+                        onClick={() => {
+                          const n = new Date();
+                          setFormFileId(plBuiltFileId);
+                          setFormDate(n.toISOString().slice(0, 10));
+                          setFormTime(
+                            `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
+                          );
+                          setFormOpen(true);
+                        }}
+                      >
+                        📅 {t("schedule.scheduleButton")}
+                      </button>
+                    )}
+
+                    <button
+                      className="sr-btn sr-btn-ghost sr-btn-sm"
+                      type="button"
+                      onClick={() => {
+                        setPlBuiltUrl(null);
+                        setPlBuiltFileId(null);
+                        setPlItems([]);
+                        setPlName("");
+                      }}
+                    >
+                      🔄 {t("playlist.newCompositionButton")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              </>
+            )}
 
             {/* ── YouTube tab ───────────────────────────────────────────── */}
             {sourceTab === "youtube" && (
@@ -2436,21 +2918,6 @@ export default function SchoolRadio() {
                 <div className="sr-upload-bar" style={{ width: `${uploadPct}%` }} />
               </div>
             )}
-
-            {/* Lejátszási lista készítő – modálisan nyílik, hogy ne foglalja
-                állandóan a helyet a napi műveletek (azonnali lejátszás,
-                ütemezés) elől. */}
-            <div style={{ padding: "10px 16px 0" }}>
-              <button
-                className="sr-btn sr-btn-ghost"
-                type="button"
-                style={{ width: "100%" }}
-                onClick={() => setPlBuilderOpen(true)}
-              >
-                🎼 {t("playlist.openBuilderButton")}
-                {plItems.length > 0 && ` (${plItems.length})`}
-              </button>
-            </div>
 
             {/* Cél választó a könyvtárban – a ▶ Azonnali és az ütemezés
                 ugyanezt a formTarget/formTargetId state-et használja, így a
@@ -2966,501 +3433,6 @@ export default function SchoolRadio() {
                   );
                 })
               )}
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ═══ Lejátszási lista készítő – modális ═══ */}
-      {plBuilderOpen && (
-        <div className="sr-overlay" onClick={() => setPlBuilderOpen(false)}>
-          <div
-            className="sr-overlay-modal"
-            style={{ maxWidth: 860 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sr-overlay-hdr">
-              <div className="sr-overlay-title">🎼 {t("playlist.title")}</div>
-              <button
-                className="sr-overlay-close"
-                type="button"
-                onClick={() => setPlBuilderOpen(false)}
-                aria-label={t("common:actions.close")}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="sr-overlay-body">
-            <div className="sr-panel">
-              <div className="sr-panel-hdr">
-                <div className="sr-panel-title">🎼 {t("playlist.title")}</div>
-                {plItems.length > 0 && (
-                  <button
-                    className="sr-btn sr-btn-danger sr-btn-sm"
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(t("playlist.deleteConfirm"))) setPlItems([]);
-                    }}
-                  >
-                    🗑 {t("common:actions.delete")}
-                  </button>
-                )}
-              </div>
-
-              {/* Tabs */}
-              <div className="sr-tabs">
-                {([
-                  { id: "list", label: `📋 ${t("playlist.tabs.list")} (${plItems.length})` },
-                  { id: "yt-search", label: `🔍 ${t("playlist.tabs.youtubeSearch")}` },
-                  { id: "yt-url", label: `🔗 ${t("playlist.tabs.youtubeLink")}` },
-                  { id: "gdrive", label: `📁 ${t("playlist.tabs.googleDrive")}` },
-                  { id: "recording", label: `🎙️ ${t("playlist.tabs.recording")}` },
-                ] as const).map((tab) => (
-                  <button
-                    key={tab.id}
-                    className={`sr-tab${plTab === tab.id ? " active" : ""}`}
-                    type="button"
-                    onClick={() => setPlTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {plError && (
-                <div style={{ margin: "10px 14px 0" }} className="sr-alert sr-alert-error">
-                  ⚠️ {plError}
-                  <button
-                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#dc2626" }}
-                    onClick={() => setPlError(null)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* Lista tab */}
-              {plTab === "list" && (
-                <div style={{ padding: "12px 14px" }}>
-                  {plItems.length === 0 ? (
-                    <div className="sr-empty" style={{ padding: "28px 20px" }}>
-                      <div className="sr-empty-icon">🎼</div>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>{t("playlist.emptyTitle")}</div>
-                      <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>
-                        {t("playlist.emptyHint")}
-                      </div>
-                    </div>
-                  ) : (
-                    plItems.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className="sr-pl-item"
-                        draggable
-                        onDragStart={() => onDragStart(idx)}
-                        onDragOver={(e) => onDragOver(e, idx)}
-                      >
-                        <span className="sr-pl-drag">⠿</span>
-                        <span className="sr-pl-num">{idx + 1}</span>
-
-                        <div className="sr-pl-info">
-                          <div className="sr-pl-title" title={item.title}>
-                            {item.status === "fetching" ? "⏳ " : item.status === "error" ? "❌ " : ""}
-                            {item.title}
-                          </div>
-
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-                            <span
-                              className={`sr-pl-src sr-pl-src-${
-                                item.source === "youtube" ? "yt" : item.source === "gdrive" ? "gd" : item.source === "recording" ? "rec" : "up"
-                              }`}
-                            >
-                              {item.source === "youtube" ? "▶ YouTube" : item.source === "gdrive" ? `📁 ${t("playlist.sourceDrive")}` : item.source === "recording" ? `🎙️ ${t("playlist.sourceRecording")}` : `🎵 ${t("playlist.sourceUpload")}`}
-                            </span>
-                            <span className="sr-pl-dur">{fmtDuration(item.durationSec)}</span>
-                            {item.errorMsg && <span style={{ fontSize: 10, color: "#dc2626" }}>{item.errorMsg}</span>}
-                          </div>
-                        </div>
-
-                        {(item.audioPreviewUrl || item.source === "upload") && (
-                          <audio controls src={item.audioPreviewUrl} style={{ height: 24, width: 80 }} preload="none" />
-                        )}
-
-                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            className="sr-btn sr-btn-ghost sr-btn-sm"
-                            disabled={idx === 0}
-                            onClick={() =>
-                              setPlItems((prev) => {
-                                const n = [...prev];
-                                [n[idx - 1], n[idx]] = [n[idx], n[idx - 1]];
-                                return n;
-                              })
-                            }
-                          >
-                            ↑
-                          </button>
-
-                          <button
-                            type="button"
-                            className="sr-btn sr-btn-ghost sr-btn-sm"
-                            disabled={idx === plItems.length - 1}
-                            onClick={() =>
-                              setPlItems((prev) => {
-                                const n = [...prev];
-                                [n[idx], n[idx + 1]] = [n[idx + 1], n[idx]];
-                                return n;
-                              })
-                            }
-                          >
-                            ↓
-                          </button>
-
-                          <button
-                            type="button"
-                            className="sr-btn sr-btn-danger sr-btn-sm"
-                            onClick={() => setPlItems((prev) => prev.filter((_, j) => j !== idx))}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-
-                  {/* Fájl feltöltés a listához */}
-                  <div style={{ marginTop: 10 }}>
-                    <input
-                      ref={plFileInputRef}
-                      type="file"
-                      accept="audio/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handlePlUpload(f);
-                        e.target.value = "";
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="sr-btn sr-btn-ghost"
-                      style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
-                      onClick={() => plFileInputRef.current?.click()}
-                    >
-                      ＋ {t("playlist.uploadToListButton")}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* YT keresés tab */}
-              {plTab === "yt-search" && (
-                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      className="sr-input"
-                      style={{ flex: 1 }}
-                      placeholder={t("playlist.youtubeSearchPlaceholder")}
-                      value={ytQuery}
-                      onChange={(e) => setYtQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && searchYt()}
-                    />
-                    <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" onClick={searchYt} disabled={ytSearching}>
-                      {ytSearching ? "⏳" : "🔍"}
-                    </button>
-                  </div>
-
-                  {ytResults.length > 0 && (
-                    <>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {ytResults.map((r) => (
-                          <div
-                            key={r.id}
-                            className={`sr-search-result${ytSelResult === r.id ? " sel" : ""}`}
-                            onClick={() => setYtSelResult(ytSelResult === r.id ? null : r.id)}
-                          >
-                            <img
-                              src={`https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`}
-                              alt=""
-                              className="sr-search-thumb"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div style={{ minWidth: 0 }}>
-                              <div className="sr-search-title">{r.title}</div>
-                              <div className="sr-search-meta">⏱ {r.duration}</div>
-                            </div>
-                            {ytSelResult === r.id && <span style={{ color: "#3b82f6", fontSize: 18 }}>✓</span>}
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        className="sr-btn sr-btn-primary"
-                        type="button"
-                        style={{ justifyContent: "center" }}
-                        disabled={!ytSelResult}
-                        onClick={addYtSearchResult}
-                      >
-                        ＋ {t("playlist.addToListButton")}
-                      </button>
-                    </>
-                  )}
-
-                  {ytResults.length === 0 && !ytSearching && ytQuery && (
-                    <div style={{ textAlign: "center", fontSize: 13, color: "var(--sl-muted)", padding: "12px 0" }}>
-                      {t("playlist.noResults")}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* YT URL tab */}
-              {plTab === "yt-url" && (
-                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
-                    {t("playlist.youtubeUrlHint")}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      className="sr-input"
-                      style={{ flex: 1 }}
-                      placeholder="https://youtube.com/watch?v=..."
-                      value={ytPasteUrl}
-                      onChange={(e) => setYtPasteUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addYtUrl()}
-                    />
-                    <button
-                      className="sr-btn sr-btn-ghost sr-btn-sm"
-                      type="button"
-                      onClick={async () => {
-                        const clip = await navigator.clipboard.readText().catch(() => "");
-                        if (clip) setYtPasteUrl(clip);
-                      }}
-                    >
-                      📋 {t("playlist.pasteButton")}
-                    </button>
-                  </div>
-
-                  <button
-                    className="sr-btn sr-btn-primary"
-                    type="button"
-                    style={{ justifyContent: "center" }}
-                    disabled={ytFetching || !ytPasteUrl.trim()}
-                    onClick={addYtUrl}
-                  >
-                    {ytFetching ? t("common:actions.loading") : `＋ ${t("common:actions.add")}`}
-                  </button>
-                </div>
-              )}
-
-              {/* Drive tab */}
-              {plTab === "gdrive" && (
-                <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
-                    {t("playlist.googleDriveHint")}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      className="sr-input"
-                      style={{ flex: 1 }}
-                      placeholder="https://drive.google.com/..."
-                      value={driveUrl}
-                      onChange={(e) => setDriveUrl(e.target.value)}
-                    />
-                    <button
-                      className="sr-btn sr-btn-ghost sr-btn-sm"
-                      type="button"
-                      onClick={async () => {
-                        const clip = await navigator.clipboard.readText().catch(() => "");
-                        if (clip) setDriveUrl(clip);
-                      }}
-                    >
-                      📋
-                    </button>
-                  </div>
-
-                  <button
-                    className="sr-btn sr-btn-primary sr-btn-sm"
-                    type="button"
-                    style={{ justifyContent: "center" }}
-                    disabled={driveFetching || !driveUrl.trim()}
-                    onClick={fetchDrive}
-                  >
-                    {driveFetching ? t("common:actions.loading") : t("playlist.driveFetchButton")}
-                  </button>
-
-                  {driveFiles.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--sl-muted)" }}>
-                        {t("playlist.driveFilesFound", { count: driveFiles.length })}
-                      </div>
-                      {driveFiles.map((f, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            padding: "7px 10px",
-                            border: "1px solid var(--sl-border)",
-                            borderRadius: 10,
-                            background: "var(--sl-bg)",
-                          }}
-                        >
-                          <span
-                            style={{
-                              flex: 1,
-                              fontSize: 13,
-                              fontWeight: 700,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            🎵 {f.name}
-                          </span>
-                          {f.durationSec && <span style={{ fontSize: 11, color: "var(--sl-muted)" }}>{fmtDuration(f.durationSec)}</span>}
-                          <button className="sr-btn sr-btn-primary sr-btn-sm" type="button" onClick={() => addDriveFile(f)}>
-                            ＋
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Hangfelvétel tab – mikrofon → blob → /radio/files upload → playlist item */}
-              {plTab === "recording" && (
-                <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
-                  <div style={{fontSize:12,color:"var(--sl-muted)"}}>
-                    {t("playlist.recordingHint")}
-                  </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"22px 16px",border:"1.5px solid var(--sl-border)",borderRadius:14,background:"var(--sl-bg)"}}>
-                    {recRadioState === "idle" && (
-                      <>
-                        <div style={{fontSize:50,lineHeight:1}}>🎙️</div>
-                        <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>
-                          {t("playlist.recordingStartHint")}
-                        </div>
-                        <button className="sr-btn sr-btn-primary" type="button" onClick={() => void startRecRadio()}>
-                          ⏺ {t("playlist.recordingStartButton")}
-                        </button>
-                        {recRadioError && (
-                          <div className="sr-alert sr-alert-error" style={{margin:0}}>
-                            <span>⚠️</span><span>{recRadioError}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {recRadioState === "recording" && (
-                      <>
-                        <div style={{fontSize:50,lineHeight:1,color:"#ef4444",animation:"sr-pulse 1s ease-in-out infinite"}}>🎙️</div>
-                        <div style={{fontSize:30,fontWeight:900,fontFamily:"monospace",color:"#ef4444"}}>
-                          {String(Math.floor(recRadioSeconds/60)).padStart(2,"0")}:{String(recRadioSeconds%60).padStart(2,"0")}
-                        </div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#ef4444"}}>● {t("playlist.recordingInProgress")}</div>
-                        <button className="sr-btn sr-btn-danger" type="button" onClick={stopRecRadio}>
-                          ⏹ {t("playlist.recordingStopButton")}
-                        </button>
-                      </>
-                    )}
-                    {recRadioState === "recorded" && recRadioAudioUrl && (
-                      <>
-                        <div style={{fontSize:50,lineHeight:1}}>✅</div>
-                        <div style={{fontSize:13,color:"var(--sl-muted)",textAlign:"center"}}>{t("playlist.recordingDoneHint")}</div>
-                        <audio controls src={recRadioAudioUrl} style={{width:"100%",maxWidth:380}} />
-                        <div style={{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center"}}>
-                          <button className="sr-btn sr-btn-ghost" type="button" onClick={resetRecRadio} disabled={recRadioUploading}>
-                            🔄 {t("playlist.newRecordingButton")}
-                          </button>
-                          <button className="sr-btn sr-btn-primary" type="button" onClick={() => void addRecordingToPlaylist()} disabled={recRadioUploading}>
-                            {recRadioUploading ? t("playlist.uploading") : `＋ ${t("playlist.addRecordingToListButton")}`}
-                          </button>
-                        </div>
-                        {recRadioError && (
-                          <div className="sr-alert sr-alert-error" style={{margin:0}}>
-                            <span>⚠️</span><span>{recRadioError}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Összesítő + Összeállít */}
-              {plItems.filter((i) => i.status === "ready").length > 0 && (
-                <>
-                  <div className="sr-total-bar">
-                    <span>📋 {t("playlist.totalBar", { count: plItems.filter((i) => i.status === "ready").length })}</span>
-                    <span>{fmtDuration(plTotalSec)}</span>
-                  </div>
-
-                  <div style={{ padding: "10px 14px", display: "flex", gap: 8, alignItems: "center" }}>
-                    <input
-                      className="sr-input"
-                      style={{ flex: 1 }}
-                      placeholder={t("playlist.namePlaceholder")}
-                      value={plName}
-                      onChange={(e) => setPlName(stripAccents(e.target.value))}
-                    />
-                    <button
-                      className={`sr-btn sr-btn-primary${plBusy ? " sr-build-busy" : ""}`}
-                      type="button"
-                      disabled={plBusy}
-                      onClick={buildPlaylist}>
-                      {plBusy ? t("playlist.building") : t("playlist.buildButton")}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* Kész összeállítás */}
-              {plBuiltUrl && plBuiltName && (
-                <div className="sr-built-result">
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>✅ {t("playlist.builtDone", { name: plBuiltName })}</div>
-                  <audio controls src={plBuiltUrl} style={{ width: "100%", height: 32, borderRadius: 8 }} preload="metadata" />
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={plBuiltUrl} download={plBuiltName + ".mp3"} className="sr-btn sr-btn-ghost sr-btn-sm">
-                      ⬇ {t("playlist.downloadButton")}
-                    </a>
-
-                    {plBuiltFileId && (
-                      <button
-                        className="sr-btn sr-btn-primary sr-btn-sm"
-                        type="button"
-                        onClick={() => {
-                          const n = new Date();
-                          setFormFileId(plBuiltFileId);
-                          setFormDate(n.toISOString().slice(0, 10));
-                          setFormTime(
-                            `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
-                          );
-                          setFormOpen(true);
-                        }}
-                      >
-                        📅 {t("schedule.scheduleButton")}
-                      </button>
-                    )}
-
-                    <button
-                      className="sr-btn sr-btn-ghost sr-btn-sm"
-                      type="button"
-                      onClick={() => {
-                        setPlBuiltUrl(null);
-                        setPlBuiltFileId(null);
-                        setPlItems([]);
-                        setPlName("");
-                      }}
-                    >
-                      🔄 {t("playlist.newCompositionButton")}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
             </div>
           </div>
         </div>
