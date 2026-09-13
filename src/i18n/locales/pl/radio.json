@@ -45,7 +45,11 @@
     "restoreTooltip": "Lista wróci do początkowych 16 stacji (własne wpisy zostaną utracone)",
     "restoreButton": "Przywróć domyślne",
     "footerHint": "Warto sprawdzić adresy URL substreamów na myonlineradio.hu. Lista jest zapisywana w przeglądarce (dla danej placówki i urządzenia)",
-    "footerHintAdminSuffix": " – przyciskiem ⭐ możesz ustawić ją jako domyślną dla całej placówki."
+    "footerHintAdminSuffix": " – przyciskiem ⭐ możesz ustawić ją jako domyślną dla całej placówki.",
+    "scheduleTooltip": "Zaplanuj odtwarzanie",
+    "scheduleTitle": "Zaplanuj: {{name}}",
+    "scheduleEndHint": "Odtwarzanie zatrzyma się o ustawionej godzinie.",
+    "scheduleNoEndHint": "Bez godziny zakończenia audycja trwa do ręcznego zatrzymania."
   },
   "library": {
     "uploading": "Przesyłanie… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Wczytaj",
     "clearSelection": "Inny film",
     "goLiveButton": "Wyślij na żywo",
-    "scheduleButton": "Zaplanuj"
+    "scheduleButton": "Zaplanuj",
+    "startPositionLabel": "Pozycja startowa",
+    "startPositionOptional": "(opcjonalnie)",
+    "startPositionHint": "Np. 1:30 lub 1:05:20 – stąd rusza wideo. Puste = od początku.",
+    "startPositionInvalid": "Nieprawidłowy format – np. 1:30 lub 1:05:20.",
+    "useCurrentPosition": "Bieżąca pozycja",
+    "useCurrentPositionTooltip": "Wstaw pozycję, na której zatrzymany jest podgląd"
   },
   "live": {
     "play": "Wznów",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Minione odtworzenia",
     "noPast": "Nie było jeszcze żadnego odtworzenia",
     "rescheduleTooltip": "Przeplanuj",
-    "replayButton": "Ponownie"
+    "replayButton": "Ponownie",
+    "rescheduleStreamHint": "Zaplanowane radio internetowe – zaplanuj ponownie przyciskiem ⏰ w zakładce Radio internetowe"
   },
   "status": {
     "pending": "Oczekuje",

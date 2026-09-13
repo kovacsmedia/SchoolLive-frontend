@@ -20,7 +20,11 @@ type RadioFile = {
 
 type RadioSchedule = {
   id: string;
-  radioFileId: string;
+  // Internetrádió-ütemezésnél nincs fájl: a forrás a streamUrl. Pontosan az
+  // egyik van kitöltve – ld. backend RadioSchedule.
+  radioFileId: string | null;
+  streamUrl: string | null;
+  streamTitle: string | null;
   targetType: string;
   targetId: string | null;
   scheduledAt: string;
@@ -33,8 +37,23 @@ type RadioSchedule = {
     originalName: string;
     durationSec: number | null;
     fileUrl: string;
-  };
+  } | null;
 };
+
+/** Megjelenítendő név: fájlnál a fájlnév, streamnél az állomásnév. */
+function schedName(s: RadioSchedule): string {
+  return s.radioFile?.originalName ?? s.streamTitle ?? "Internetrádió";
+}
+/**
+ * Hossz másodpercben. Streamnél nincs fájlhossz – ha van vége-időpont, abból
+ * számoljuk (ez adja a haladásjelzőt is); enélkül ismeretlen.
+ */
+function schedDurationSec(s: RadioSchedule): number | null {
+  if (s.radioFile) return s.radioFile.durationSec;
+  if (!s.endsAt) return null;
+  const sec = Math.round((new Date(s.endsAt).getTime() - new Date(s.scheduledAt).getTime()) / 1000);
+  return sec > 0 ? sec : null;
+}
 
 type Device = { id: string; name: string; online: boolean; deviceClass: string };
 type DeviceGroup = { id: string; name: string };
@@ -188,6 +207,24 @@ function fmtDuration(sec: number | null | undefined): string {
   const s = sec % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/*
+ * fmtDuration fordítottja: "1:23:45", "2:30" vagy "90" → másodperc.
+ *
+ * Szándékosan megengedő, mert szabad szöveges mezőből jön: a részeket
+ * jobbról balra olvassuk (mp, perc, óra), így a "90" 90 másodperc, a "1:30"
+ * másfél perc. Érvénytelen bemenetnél null – a hívó ilyenkor a videó
+ * elejéről indít, nem pedig valami félreértett pozícióról.
+ */
+function parseHms(text: string): number | null {
+  const raw = text.trim();
+  if (!raw) return null;
+  if (!/^\d{1,2}(:\d{1,2}){0,2}$/.test(raw)) return null;
+  const parts = raw.split(":").map(Number);
+  if (parts.some((n) => !Number.isFinite(n))) return null;
+  const sec = parts.reverse().reduce((acc, n, i) => acc + n * Math.pow(60, i), 0);
+  return sec >= 0 ? sec : null;
 }
 
 function fmtSize(bytes: number): string {
@@ -689,6 +726,24 @@ export default function SchoolRadio() {
   const [ytLiveScheduleTime,  setYtLiveScheduleTime]  = useState("");
   const [ytLiveScheduleBusy,  setYtLiveScheduleBusy]  = useState(false);
   const [ytLiveScheduleError, setYtLiveScheduleError] = useState<string | null>(null);
+  const [ytLiveScheduleEnd,   setYtLiveScheduleEnd]   = useState("");
+  /*
+   * Indulási pozíció a kiválasztott videóban ("m:ss" / "h:mm:ss").
+   *
+   * ÜRESEN HAGYVA az élő indítás a régi viselkedést tartja: onnan szól,
+   * ahol az előnézet éppen áll. Kitöltve viszont EZ az erősebb – a mező a
+   * szándékot rögzíti, az előnézet csak oda-vissza tekergetés közben álló
+   * pillanatnyi állapot.
+   */
+  const [ytStartPos, setYtStartPos] = useState("");
+
+  // ── Internetrádió időzítése (állomásonként nyíló sor-panel) ─────────────
+  const [stationSchedId,    setStationSchedId]    = useState<string | null>(null);
+  const [stationSchedDate,  setStationSchedDate]  = useState("");
+  const [stationSchedTime,  setStationSchedTime]  = useState("");
+  const [stationSchedEnd,   setStationSchedEnd]   = useState("");
+  const [stationSchedBusy,  setStationSchedBusy]  = useState(false);
+  const [stationSchedError, setStationSchedError] = useState<string | null>(null);
   const ytPlayerRef   = useRef<any>(null);
   const ytPlayerElRef = useRef<HTMLDivElement | null>(null);
 
@@ -819,10 +874,14 @@ export default function SchoolRadio() {
     setYtLiveGoingLive(true);
     setYtLiveError(null);
     try {
-      // Az élő adás onnan a pozíciótól induljon, ahol az előnézetablakban áll –
-      // ezt MOST, indítás előtt olvassuk ki, mielőtt a helyi lejátszó a
-      // "🔴 Élő adásba küldés" utáni állapotváltásokkal esetleg továbbmegy.
-      const startAtSec = Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0));
+      // Indulási pozíció: ha a mező ki van töltve, AZ dönt – az a felhasználó
+      // kimondott szándéka. Üresen a régi viselkedés marad: onnan indul, ahol
+      // az előnézet áll; ezt MOST olvassuk ki, mielőtt a "🔴 Élő adásba
+      // küldés" utáni állapotváltásokkal a lejátszó továbbmenne.
+      const typedStart  = parseHms(ytStartPos);
+      const startAtSec  = typedStart !== null
+        ? typedStart
+        : Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0));
       const watchUrl = `https://www.youtube.com/watch?v=${ytLiveVideoId}`;
       const resolved = await apiFetch<{ ok: boolean; url: string; title: string; durationSec: number | null }>(
         `/radio/yt-live-url?url=${encodeURIComponent(watchUrl)}`
@@ -833,6 +892,10 @@ export default function SchoolRadio() {
         targetType: ytLiveTargetType,
         streamVolume,
         durationSec: resolved.durationSec ?? ytLiveDurationSec ?? undefined,
+        // Véges, pozicionálható média – nem végtelen élő adás. Enélkül a
+        // szerver nem tud beljebb ugrani: a seek-sáv tekerése a videó
+        // elejéről indítaná újra a lejátszást.
+        seekable: true,
       };
       if (ytLiveTargetType !== "ALL") body.targetId = ytLiveTargetId;
       await apiFetch("/radio/play-stream", {
@@ -869,13 +932,25 @@ export default function SchoolRadio() {
     setYtLiveScheduleBusy(true);
     setYtLiveScheduleError(null);
     try {
-      const scheduledAt = new Date(`${ytLiveScheduleDate}T${ytLiveScheduleTime}:00`).toISOString();
+      const startDate = new Date(`${ytLiveScheduleDate}T${ytLiveScheduleTime}:00`);
+      // Vége-időpont: ha a kezdésnél korábbi, a következő napra csúszik –
+      // ugyanaz az éjfél-átfordulás, mint a hangfájl-ütemezésnél.
+      const endDate = ytLiveScheduleEnd
+        ? (() => {
+            const d = new Date(`${ytLiveScheduleDate}T${ytLiveScheduleEnd}:00`);
+            if (ytLiveScheduleEnd <= ytLiveScheduleTime) d.setDate(d.getDate() + 1);
+            return d;
+          })()
+        : null;
       const body: any = {
         url: `https://www.youtube.com/watch?v=${ytLiveVideoId}`,
         title: ytLiveTitle,
         targetType: ytLiveTargetType,
-        scheduledAt,
+        scheduledAt: startDate.toISOString(),
       };
+      if (endDate) body.endsAt = endDate.toISOString();
+      const startSec = parseHms(ytStartPos);
+      if (startSec !== null && startSec > 0) body.startSec = startSec;
       if (ytLiveTargetType !== "ALL") body.targetId = ytLiveTargetId;
       await apiFetch("/radio/youtube/schedule", {
         method: "POST",
@@ -883,6 +958,7 @@ export default function SchoolRadio() {
         body: JSON.stringify(body),
       });
       setYtLiveScheduleOpen(false);
+      setYtLiveScheduleEnd("");
       await loadAll();
     } catch (e: any) {
       setYtLiveScheduleError(e?.message ?? t("errors.playNowFailed"));
@@ -1005,7 +1081,9 @@ export default function SchoolRadio() {
     const playing = schedules.find((s) => {
       if (s.status === "CANCELLED" || s.status === "PENDING") return false;
       const start = new Date(s.dispatchedAt ?? s.scheduledAt);
-      const dur = s.radioFile.durationSec;
+      // Nyitott végű stream (nincs vége-időpont) itt nem követhető – arról a
+      // snap-mixer állapotát pollozó `manualNowPlaying` ág tudósít.
+      const dur = schedDurationSec(s);
       if (!dur) return false;
       return now >= start && now <= new Date(start.getTime() + dur * 1000);
     });
@@ -1013,8 +1091,8 @@ export default function SchoolRadio() {
     setNowPlaying(
       playing
         ? {
-            name: playing.radioFile.originalName,
-            durationSec: playing.radioFile.durationSec,
+            name: schedName(playing),
+            durationSec: schedDurationSec(playing),
             startsAt: new Date(playing.dispatchedAt ?? playing.scheduledAt),
           }
         : null
@@ -1105,6 +1183,83 @@ export default function SchoolRadio() {
   }
 
   // ── Internetrádió: stream indítás egy állomás kiválasztott alstream-jével ──
+  /** Az állomás időzítés-panelének nyitása/zárása, mai dátummal előtöltve. */
+  function toggleStationSchedule(station: NetRadio) {
+    if (stationSchedId === station.id) { setStationSchedId(null); return; }
+    const n = new Date();
+    setStationSchedDate(n.toISOString().slice(0, 10));
+    setStationSchedTime(
+      `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
+    );
+    setStationSchedEnd("");
+    setStationSchedError(null);
+    setStationSchedId(station.id);
+  }
+
+  /*
+   * Internetrádió időzítése.
+   *
+   * A `/radio/play-stream`-mel szemben itt NEM indul most semmi: a backend egy
+   * RadioSchedule sort hoz létre a stream URL-jével, és az ütemező indítja el
+   * a megadott időpontban. Fájl nem készül – az állomás élő adás.
+   */
+  async function scheduleStation(station: NetRadio) {
+    setStationSchedError(null);
+    const idx    = streamPick[station.id] ?? 0;
+    const stream = station.streams[idx];
+    const url    = (stream?.url ?? "").trim();
+    if (!url) {
+      setStationSchedError(t("errors.emptyStreamUrl", { name: station.name }));
+      return;
+    }
+    if (streamTargetType !== "ALL" && !streamTargetId) {
+      setStationSchedError(t("errors.chooseTarget"));
+      return;
+    }
+    if (!stationSchedDate || !stationSchedTime) return;
+
+    const startDate = new Date(`${stationSchedDate}T${stationSchedTime}:00`);
+    if (isNaN(startDate.getTime())) {
+      setStationSchedError(t("errors.invalidDateTime"));
+      return;
+    }
+    if (startDate < new Date()) {
+      setStationSchedError(t("errors.pastDateTime"));
+      return;
+    }
+    // Éjfél-átfordulás, ugyanaz, mint a többi ütemezésnél.
+    const endDate = stationSchedEnd
+      ? (() => {
+          const d = new Date(`${stationSchedDate}T${stationSchedEnd}:00`);
+          if (stationSchedEnd <= stationSchedTime) d.setDate(d.getDate() + 1);
+          return d;
+        })()
+      : null;
+
+    setStationSchedBusy(true);
+    try {
+      const body: any = {
+        url,
+        title: `${station.name}${stream.label && stream.label !== "Főadás" ? " · " + stream.label : ""}`,
+        targetType:  streamTargetType,
+        scheduledAt: startDate.toISOString(),
+      };
+      if (endDate) body.endsAt = endDate.toISOString();
+      if (streamTargetType !== "ALL") body.targetId = streamTargetId;
+      await apiFetch("/radio/stations/schedule", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(body),
+      });
+      setStationSchedId(null);
+      await loadAll();
+    } catch (e: any) {
+      setStationSchedError(e?.message ?? t("errors.playNowFailed"));
+    } finally {
+      setStationSchedBusy(false);
+    }
+  }
+
   async function playStation(station: NetRadio) {
     setStreamError(null);
     const idx = streamPick[station.id] ?? 0;
@@ -2611,9 +2766,57 @@ export default function SchoolRadio() {
                         🎬 {ytLiveTitle}
                       </div>
                       <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                        onClick={() => { setYtLiveVideoId(null); setYtLiveIsLive(false); ytPlayerRef.current = null; }}>
+                        onClick={() => { setYtLiveVideoId(null); setYtLiveIsLive(false); setYtStartPos(""); ytPlayerRef.current = null; }}>
                         ✕ {t("youtube.clearSelection")}
                       </button>
+                    </div>
+
+                    {/* ── Indulási pozíció ─────────────────────────────────
+                        Élő indításnál és időzítésnél EGYARÁNT innen indul a
+                        videó. Időzítésnél a szerver a letöltött hangból vágja
+                        le az elejét, tehát a beállítás akkor is érvényes, ha
+                        a lejátszás csak órákkal később történik. */}
+                    <div>
+                      <label className="sr-label">
+                        ⏱ {t("youtube.startPositionLabel")}
+                        <span style={{fontWeight:600,color:"var(--sl-muted)",marginLeft:6}}>
+                          {t("youtube.startPositionOptional")}
+                        </span>
+                      </label>
+                      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <input
+                          type="text"
+                          className="sr-input"
+                          style={{maxWidth:130}}
+                          placeholder="0:00"
+                          inputMode="numeric"
+                          value={ytStartPos}
+                          onChange={(e) => setYtStartPos(e.target.value)}
+                        />
+                        <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                          onClick={() => setYtStartPos(
+                            fmtDuration(Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0)))
+                          )}
+                          title={t("youtube.useCurrentPositionTooltip")}>
+                          🎯 {t("youtube.useCurrentPosition")}
+                        </button>
+                        {ytStartPos && (
+                          <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                            onClick={() => setYtStartPos("")}>
+                            ✕
+                          </button>
+                        )}
+                        {ytLiveDurationSec ? (
+                          <span style={{fontSize:12,color:"var(--sl-muted)"}}>
+                            / {fmtDuration(ytLiveDurationSec)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+                        {ytStartPos && parseHms(ytStartPos) === null
+                          ? `⚠️ ${t("youtube.startPositionInvalid")}`
+                          : `💡 ${t("youtube.startPositionHint")}`}
+                      </div>
                     </div>
 
                     {/* Cél választó – a YouTube fül saját ytLiveTargetType/Id állapota,
@@ -2689,6 +2892,21 @@ export default function SchoolRadio() {
                             <input type="time" className="sr-input"
                               value={ytLiveScheduleTime}
                               onChange={(e) => setYtLiveScheduleTime(e.target.value)} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="sr-label">
+                            {t("schedule.endTimeLabel")}
+                            <span style={{fontWeight:600,color:"var(--sl-muted)",marginLeft:6}}>
+                              {t("schedule.endTimeOptional")}
+                            </span>
+                          </label>
+                          <input type="time" className="sr-input"
+                            value={ytLiveScheduleEnd}
+                            min={ytLiveScheduleTime || undefined}
+                            onChange={(e) => setYtLiveScheduleEnd(e.target.value)} />
+                          <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+                            💡 {t("schedule.endTimeHint")}
                           </div>
                         </div>
                         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
@@ -2809,6 +3027,13 @@ export default function SchoolRadio() {
                             title={t("netradio.previewTooltip")}>
                             🎧
                           </button>
+                          <button type="button"
+                            className={`sr-btn sr-btn-sm ${stationSchedId === r.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
+                            onClick={() => toggleStationSchedule(r)}
+                            disabled={!r.streams[safeIdx]?.url}
+                            title={t("netradio.scheduleTooltip")}>
+                            ⏰
+                          </button>
                           <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                             onClick={() => openEditStation(r)}
                             title={t("netradio.editTooltip")}>
@@ -2820,6 +3045,54 @@ export default function SchoolRadio() {
                             🗑
                           </button>
                         </div>
+
+                        {stationSchedId === r.id && (
+                          <div className="sr-panel" style={{gridColumn:"1/-1",padding:14,display:"flex",flexDirection:"column",gap:10}}>
+                            <div style={{fontSize:12,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
+                              ⏰ {t("netradio.scheduleTitle", { name: r.name })}
+                            </div>
+                            {stationSchedError && (
+                              <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{stationSchedError}</span></div>
+                            )}
+                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                              <div>
+                                <label className="sr-label">{t("schedule.dateLabel")}</label>
+                                <input type="date" className="sr-input"
+                                  value={stationSchedDate}
+                                  min={new Date().toISOString().slice(0,10)}
+                                  onChange={(e) => setStationSchedDate(e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="sr-label">{t("schedule.startTimeLabel")}</label>
+                                <input type="time" className="sr-input"
+                                  value={stationSchedTime}
+                                  onChange={(e) => setStationSchedTime(e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="sr-label">{t("schedule.endTimeLabel")}</label>
+                                <input type="time" className="sr-input"
+                                  value={stationSchedEnd}
+                                  onChange={(e) => setStationSchedEnd(e.target.value)} />
+                              </div>
+                            </div>
+                            {/* Egy élő adás magától soha nem ér véget – vége-időpont
+                                nélkül kézi leállításig szól. Ezt ki kell mondani. */}
+                            <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                              💡 {stationSchedEnd ? t("netradio.scheduleEndHint") : t("netradio.scheduleNoEndHint")}
+                            </div>
+                            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                              <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                                onClick={() => setStationSchedId(null)} disabled={stationSchedBusy}>
+                                {t("common:actions.cancel")}
+                              </button>
+                              <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
+                                onClick={() => void scheduleStation(r)}
+                                disabled={stationSchedBusy || !stationSchedDate || !stationSchedTime}>
+                                {stationSchedBusy ? t("schedule.saving") : t("schedule.addButton")}
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {netPreviewId === r.id && r.streams[safeIdx]?.url && (
                           <div className="sr-player" style={{gridColumn:"1/-1"}}>
@@ -3356,10 +3629,11 @@ export default function SchoolRadio() {
                 </div>
               ) : (
                 upcomingSchedules.map(s => {
-                  const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
+                  const dur     = schedDurationSec(s);
+                  const endTime = addSeconds(s.scheduledAt, dur);
                   const targetLabel =
                     s.targetType === "ALL" ? `📡 ${t("target.all")}` : s.targetType === "DEVICE" ? `🔊 ${t("target.device")}` : `👥 ${t("target.group")}`;
-                  const isWarn = checkTeachingHourOverlap(new Date(s.scheduledAt), s.radioFile.durationSec, mainBells);
+                  const isWarn = checkTeachingHourOverlap(new Date(s.scheduledAt), dur, mainBells);
                   return (
                     <div key={s.id} className="sr-sched-item">
                       <div>
@@ -3368,11 +3642,11 @@ export default function SchoolRadio() {
                           {endTime && <span className="sr-sched-end">→ {endTime}</span>}
                           {isWarn && <span className="sr-lesson-warn">⚠️ {t("history.lessonWarning")}</span>}
                         </div>
-                        <div className="sr-sched-file" title={s.radioFile.originalName}>
-                          🎵 {s.radioFile.originalName}
-                          {s.radioFile.durationSec && (
-                            <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>
-                          )}
+                        <div className="sr-sched-file" title={schedName(s)}>
+                          {s.radioFile ? "🎵" : "📻"} {schedName(s)}
+                          {dur ? (
+                            <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(dur)}</span>
+                          ) : null}
                         </div>
                         <div className="sr-sched-target">{targetLabel}</div>
                       </div>
@@ -3396,7 +3670,8 @@ export default function SchoolRadio() {
               ) : (
                 pastSchedules.map(s => {
                   const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.PENDING;
-                  const endTime = addSeconds(s.scheduledAt, s.radioFile.durationSec);
+                  const dur     = schedDurationSec(s);
+                  const endTime = addSeconds(s.scheduledAt, dur);
                   const targetLabel =
                     s.targetType === "ALL" ? `📡 ${t("target.all")}` : s.targetType === "DEVICE" ? `🔊 ${t("target.device")}` : `👥 ${t("target.group")}`;
                   return (
@@ -3407,19 +3682,24 @@ export default function SchoolRadio() {
                           {endTime && <span className="sr-sched-end">→ {endTime}</span>}
                           <span className="sr-badge" style={{background:badge.bg,color:badge.color,borderColor:badge.color+"44"}}>{t(statusLabelKey(s.status))}</span>
                         </div>
-                        <div className="sr-sched-file" title={s.radioFile.originalName}>
-                          🎵 {s.radioFile.originalName}
-                          {s.radioFile.durationSec && (
-                            <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(s.radioFile.durationSec)}</span>
-                          )}
+                        <div className="sr-sched-file" title={schedName(s)}>
+                          {s.radioFile ? "🎵" : "📻"} {schedName(s)}
+                          {dur ? (
+                            <span style={{color:"var(--sl-muted)",fontWeight:400}}> · {fmtDuration(dur)}</span>
+                          ) : null}
                         </div>
                         <div className="sr-sched-target">{targetLabel}</div>
                       </div>
+                      {/* Internetrádió-ütemezést nem lehet a fájl-formba tölteni
+                          (nincs RadioFile) – azt az Internetrádió fülön, az
+                          állomás ⏰ gombjával lehet újra beidőzíteni. */}
                       <button
                         className="sr-btn sr-btn-primary sr-btn-sm"
                         type="button"
-                        title={t("history.rescheduleTooltip")}
+                        disabled={!s.radioFileId}
+                        title={s.radioFileId ? t("history.rescheduleTooltip") : t("history.rescheduleStreamHint")}
                         onClick={() => {
+                          if (!s.radioFileId) return;
                           const n = new Date();
                           setFormFileId(s.radioFileId);
                           setFormDate(n.toISOString().slice(0, 10));

@@ -45,7 +45,11 @@
     "restoreTooltip": "Lista revine la cele 16 posturi inițiale (intrările proprii se pierd)",
     "restoreButton": "Restaurare implicită",
     "footerHint": "Merită verificate adresele URL ale substreamurilor pe myonlineradio.hu. Lista este stocată în browser (per instituție și dispozitiv)",
-    "footerHintAdminSuffix": " – cu butonul ⭐ o puteți seta ca implicită pentru întreaga instituție."
+    "footerHintAdminSuffix": " – cu butonul ⭐ o puteți seta ca implicită pentru întreaga instituție.",
+    "scheduleTooltip": "Programează redarea",
+    "scheduleTitle": "Programare: {{name}}",
+    "scheduleEndHint": "Redarea se oprește la ora stabilită.",
+    "scheduleNoEndHint": "Fără oră de final, emisia rulează până la oprirea manuală."
   },
   "library": {
     "uploading": "Se încarcă… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Încarcă",
     "clearSelection": "Alt videoclip",
     "goLiveButton": "Trimite live",
-    "scheduleButton": "Programează"
+    "scheduleButton": "Programează",
+    "startPositionLabel": "Poziție de pornire",
+    "startPositionOptional": "(opțional)",
+    "startPositionHint": "Ex. 1:30 sau 1:05:20 – de aici pornește videoclipul. Gol = de la început.",
+    "startPositionInvalid": "Format invalid – ex. 1:30 sau 1:05:20.",
+    "useCurrentPosition": "Poziția curentă",
+    "useCurrentPositionTooltip": "Preia poziția la care este oprită previzualizarea"
   },
   "live": {
     "play": "Continuă",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Redări trecute",
     "noPast": "Nu a existat încă nicio redare",
     "rescheduleTooltip": "Reprogramează",
-    "replayButton": "Din nou"
+    "replayButton": "Din nou",
+    "rescheduleStreamHint": "Programare radio pe internet – reprogramează cu butonul ⏰ din fila Radio pe internet"
   },
   "status": {
     "pending": "În așteptare",

@@ -45,7 +45,11 @@
     "restoreTooltip": "The list resets to the initial 16 stations (custom entries are lost)",
     "restoreButton": "Restore defaults",
     "footerHint": "It's worth checking substream URLs on myonlineradio.hu. The list is stored in the browser (per institution and device)",
-    "footerHintAdminSuffix": " – use the ⭐ button to make it the default for the whole institution."
+    "footerHintAdminSuffix": " – use the ⭐ button to make it the default for the whole institution.",
+    "scheduleTooltip": "Schedule playback",
+    "scheduleTitle": "Schedule {{name}}",
+    "scheduleEndHint": "Playback stops at the time you set.",
+    "scheduleNoEndHint": "Without an end time the broadcast runs until stopped manually."
   },
   "library": {
     "uploading": "Uploading… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Load",
     "clearSelection": "Different video",
     "goLiveButton": "Send live",
-    "scheduleButton": "Schedule"
+    "scheduleButton": "Schedule",
+    "startPositionLabel": "Start position",
+    "startPositionOptional": "(optional)",
+    "startPositionHint": "E.g. 1:30 or 1:05:20 – the video starts here. Leave empty to start from the beginning.",
+    "startPositionInvalid": "Invalid format – e.g. 1:30 or 1:05:20.",
+    "useCurrentPosition": "Current position",
+    "useCurrentPositionTooltip": "Insert the position the preview is paused at"
   },
   "live": {
     "play": "Resume",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Past playbacks",
     "noPast": "No playbacks yet",
     "rescheduleTooltip": "Reschedule",
-    "replayButton": "Replay"
+    "replayButton": "Replay",
+    "rescheduleStreamHint": "Internet radio schedule – reschedule it with the ⏰ button on the Internet radio tab"
   },
   "status": {
     "pending": "Pending",

@@ -45,7 +45,11 @@
     "restoreTooltip": "Zoznam sa vráti na pôvodných 16 staníc (vlastné položky sa stratia)",
     "restoreButton": "Obnoviť predvolené",
     "footerHint": "URL adresy substreamov si overte na myonlineradio.hu. Zoznam sa ukladá v prehliadači (podľa inštitúcie a zariadenia)",
-    "footerHintAdminSuffix": " – tlačidlom ⭐ ho môžete nastaviť ako predvolený pre celú inštitúciu."
+    "footerHintAdminSuffix": " – tlačidlom ⭐ ho môžete nastaviť ako predvolený pre celú inštitúciu.",
+    "scheduleTooltip": "Naplánovať prehrávanie",
+    "scheduleTitle": "Naplánovať: {{name}}",
+    "scheduleEndHint": "Prehrávanie sa zastaví v nastavenom čase.",
+    "scheduleNoEndHint": "Bez času ukončenia vysielanie beží až do manuálneho zastavenia."
   },
   "library": {
     "uploading": "Nahrávanie… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Načítať",
     "clearSelection": "Iné video",
     "goLiveButton": "Odoslať naživo",
-    "scheduleButton": "Naplánovať"
+    "scheduleButton": "Naplánovať",
+    "startPositionLabel": "Počiatočná pozícia",
+    "startPositionOptional": "(nepovinné)",
+    "startPositionHint": "Napr. 1:30 alebo 1:05:20 – odtiaľto sa video spustí. Prázdne = od začiatku.",
+    "startPositionInvalid": "Neplatný formát – napr. 1:30 alebo 1:05:20.",
+    "useCurrentPosition": "Aktuálna pozícia",
+    "useCurrentPositionTooltip": "Vložiť pozíciu, na ktorej stojí náhľad"
   },
   "live": {
     "play": "Pokračovať",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Odvysielané prehrávania",
     "noPast": "Zatiaľ neprebehlo žiadne prehrávanie",
     "rescheduleTooltip": "Preplánovať",
-    "replayButton": "Znova"
+    "replayButton": "Znova",
+    "rescheduleStreamHint": "Naplánované internetové rádio – znova naplánujte tlačidlom ⏰ na karte Internetové rádio"
   },
   "status": {
     "pending": "Čaká",

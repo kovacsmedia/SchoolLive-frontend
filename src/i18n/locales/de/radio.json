@@ -45,7 +45,11 @@
     "restoreTooltip": "Die Liste wird auf die ursprünglichen 16 Sender zurückgesetzt (eigene Einträge gehen verloren)",
     "restoreButton": "Standard wiederherstellen",
     "footerHint": "Substream-URLs sollten auf myonlineradio.hu geprüft werden. Die Liste wird im Browser gespeichert (pro Institution und Gerät)",
-    "footerHintAdminSuffix": " – mit der ⭐-Schaltfläche für die gesamte Institution als Standard festlegen."
+    "footerHintAdminSuffix": " – mit der ⭐-Schaltfläche für die gesamte Institution als Standard festlegen.",
+    "scheduleTooltip": "Wiedergabe planen",
+    "scheduleTitle": "{{name}} planen",
+    "scheduleEndHint": "Die Wiedergabe stoppt zum eingestellten Zeitpunkt.",
+    "scheduleNoEndHint": "Ohne Endzeit läuft die Sendung bis zum manuellen Stopp."
   },
   "library": {
     "uploading": "Wird hochgeladen… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Laden",
     "clearSelection": "Anderes Video",
     "goLiveButton": "Live senden",
-    "scheduleButton": "Zeitplan"
+    "scheduleButton": "Zeitplan",
+    "startPositionLabel": "Startposition",
+    "startPositionOptional": "(optional)",
+    "startPositionHint": "Z. B. 1:30 oder 1:05:20 – hier startet das Video. Leer lassen für den Anfang.",
+    "startPositionInvalid": "Ungültiges Format – z. B. 1:30 oder 1:05:20.",
+    "useCurrentPosition": "Aktuelle Position",
+    "useCurrentPositionTooltip": "Die aktuell in der Vorschau stehende Position übernehmen"
   },
   "live": {
     "play": "Fortsetzen",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Vergangene Wiedergaben",
     "noPast": "Noch keine Wiedergabe erfolgt",
     "rescheduleTooltip": "Neu planen",
-    "replayButton": "Erneut"
+    "replayButton": "Erneut",
+    "rescheduleStreamHint": "Internetradio-Planung – über die Schaltfläche ⏰ im Tab „Internetradio“ neu planen"
   },
   "status": {
     "pending": "Wartet",

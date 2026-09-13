@@ -45,7 +45,11 @@
     "restoreTooltip": "Листа ће се вратити на почетних 16 станица (сопствени уноси ће бити изгубљени)",
     "restoreButton": "Врати подразумевано",
     "footerHint": "URL адресе подтокова вреди проверити на myonlineradio.hu. Листа се чува у прегледачу (по установи и уређају)",
-    "footerHintAdminSuffix": " – дугметом ⭐ можете је подесити као подразумевану за целу установу."
+    "footerHintAdminSuffix": " – дугметом ⭐ можете је подесити као подразумевану за целу установу.",
+    "scheduleTooltip": "Закажи репродукцију",
+    "scheduleTitle": "Закажи: {{name}}",
+    "scheduleEndHint": "Репродукција се зауставља у подешено време.",
+    "scheduleNoEndHint": "Без времена завршетка емисија траје до ручног заустављања."
   },
   "library": {
     "uploading": "Отпремање… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Учитај",
     "clearSelection": "Други видео",
     "goLiveButton": "Пошаљи уживо",
-    "scheduleButton": "Заказивање"
+    "scheduleButton": "Заказивање",
+    "startPositionLabel": "Почетна позиција",
+    "startPositionOptional": "(није обавезно)",
+    "startPositionHint": "Нпр. 1:30 или 1:05:20 – одавде креће видео. Празно = од почетка.",
+    "startPositionInvalid": "Неисправан формат – нпр. 1:30 или 1:05:20.",
+    "useCurrentPosition": "Тренутна позиција",
+    "useCurrentPositionTooltip": "Преузми позицију на којој стоји преглед"
   },
   "live": {
     "play": "Настави",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Одслушане репродукције",
     "noPast": "Још увек није било репродукције",
     "rescheduleTooltip": "Презакажи",
-    "replayButton": "Поново"
+    "replayButton": "Поново",
+    "rescheduleStreamHint": "Заказани интернет радио – поново закажите дугметом ⏰ на картици Интернет радио"
   },
   "status": {
     "pending": "Чека",

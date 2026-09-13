@@ -45,7 +45,11 @@
     "restoreTooltip": "Список повернеться до початкових 16 станцій (власні записи буде втрачено)",
     "restoreButton": "Відновити стандартний",
     "footerHint": "URL-адреси субпотоків варто перевіряти на myonlineradio.hu. Список зберігається в браузері (для кожного закладу та пристрою)",
-    "footerHintAdminSuffix": " – кнопкою ⭐ можна встановити як стандартний для всього закладу."
+    "footerHintAdminSuffix": " – кнопкою ⭐ можна встановити як стандартний для всього закладу.",
+    "scheduleTooltip": "Запланувати відтворення",
+    "scheduleTitle": "Запланувати: {{name}}",
+    "scheduleEndHint": "Відтворення зупиниться у встановлений час.",
+    "scheduleNoEndHint": "Без часу завершення ефір триває до ручної зупинки."
   },
   "library": {
     "uploading": "Завантаження… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Завантажити",
     "clearSelection": "Інше відео",
     "goLiveButton": "Транслювати наживо",
-    "scheduleButton": "Розклад"
+    "scheduleButton": "Розклад",
+    "startPositionLabel": "Початкова позиція",
+    "startPositionOptional": "(необов'язково)",
+    "startPositionHint": "Напр. 1:30 або 1:05:20 – звідси починається відео. Порожнє = з початку.",
+    "startPositionInvalid": "Неправильний формат – напр. 1:30 або 1:05:20.",
+    "useCurrentPosition": "Поточна позиція",
+    "useCurrentPositionTooltip": "Підставити позицію, на якій стоїть попередній перегляд"
   },
   "live": {
     "play": "Продовжити",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Минулі відтворення",
     "noPast": "Ще не було жодного відтворення",
     "rescheduleTooltip": "Перепланувати",
-    "replayButton": "Знову"
+    "replayButton": "Знову",
+    "rescheduleStreamHint": "Заплановане інтернет-радіо – перезаплануйте кнопкою ⏰ на вкладці «Інтернет-радіо»"
   },
   "status": {
     "pending": "Очікує",

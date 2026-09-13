@@ -45,7 +45,11 @@
     "restoreTooltip": "A lista visszaáll az induló 16 állomásra (a saját bejegyzések elvesznek)",
     "restoreButton": "Visszaállítás alapra",
     "footerHint": "Az alstream URL-eket a myonlineradio.hu-n érdemes ellenőrizni. A lista a böngészőben tárolódik (intézményenként és eszközönként)",
-    "footerHintAdminSuffix": " – az ⭐ gombbal az egész intézmény alapértelmezetté teheted."
+    "footerHintAdminSuffix": " – az ⭐ gombbal az egész intézmény alapértelmezetté teheted.",
+    "scheduleTooltip": "Időzített lejátszás",
+    "scheduleTitle": "{{name}} időzítése",
+    "scheduleEndHint": "A megadott időpontban a lejátszás leáll.",
+    "scheduleNoEndHint": "Vége-időpont nélkül az adás kézi leállításig szól."
   },
   "library": {
     "uploading": "Feltöltés… {{pct}}%",
@@ -66,7 +70,13 @@
     "loadUrlButton": "Betöltés",
     "clearSelection": "Másik videó",
     "goLiveButton": "Élő adásba küldés",
-    "scheduleButton": "Időzítés"
+    "scheduleButton": "Időzítés",
+    "startPositionLabel": "Indulási pozíció",
+    "startPositionOptional": "(opcionális)",
+    "startPositionHint": "Pl. 1:30 vagy 1:05:20 – innen indul a videó. Üresen az elejétől.",
+    "startPositionInvalid": "Érvénytelen formátum – pl. 1:30 vagy 1:05:20.",
+    "useCurrentPosition": "Aktuális pozíció",
+    "useCurrentPositionTooltip": "Az előnézetben éppen álló pozíció beírása"
   },
   "live": {
     "play": "Folytatás",
@@ -156,7 +166,8 @@
     "pastSectionTitle": "Elhangzott lejátszások",
     "noPast": "Még nem volt lejátszás",
     "rescheduleTooltip": "Újraütemezés",
-    "replayButton": "Újra"
+    "replayButton": "Újra",
+    "rescheduleStreamHint": "Internetrádió-ütemezés – az Internetrádió fülön, az állomás ⏰ gombjával időzíthető újra"
   },
   "status": {
     "pending": "Vár",
