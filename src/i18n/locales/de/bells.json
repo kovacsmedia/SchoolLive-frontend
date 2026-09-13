@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Die Vorlage „{{name}}“ als Standard festlegen?",
     "saveDay": "Änderungen speichern?",
     "discardChanges": "Es gibt ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
-    "deleteSound": "Die Tondatei „{{filename}}“ löschen?"
+    "deleteSound": "Die Tondatei „{{filename}}“ löschen?",
+    "duplicateBellTime": "Für diese Uhrzeit ({{time}}) ist bereits ein Signal eingestellt: {{existing}}. Möchten Sie fortfahren?\n\nWenn ja, ertönen beide – nacheinander, nach Priorität.",
+    "duplicateBellTimesOnSave": "Mehrere Signale fallen auf dieselbe Uhrzeit: {{times}}. So speichern?\n\nAlle ertönen nacheinander."
   },
   "success": {
     "daysSaved": "{{count}} Tage gespeichert.",

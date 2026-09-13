@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Ustawić szablon „{{name}}” jako domyślny?",
     "saveDay": "Zapisać zmiany?",
     "discardChanges": "Istnieją niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
-    "deleteSound": "Usunąć plik dźwiękowy „{{filename}}”?"
+    "deleteSound": "Usunąć plik dźwiękowy „{{filename}}”?",
+    "duplicateBellTime": "Na tę godzinę ({{time}}) jest już ustawiony sygnał: {{existing}}. Czy na pewno kontynuować?\n\nJeśli tak, zabrzmią oba – jeden po drugim, według priorytetu.",
+    "duplicateBellTimesOnSave": "Kilka sygnałów przypada na tę samą godzinę: {{times}}. Zapisać tak?\n\nWszystkie zabrzmią, jeden po drugim."
   },
   "success": {
     "daysSaved": "Zapisano {{count}} dni.",

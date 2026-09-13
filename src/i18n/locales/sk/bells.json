@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Nastaviť šablónu „{{name}}“ ako predvolenú?",
     "saveDay": "Uložiť zmeny?",
     "discardChanges": "Existujú neuložené zmeny. Naozaj ich chcete zahodiť?",
-    "deleteSound": "Vymazať zvukový súbor „{{filename}}“?"
+    "deleteSound": "Vymazať zvukový súbor „{{filename}}“?",
+    "duplicateBellTime": "Na tento čas ({{time}}) je už nastavený signál: {{existing}}. Naozaj chcete pokračovať?\n\nAk áno, zaznejú oba – jeden po druhom, podľa priority.",
+    "duplicateBellTimesOnSave": "Viacero signálov pripadá na rovnaký čas: {{times}}. Uložiť takto?\n\nZaznejú všetky, jeden po druhom."
   },
   "success": {
     "daysSaved": "Uložených dní: {{count}}.",

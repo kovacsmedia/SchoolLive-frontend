@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Set the \"{{name}}\" template as default?",
     "saveDay": "Save the changes?",
     "discardChanges": "There are unsaved changes. Are you sure you want to discard them?",
-    "deleteSound": "Delete the sound file \"{{filename}}\"?"
+    "deleteSound": "Delete the sound file \"{{filename}}\"?",
+    "duplicateBellTime": "A bell is already set for this time ({{time}}): {{existing}}. Are you sure you want to continue?\n\nIf so, both will sound – one after the other, by priority.",
+    "duplicateBellTimesOnSave": "Several bells fall on the same time: {{times}}. Save it this way?\n\nAll of them will sound, one after the other."
   },
   "success": {
     "daysSaved": "{{count}} days saved.",

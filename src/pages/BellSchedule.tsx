@@ -275,8 +275,41 @@ export default function BellSchedule() {
   }
 
   // Pending sor elfogadása: bekerül a listába, rendezés megtörténik
+  /*
+   * Ütközés-figyelmeztetés azonos időpontra.
+   *
+   * Egy időpontra TÖBB jelzés is beállítható – ez legitim igény (pl. egy rövid
+   * jelző- és egy hosszabb kicsengetés). A rendszer mindkettőt lejátssza,
+   * egymás után, prioritás szerint. A felhasználó viszont jellemzően NEM
+   * szándékosan csinál duplikátumot, ezért rákérdezünk.
+   */
+  function bellTypeLabel(type: BellType): string {
+    return type === "SIGNAL" ? t("templates.bellType.signal") : t("templates.bellType.main");
+  }
+
+  /** A `bells` közül az első, ami ugyanarra a percre esik (a `skipIdx`-et kihagyva). */
+  function findTimeClash(
+    bells: { hour: number; minute: number; type: BellType; soundFile: string }[],
+    hour: number,
+    minute: number,
+    skipIdx = -1,
+  ) {
+    return bells.find((b, i) =>
+      i !== skipIdx && b.hour === hour && b.minute === minute) ?? null;
+  }
+
   function commitPendingBell() {
     if (!editTemplate || !pendingBell) return;
+
+    const clash = findTimeClash(editTemplate.bells, pendingBell.hour, pendingBell.minute);
+    if (clash) {
+      const ok = confirm(t("confirm.duplicateBellTime", {
+        time:     `${String(pendingBell.hour).padStart(2, "0")}:${String(pendingBell.minute).padStart(2, "0")}`,
+        existing: `${bellTypeLabel(clash.type)} – ${clash.soundFile || t("templates.soundDefault")}`,
+      }));
+      if (!ok) return;
+    }
+
     setEditTemplate({
       ...editTemplate,
       bells: sortBells([...editTemplate.bells, { ...pendingBell }]),
@@ -306,6 +339,21 @@ export default function BellSchedule() {
     if (!editTemplate) return;
     if (pendingBell) { setError(t("errors.pendingBellUnfinished")); return; }
     if (!editTemplate.name.trim()) { setError(t("errors.templateNameRequired")); return; }
+
+    // Mentéskor is ellenőrzünk: a `commitPendingBell` csak az ÚJ sort nézi,
+    // de egy meglévő sor idejét is át lehet írni ütközőre.
+    {
+      const seen = new Map<string, number>();
+      for (const b of editTemplate.bells) {
+        const k = `${String(b.hour).padStart(2, "0")}:${String(b.minute).padStart(2, "0")}`;
+        seen.set(k, (seen.get(k) ?? 0) + 1);
+      }
+      const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([k]) => k);
+      if (dupes.length > 0 &&
+          !confirm(t("confirm.duplicateBellTimesOnSave", { times: dupes.join(", ") }))) {
+        return;
+      }
+    }
     setTemplateSaving(true);
     try {
       if (selectedTemplate) {

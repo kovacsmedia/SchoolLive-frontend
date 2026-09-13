@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Beállítod a(z) \"{{name}}\" sablont alapértelmezettként?",
     "saveDay": "Elmented a módosításokat?",
     "discardChanges": "El nem mentett módosítások vannak. Biztosan elveted őket?",
-    "deleteSound": "Törlöd a(z) \"{{filename}}\" hangfájlt?"
+    "deleteSound": "Törlöd a(z) \"{{filename}}\" hangfájlt?",
+    "duplicateBellTime": "Ebben az időpontban ({{time}}) már van beállított jelzés: {{existing}}. Biztos, hogy folytatod?\n\nHa igen, mindkettő megszólal – egymás után, prioritás szerint (jelzőcsengő, majd kicsengetés).",
+    "duplicateBellTimesOnSave": "Több jelzés is ugyanarra az időpontra esik: {{times}}. Biztos, hogy így mented?\n\nMindegyik megszólal, egymás után."
   },
   "success": {
     "daysSaved": "{{count}} nap elmentve.",

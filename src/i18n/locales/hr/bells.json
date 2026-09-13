@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Postaviti predložak „{{name}}” kao zadani?",
     "saveDay": "Spremiti promjene?",
     "discardChanges": "Postoje nespremljene promjene. Jeste li sigurni da ih želite odbaciti?",
-    "deleteSound": "Izbrisati zvučnu datoteku „{{filename}}”?"
+    "deleteSound": "Izbrisati zvučnu datoteku „{{filename}}”?",
+    "duplicateBellTime": "Za ovo vrijeme ({{time}}) već je postavljen signal: {{existing}}. Želite li nastaviti?\n\nAko da, oglasit će se oba – jedan za drugim, prema prioritetu.",
+    "duplicateBellTimesOnSave": "Više signala pada na isto vrijeme: {{times}}. Spremiti ovako?\n\nSvi će se oglasiti, jedan za drugim."
   },
   "success": {
     "daysSaved": "Spremljeno dana: {{count}}.",

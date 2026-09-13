@@ -106,7 +106,9 @@
     "setDefaultTemplate": "Setați șablonul „{{name}}” ca implicit?",
     "saveDay": "Salvați modificările?",
     "discardChanges": "Există modificări nesalvate. Sigur doriți să le renunțați?",
-    "deleteSound": "Ștergeți fișierul audio „{{filename}}”?"
+    "deleteSound": "Ștergeți fișierul audio „{{filename}}”?",
+    "duplicateBellTime": "Pentru această oră ({{time}}) există deja un semnal: {{existing}}. Sigur continuați?\n\nDacă da, se vor auzi ambele – unul după altul, după prioritate.",
+    "duplicateBellTimesOnSave": "Mai multe semnale cad la aceeași oră: {{times}}. Salvați aşa?\n\nToate se vor auzi, unul după altul."
   },
   "success": {
     "daysSaved": "{{count}} zile salvate.",
