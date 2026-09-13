@@ -255,7 +255,10 @@ const CSS = `
   .sr-hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
   .sr-title{font-size:22px;font-weight:900;color:var(--sl-text);letter-spacing:-0.5px}
   .sr-subtitle{font-size:13px;color:var(--sl-muted);margin-top:3px}
-  .sr-layout{display:grid;grid-template-columns:520px 1fr;gap:20px;align-items:start}
+  /* Egyhasábos: a jobb oldali oszlopban már csak az ütemezés-form volt,
+     az pedig modálisan nyílik – így a hangforrás-keret a teljes
+     tartalomszélességet megkapja. */
+  .sr-layout{display:flex;flex-direction:column;gap:20px;align-items:stretch}
   .sr-panel{background:var(--sl-surface);border:1px solid var(--sl-border);border-radius:18px;overflow:hidden;box-shadow:0 2px 12px rgba(59,130,246,0.07)}
   .sr-panel-hdr{padding:14px 18px;border-bottom:1px solid var(--sl-border);display:flex;align-items:center;justify-content:space-between;gap:10px}
   .sr-panel-title{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.6px;color:var(--sl-muted)}
@@ -315,6 +318,7 @@ const CSS = `
 
   /* Schedule form */
   .sr-form{padding:16px;display:flex;flex-direction:column;gap:14px}
+  .sr-overlay-body .sr-form{padding:0}
   .sr-label{display:block;font-size:11.5px;font-weight:800;color:var(--sl-text-2);margin-bottom:5px;letter-spacing:0.3px;text-transform:uppercase}
   .sr-input,.sr-select{width:100%;padding:9px 12px;border:1.5px solid var(--sl-border);border-radius:11px;background:var(--sl-bg);color:var(--sl-text);font-size:13.5px;outline:none;transition:all 0.15s;font-family:inherit}
   .sr-input:focus,.sr-select:focus{border-color:#3b82f6;background:var(--sl-surface);box-shadow:0 0 0 3px rgba(59,130,246,0.11)}
@@ -486,7 +490,6 @@ const CSS = `
   .sr-live-time{font-family:monospace;font-size:11px;font-weight:800;color:var(--sl-text-2);min-width:82px;text-align:right}
   .sr-live-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#dc2626;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap}
 
-  @media(max-width:1000px){.sr-layout{grid-template-columns:1fr}}
 `;
 
 // ─── Élő lejátszás-vezérlő sáv (YouTube fül + Hangfájl könyvtár közös) ─────
@@ -1948,6 +1951,25 @@ export default function SchoolRadio() {
             📥 {t("header.scheduledPlaybacks")}{schedules.length > 0 ? ` (${schedules.length})` : ""}
           </button>
 
+          {/* Új ütemezés – az időzített lejátszások listája mellett, mert a
+              kettő ugyanahhoz a munkamenethez tartozik (megnézem, mi van
+              beütemezve → felveszek egy újat). A form modálisan nyílik. */}
+          <button
+            className="sr-btn sr-btn-ghost"
+            type="button"
+            onClick={() => {
+              const n = new Date();
+              setFormDate(n.toISOString().slice(0, 10));
+              setFormTime(
+                `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
+              );
+              setFormError(null);
+              setFormOpen(true);
+            }}
+          >
+            ＋ {t("schedule.newScheduleButton")}
+          </button>
+
           <button
             className="sr-stop-btn"
             disabled={stopBusy}
@@ -2015,7 +2037,7 @@ export default function SchoolRadio() {
       )}
 
       <div className="sr-layout">
-        {/* ═══ BAL PANEL ═══ */}
+        {/* ═══ HANGFORRÁSOK – teljes szélességben ═══ */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Hangfájl könyvtár / Internetrádió – tab-os panel */}
           <div className="sr-panel">
@@ -2582,25 +2604,26 @@ export default function SchoolRadio() {
               a jövő + múlt egységes nézetben. */}
         </div>
 
-        {/* ═══ JOBB PANEL: Ütemezések + Playlist ═══ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Ütemezés form */}
-          {formOpen && (
-            <div className="sr-panel">
-              <div className="sr-panel-hdr">
-                <div className="sr-panel-title">📅 {t("schedule.newTitle")}</div>
-                <button
-                  className="sr-btn sr-btn-ghost sr-btn-sm"
-                  type="button"
-                  onClick={() => {
-                    setFormOpen(false);
-                    setFormError(null);
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
+      </div>
 
+      {/* ══════════ Új ütemezés modal ══════════ */}
+      {/* Korábban a jobb hasábban ült, állandóan fenntartva egy fél oszlopnyi
+          helyet egy ritkán használt formnak. Popupként a főképernyő teljes
+          szélességben a hangforrásoknak jut. */}
+      {formOpen && (
+        <div className="sr-overlay" onClick={() => { setFormOpen(false); setFormError(null); }}>
+          <div className="sr-overlay-modal" style={{maxWidth:620}} onClick={e => e.stopPropagation()}>
+            <div className="sr-overlay-hdr">
+              <div className="sr-overlay-title">📅 {t("schedule.newTitle")}</div>
+              <button
+                className="sr-overlay-close"
+                type="button"
+                onClick={() => { setFormOpen(false); setFormError(null); }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="sr-overlay-body">
               <div className="sr-form">
                 {formError && (
                   <div className="sr-alert sr-alert-error">
@@ -2766,33 +2789,9 @@ export default function SchoolRadio() {
                 </div>
               </div>
             </div>
-          )}
-
-          {/* A "Közelgő lejátszások" panel kikerült innen – az
-              "📥 Időzített lejátszások" overlay-ben jelenik meg
-              időrendi sorrendben a múltbeli rekordok fölött. */}
-
-          {/* Új ütemezés indító gomb (ha a form most nincs nyitva) */}
-          {!formOpen && (
-            <button
-              className="sr-btn sr-btn-primary"
-              type="button"
-              style={{alignSelf:"flex-start"}}
-              onClick={() => {
-                const n = new Date();
-                setFormDate(n.toISOString().slice(0, 10));
-                setFormTime(
-                  `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
-                );
-                setFormOpen(true);
-              }}
-            >
-              ＋ {t("schedule.newScheduleButton")}
-            </button>
-          )}
-
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ══════════ Új / szerkesztett rádióállomás modal ══════════ */}
       {stationForm && (
