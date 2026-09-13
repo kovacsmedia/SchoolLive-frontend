@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Wykorzystanie miejsca",
     "available": "Dostępne: {{available}}",
-    "uploadButton": "Prześlij MP3",
+    "uploadButton": "Prześlij nowy dźwięk",
     "uploadingButton": "Przesyłanie...",
     "noFreeSpace": "Brak wolnego miejsca!",
     "defaultBadge": "Domyślny",
@@ -108,7 +108,8 @@
     "discardChanges": "Istnieją niezapisane zmiany. Czy na pewno chcesz je odrzucić?",
     "deleteSound": "Usunąć plik dźwiękowy „{{filename}}”?",
     "duplicateBellTime": "Na tę godzinę ({{time}}) jest już ustawiony sygnał: {{existing}}. Czy na pewno kontynuować?\n\nJeśli tak, zabrzmią oba – jeden po drugim, według priorytetu.",
-    "duplicateBellTimesOnSave": "Kilka sygnałów przypada na tę samą godzinę: {{times}}. Zapisać tak?\n\nWszystkie zabrzmią, jeden po drugim."
+    "duplicateBellTimesOnSave": "Kilka sygnałów przypada na tę samą godzinę: {{times}}. Zapisać tak?\n\nWszystkie zabrzmią, jeden po drugim.",
+    "deleteSoundInUse": "Dźwięk „{{filename}}” jest W UŻYCIU – odwołuje się do niego {{count}} sygnał(ów):\n\n{{details}}\n\nPo usunięciu zabrzmi tam dźwięk fabryczny. Usunąć mimo to?"
   },
   "success": {
     "daysSaved": "Zapisano {{count}} dni.",

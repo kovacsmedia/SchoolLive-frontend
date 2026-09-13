@@ -89,7 +89,10 @@
     "immediateButton": "▶ Odmah",
     "saving": "⏳ Spremanje…",
     "addButton": "📅 Dodaj zakazivanje",
-    "scheduleButton": "Zakaži"
+    "scheduleButton": "Zakaži",
+    "endTimeLabel": "Kraj reprodukcije",
+    "endTimeOptional": "(nije obavezno)",
+    "endTimeHint": "Ako je zvuk dulji, ovdje ga stišavamo i zaustavljamo. Kod kraćeg zvuka nema učinka."
   },
   "playlist": {
     "title": "Izrada playliste",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Izradi",
     "builtDone": "{{name}} – gotovo!",
     "downloadButton": "Preuzmi",
-    "newCompositionButton": "Nova kompilacija"
+    "newCompositionButton": "Nova kompilacija",
+    "openBuilderButton": "Izrada popisa za reprodukciju"
   },
   "stationModal": {
     "newTitle": "Nova radiopostaja",

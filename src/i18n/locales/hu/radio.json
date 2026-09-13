@@ -89,7 +89,10 @@
     "immediateButton": "▶ Azonnali",
     "saving": "⏳ Mentés…",
     "addButton": "📅 Ütemezés hozzáadása",
-    "scheduleButton": "Ütemezés"
+    "scheduleButton": "Ütemezés",
+    "endTimeLabel": "Lejátszás vége",
+    "endTimeOptional": "(nem kötelező)",
+    "endTimeHint": "Ha a hang ennél hosszabb, itt lekeverjük és leállítjuk. Rövidebb hangnál nincs hatása."
   },
   "playlist": {
     "title": "Lejátszási lista készítő",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Összeállít",
     "builtDone": "{{name}} – elkészült!",
     "downloadButton": "Letöltés",
-    "newCompositionButton": "Új összeállítás"
+    "newCompositionButton": "Új összeállítás",
+    "openBuilderButton": "Lejátszási lista készítő"
   },
   "stationModal": {
     "newTitle": "Új rádióállomás",

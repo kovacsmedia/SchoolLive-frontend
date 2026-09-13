@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Storage usage",
     "available": "Available: {{available}}",
-    "uploadButton": "Upload MP3",
+    "uploadButton": "Upload new sound",
     "uploadingButton": "Uploading...",
     "noFreeSpace": "No free space!",
     "defaultBadge": "Default",
@@ -108,7 +108,8 @@
     "discardChanges": "There are unsaved changes. Are you sure you want to discard them?",
     "deleteSound": "Delete the sound file \"{{filename}}\"?",
     "duplicateBellTime": "A bell is already set for this time ({{time}}): {{existing}}. Are you sure you want to continue?\n\nIf so, both will sound – one after the other, by priority.",
-    "duplicateBellTimesOnSave": "Several bells fall on the same time: {{times}}. Save it this way?\n\nAll of them will sound, one after the other."
+    "duplicateBellTimesOnSave": "Several bells fall on the same time: {{times}}. Save it this way?\n\nAll of them will sound, one after the other.",
+    "deleteSoundInUse": "The sound “{{filename}}” is IN USE – {{count}} bell(s) reference it:\n\n{{details}}\n\nIf you delete it, those will ring with the factory default sound. Delete anyway?"
   },
   "success": {
     "daysSaved": "{{count}} days saved.",

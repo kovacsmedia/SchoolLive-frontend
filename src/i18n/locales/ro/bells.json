@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Utilizarea spațiului de stocare",
     "available": "Disponibil: {{available}}",
-    "uploadButton": "Încarcă MP3",
+    "uploadButton": "Încarcă sunet nou",
     "uploadingButton": "Se încarcă...",
     "noFreeSpace": "Nu există spațiu liber!",
     "defaultBadge": "Implicit",
@@ -108,7 +108,8 @@
     "discardChanges": "Există modificări nesalvate. Sigur doriți să le renunțați?",
     "deleteSound": "Ștergeți fișierul audio „{{filename}}”?",
     "duplicateBellTime": "Pentru această oră ({{time}}) există deja un semnal: {{existing}}. Sigur continuați?\n\nDacă da, se vor auzi ambele – unul după altul, după prioritate.",
-    "duplicateBellTimesOnSave": "Mai multe semnale cad la aceeași oră: {{times}}. Salvați aşa?\n\nToate se vor auzi, unul după altul."
+    "duplicateBellTimesOnSave": "Mai multe semnale cad la aceeași oră: {{times}}. Salvați aşa?\n\nToate se vor auzi, unul după altul.",
+    "deleteSoundInUse": "Sunetul „{{filename}}” este În UZ – {{count}} semnal(e) îl folosesc:\n\n{{details}}\n\nDupă ștergere acolo va suna sunetul implicit. Ștergeți oricum?"
   },
   "success": {
     "daysSaved": "{{count}} zile salvate.",

@@ -449,8 +449,49 @@ export default function BellSchedule() {
     }
   }
 
+  /*
+   * Hol használják ezt a hangot?
+   *
+   * A `templates` állapot a sablonok bejegyzéseit is tartalmazza, tehát a
+   * használat kliens-oldalon kiszámolható – nem kell hozzá külön végpont.
+   * Naptár-kivételek nem hangra, hanem SABLONRA hivatkoznak, ezért a sablonok
+   * átnézése lefedi az egészet.
+   */
+  function findSoundUsage(filename: string): { template: string; times: string[] }[] {
+    return templates
+      .map(tpl => ({
+        template: tpl.name,
+        times: tpl.bells
+          .filter(b => b.soundFile === filename)
+          .map(b => `${String(b.hour).padStart(2, "0")}:${String(b.minute).padStart(2, "0")}`),
+      }))
+      .filter(u => u.times.length > 0);
+  }
+
   async function deleteSound(s: BellSoundFile) {
-    if (!confirm(t("confirm.deleteSound", { filename: s.filename }))) return;
+    /*
+     * HASZNÁLATBAN LÉVŐ HANG TÖRLÉSE.
+     *
+     * Eddig csak egy általános "Törlöd?" kérdés volt – a felhasználó nem
+     * tudhatta, hogy a hang épp használatban van-e. Törlés után a hivatkozó
+     * csengetések CSENDBEN a gyári defaultra esnek vissza: szólnak, de mást.
+     * Ezt előre meg kell mondani.
+     */
+    const usage = findSoundUsage(s.filename);
+
+    if (usage.length > 0) {
+      const details = usage
+        .map(u => `• ${u.template}: ${u.times.join(", ")}`)
+        .join("\n");
+      const count = usage.reduce((n, u) => n + u.times.length, 0);
+      if (!confirm(t("confirm.deleteSoundInUse", {
+        filename: s.filename,
+        count,
+        details,
+      }))) return;
+    } else if (!confirm(t("confirm.deleteSound", { filename: s.filename }))) {
+      return;
+    }
     try {
       await apiFetch(`/bells/sounds/${s.id}`, { method: "DELETE" });
       await loadSounds();
@@ -755,7 +796,7 @@ export default function BellSchedule() {
           <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t("sounds.available", { available: fmtBytes(available) })}</div>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <input ref={fileInputRef} type="file" accept=".mp3,.opus,audio/*" style={{ display: "none" }}
+          <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.opus,.wav,.ogg,.m4a,.aac,.flac" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadSound(f); e.target.value = ""; }} />
           <button className="sl-btn sl-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading || available <= 0}>
             {uploading ? t("sounds.uploadingButton") : `📤 ${t("sounds.uploadButton")}`}

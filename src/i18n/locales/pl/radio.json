@@ -89,7 +89,10 @@
     "immediateButton": "▶ Teraz",
     "saving": "⏳ Zapisywanie…",
     "addButton": "📅 Dodaj zaplanowanie",
-    "scheduleButton": "Zaplanuj"
+    "scheduleButton": "Zaplanuj",
+    "endTimeLabel": "Koniec odtwarzania",
+    "endTimeOptional": "(opcjonalnie)",
+    "endTimeHint": "Jeśli dźwięk jest dłuższy, tutaj go wyciszamy i zatrzymujemy. Przy krótszym bez efektu."
   },
   "playlist": {
     "title": "Kreator playlisty",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Utwórz",
     "builtDone": "{{name}} – gotowe!",
     "downloadButton": "Pobierz",
-    "newCompositionButton": "Nowe zestawienie"
+    "newCompositionButton": "Nowe zestawienie",
+    "openBuilderButton": "Kreator listy odtwarzania"
   },
   "stationModal": {
     "newTitle": "Nowa stacja radiowa",

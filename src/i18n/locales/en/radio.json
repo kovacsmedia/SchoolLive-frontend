@@ -89,7 +89,10 @@
     "immediateButton": "▶ Now",
     "saving": "⏳ Saving…",
     "addButton": "📅 Add schedule",
-    "scheduleButton": "Schedule"
+    "scheduleButton": "Schedule",
+    "endTimeLabel": "End of playback",
+    "endTimeOptional": "(optional)",
+    "endTimeHint": "If the sound is longer, it is faded out and stopped here. No effect on shorter sounds."
   },
   "playlist": {
     "title": "Playlist builder",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Build",
     "builtDone": "{{name}} – ready!",
     "downloadButton": "Download",
-    "newCompositionButton": "New playlist"
+    "newCompositionButton": "New playlist",
+    "openBuilderButton": "Playlist builder"
   },
   "stationModal": {
     "newTitle": "New radio station",

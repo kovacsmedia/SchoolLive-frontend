@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Speicherplatznutzung",
     "available": "Verfügbar: {{available}}",
-    "uploadButton": "MP3 hochladen",
+    "uploadButton": "Neuen Ton hochladen",
     "uploadingButton": "Wird hochgeladen...",
     "noFreeSpace": "Kein freier Speicherplatz!",
     "defaultBadge": "Standard",
@@ -108,7 +108,8 @@
     "discardChanges": "Es gibt ungespeicherte Änderungen. Möchten Sie diese wirklich verwerfen?",
     "deleteSound": "Die Tondatei „{{filename}}“ löschen?",
     "duplicateBellTime": "Für diese Uhrzeit ({{time}}) ist bereits ein Signal eingestellt: {{existing}}. Möchten Sie fortfahren?\n\nWenn ja, ertönen beide – nacheinander, nach Priorität.",
-    "duplicateBellTimesOnSave": "Mehrere Signale fallen auf dieselbe Uhrzeit: {{times}}. So speichern?\n\nAlle ertönen nacheinander."
+    "duplicateBellTimesOnSave": "Mehrere Signale fallen auf dieselbe Uhrzeit: {{times}}. So speichern?\n\nAlle ertönen nacheinander.",
+    "deleteSoundInUse": "Die Audiodatei „{{filename}}“ wird VERWENDET – {{count}} Signal(e) verweisen darauf:\n\n{{details}}\n\nNach dem Löschen ertönt dort der Werkston. Trotzdem löschen?"
   },
   "success": {
     "daysSaved": "{{count}} Tage gespeichert.",

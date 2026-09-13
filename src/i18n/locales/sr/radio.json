@@ -89,7 +89,10 @@
     "immediateButton": "▶ Одмах",
     "saving": "⏳ Чување…",
     "addButton": "📅 Додај заказивање",
-    "scheduleButton": "Закажи"
+    "scheduleButton": "Закажи",
+    "endTimeLabel": "Крај репродукције",
+    "endTimeOptional": "(није обавезно)",
+    "endTimeHint": "Ако је звук дужи, овде га стишавамо и заустављамо. Код краћег звука нема ефекта."
   },
   "playlist": {
     "title": "Креатор плејлисте",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Направи",
     "builtDone": "{{name}} – готово!",
     "downloadButton": "Преузми",
-    "newCompositionButton": "Нова компилација"
+    "newCompositionButton": "Нова компилација",
+    "openBuilderButton": "Израда листе за репродукцију"
   },
   "stationModal": {
     "newTitle": "Нова радио станица",

@@ -89,7 +89,10 @@
     "immediateButton": "▶ Acum",
     "saving": "⏳ Se salvează…",
     "addButton": "📅 Adaugă programare",
-    "scheduleButton": "Programează"
+    "scheduleButton": "Programează",
+    "endTimeLabel": "Sfârșitul redării",
+    "endTimeOptional": "(opțional)",
+    "endTimeHint": "Dacă sunetul este mai lung, aici se estompează și se oprește. Fără efect la sunete mai scurte."
   },
   "playlist": {
     "title": "Creator de playlist",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Creează",
     "builtDone": "{{name}} – gata!",
     "downloadButton": "Descarcă",
-    "newCompositionButton": "Compilație nouă"
+    "newCompositionButton": "Compilație nouă",
+    "openBuilderButton": "Creator listă de redare"
   },
   "stationModal": {
     "newTitle": "Post radio nou",

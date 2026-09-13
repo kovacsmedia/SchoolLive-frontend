@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Využitie úložiska",
     "available": "Dostupné: {{available}}",
-    "uploadButton": "Nahrať MP3",
+    "uploadButton": "Nahrať nový zvuk",
     "uploadingButton": "Nahrávanie...",
     "noFreeSpace": "Žiadne voľné miesto!",
     "defaultBadge": "Predvolené",
@@ -108,7 +108,8 @@
     "discardChanges": "Existujú neuložené zmeny. Naozaj ich chcete zahodiť?",
     "deleteSound": "Vymazať zvukový súbor „{{filename}}“?",
     "duplicateBellTime": "Na tento čas ({{time}}) je už nastavený signál: {{existing}}. Naozaj chcete pokračovať?\n\nAk áno, zaznejú oba – jeden po druhom, podľa priority.",
-    "duplicateBellTimesOnSave": "Viacero signálov pripadá na rovnaký čas: {{times}}. Uložiť takto?\n\nZaznejú všetky, jeden po druhom."
+    "duplicateBellTimesOnSave": "Viacero signálov pripadá na rovnaký čas: {{times}}. Uložiť takto?\n\nZaznejú všetky, jeden po druhom.",
+    "deleteSoundInUse": "Zvuk „{{filename}}“ sa POUŽÍVA – odkazuje naň {{count}} signál(ov):\n\n{{details}}\n\nPo odstránení tam zaznie továrenský zvuk. Naozaj odstrániť?"
   },
   "success": {
     "daysSaved": "Uložených dní: {{count}}.",

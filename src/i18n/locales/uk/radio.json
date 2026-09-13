@@ -89,7 +89,10 @@
     "immediateButton": "▶ Негайно",
     "saving": "⏳ Збереження…",
     "addButton": "📅 Додати планування",
-    "scheduleButton": "Запланувати"
+    "scheduleButton": "Запланувати",
+    "endTimeLabel": "Кінець відтворення",
+    "endTimeOptional": "(необов'язково)",
+    "endTimeHint": "Якщо звук довший, тут його приглушуємо й зупиняємо. На коротший звук не впливає."
   },
   "playlist": {
     "title": "Створення плейлиста",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Створити",
     "builtDone": "{{name}} – готово!",
     "downloadButton": "Завантажити",
-    "newCompositionButton": "Нова добірка"
+    "newCompositionButton": "Нова добірка",
+    "openBuilderButton": "Конструктор списку відтворення"
   },
   "stationModal": {
     "newTitle": "Нова радіостанція",

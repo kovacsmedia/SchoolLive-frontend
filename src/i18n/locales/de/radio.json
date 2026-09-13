@@ -89,7 +89,10 @@
     "immediateButton": "▶ Sofort",
     "saving": "⏳ Speichern…",
     "addButton": "📅 Planung hinzufügen",
-    "scheduleButton": "Planen"
+    "scheduleButton": "Planen",
+    "endTimeLabel": "Ende der Wiedergabe",
+    "endTimeOptional": "(optional)",
+    "endTimeHint": "Ist der Ton länger, wird hier ausgeblendet und gestoppt. Bei kürzeren Tönen ohne Wirkung."
   },
   "playlist": {
     "title": "Wiedergabelisten-Ersteller",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Erstellen",
     "builtDone": "{{name}} – fertig!",
     "downloadButton": "Herunterladen",
-    "newCompositionButton": "Neue Zusammenstellung"
+    "newCompositionButton": "Neue Zusammenstellung",
+    "openBuilderButton": "Wiedergabelisten-Editor"
   },
   "stationModal": {
     "newTitle": "Neuer Radiosender",

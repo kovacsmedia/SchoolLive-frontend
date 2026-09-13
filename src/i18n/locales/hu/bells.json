@@ -92,7 +92,7 @@
   "sounds": {
     "storageUsage": "Tárhelyhasználat",
     "available": "Elérhető: {{available}}",
-    "uploadButton": "MP3 feltöltése",
+    "uploadButton": "Új hang feltöltése",
     "uploadingButton": "Feltöltés...",
     "noFreeSpace": "Nincs szabad hely!",
     "defaultBadge": "Alapértelmezett",
@@ -108,7 +108,8 @@
     "discardChanges": "El nem mentett módosítások vannak. Biztosan elveted őket?",
     "deleteSound": "Törlöd a(z) \"{{filename}}\" hangfájlt?",
     "duplicateBellTime": "Ebben az időpontban ({{time}}) már van beállított jelzés: {{existing}}. Biztos, hogy folytatod?\n\nHa igen, mindkettő megszólal – egymás után, prioritás szerint (jelzőcsengő, majd kicsengetés).",
-    "duplicateBellTimesOnSave": "Több jelzés is ugyanarra az időpontra esik: {{times}}. Biztos, hogy így mented?\n\nMindegyik megszólal, egymás után."
+    "duplicateBellTimesOnSave": "Több jelzés is ugyanarra az időpontra esik: {{times}}. Biztos, hogy így mented?\n\nMindegyik megszólal, egymás után.",
+    "deleteSoundInUse": "A(z) „{{filename}}” hangfájl HASZNÁLATBAN van – {{count}} csengetés hivatkozik rá:\n\n{{details}}\n\nHa törlöd, ezeknél a gyári alapértelmezett hang fog szólni. Biztos, hogy törlöd?"
   },
   "success": {
     "daysSaved": "{{count}} nap elmentve.",

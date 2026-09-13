@@ -89,7 +89,10 @@
     "immediateButton": "▶ Okamžite",
     "saving": "⏳ Ukladanie…",
     "addButton": "📅 Pridať naplánovanie",
-    "scheduleButton": "Naplánovať"
+    "scheduleButton": "Naplánovať",
+    "endTimeLabel": "Koniec prehrávania",
+    "endTimeOptional": "(nepovinné)",
+    "endTimeHint": "Ak je zvuk dlhší, tu ho stlmíme a zastavíme. Pri kratšom zvuku bez účinku."
   },
   "playlist": {
     "title": "Tvorca playlistu",
@@ -130,7 +133,8 @@
     "buildButton": "🔨 Zostaviť",
     "builtDone": "{{name}} – hotovo!",
     "downloadButton": "Stiahnuť",
-    "newCompositionButton": "Nová zostava"
+    "newCompositionButton": "Nová zostava",
+    "openBuilderButton": "Tvorba zoznamu skladieb"
   },
   "stationModal": {
     "newTitle": "Nová rozhlasová stanica",
