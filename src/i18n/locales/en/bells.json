@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Set the time, then press",
       "suffix": "to insert it"
-    }
+    },
+    "soundMissing": "sound file missing from server",
+    "soundDefault": "(factory default)"
   },
   "sounds": {
     "storageUsage": "Storage usage",

@@ -349,6 +349,32 @@ export default function BellSchedule() {
     }
   }
 
+  /*
+   * A hang-választó opciói.
+   *
+   * MIÉRT NEM ELÉG a `sounds.map(...)`: ha a bejegyzés olyan fájlra mutat,
+   * ami már nincs meg a szerveren (pl. törölték a hangot, de a csengetési
+   * rend hivatkozása megmaradt), akkor a `<select>`-nek NINCS illeszkedő
+   * `<option>`-je – a böngésző ilyenkor az ELSŐT mutatja kiválasztottként.
+   * A felület tehát egy MÁSIK, létező hang nevét írta ki, a mentett érték
+   * közben a hiányzó fájl maradt, az eszköz pedig a gyári defaultot
+   * szólaltatta meg. Három különböző dolog, és semmi nem jelezte.
+   *
+   * Ezért a nem létező (és az üres) értékhez is teszünk egy saját sort.
+   */
+  const soundOptions = (current: string) => {
+    const known = !!current && sounds.some(s => s.filename === current);
+    return (
+      <>
+        {!current && <option value="">{t("templates.soundDefault")}</option>}
+        {!!current && !known && (
+          <option value={current}>⚠ {current} — {t("templates.soundMissing")}</option>
+        )}
+        {sounds.map(s => <option key={s.id} value={s.filename}>{s.filename}</option>)}
+      </>
+    );
+  };
+
   const totalUsed = sounds.reduce((s, f) => s + f.sizeBytes, 0);
   const available = MAX_TOTAL_BYTES - totalUsed;
 
@@ -608,7 +634,7 @@ export default function BellSchedule() {
                 </select>
                 <select className="sl-select" style={{ fontSize: 12 }} value={pendingBell.soundFile}
                   onChange={e => setPendingBell({ ...pendingBell, soundFile: e.target.value })}>
-                  {sounds.map(s => <option key={s.id} value={s.filename}>{s.filename}</option>)}
+                  {soundOptions(pendingBell.soundFile)}
                 </select>
                 <div style={{ display: "flex", gap: 4 }}>
                   <button className="sl-btn sl-btn-primary" style={{ padding: "2px 10px", fontSize: 12, whiteSpace: "nowrap" }} onClick={commitPendingBell} title={t("templates.commitRowTitle")}>{t("templates.commitButton")}</button>
@@ -634,7 +660,7 @@ export default function BellSchedule() {
                 </select>
                 <select className="sl-select" style={{ fontSize: 12 }} value={bell.soundFile}
                   onChange={e => updateBellEntry(idx, "soundFile", e.target.value)} disabled={selectedTemplate?.isLocked}>
-                  {sounds.map(s => <option key={s.id} value={s.filename}>{s.filename}</option>)}
+                  {soundOptions(bell.soundFile)}
                 </select>
                 {!selectedTemplate?.isLocked && (
                   <button className="sl-btn sl-btn-danger" style={{ padding: "2px 8px", fontSize: 12 }} onClick={() => removeBellEntry(idx)}>✕</button>

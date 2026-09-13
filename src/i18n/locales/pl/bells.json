@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Ustaw godzinę, a następnie naciśnij",
       "suffix": ", aby wstawić"
-    }
+    },
+    "soundMissing": "brak pliku dźwiękowego na serwerze",
+    "soundDefault": "(ustawienie fabryczne)"
   },
   "sounds": {
     "storageUsage": "Wykorzystanie miejsca",

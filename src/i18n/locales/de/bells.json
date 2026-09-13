@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Uhrzeit festlegen, dann",
       "suffix": "zum Einfügen drücken"
-    }
+    },
+    "soundMissing": "Audiodatei fehlt auf dem Server",
+    "soundDefault": "(Werkseinstellung)"
   },
   "sounds": {
     "storageUsage": "Speicherplatznutzung",

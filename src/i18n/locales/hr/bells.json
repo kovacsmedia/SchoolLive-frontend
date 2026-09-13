@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Postavite vrijeme, zatim pritisnite",
       "suffix": "za umetanje"
-    }
+    },
+    "soundMissing": "zvučna datoteka nedostaje na poslužitelju",
+    "soundDefault": "(tvornička zadana)"
   },
   "sounds": {
     "storageUsage": "Iskorištenost prostora",

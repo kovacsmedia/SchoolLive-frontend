@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Állítsd be az időpontot, majd nyomj",
       "suffix": "-t a beillesztéshez"
-    }
+    },
+    "soundMissing": "a hangfájl hiányzik a szerverről",
+    "soundDefault": "(gyári alapértelmezés)"
   },
   "sounds": {
     "storageUsage": "Tárhelyhasználat",

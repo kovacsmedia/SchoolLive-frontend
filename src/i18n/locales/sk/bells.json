@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Nastavte čas a potom stlačte",
       "suffix": "na vloženie"
-    }
+    },
+    "soundMissing": "zvukový súbor chýba na serveri",
+    "soundDefault": "(továrenské nastavenie)"
   },
   "sounds": {
     "storageUsage": "Využitie úložiska",

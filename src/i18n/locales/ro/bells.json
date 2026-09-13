@@ -85,7 +85,9 @@
     "pendingHint": {
       "prefix": "Setați ora, apoi apăsați",
       "suffix": "pentru a insera"
-    }
+    },
+    "soundMissing": "fișierul audio lipsește de pe server",
+    "soundDefault": "(implicit din fabrică)"
   },
   "sounds": {
     "storageUsage": "Utilizarea spațiului de stocare",
