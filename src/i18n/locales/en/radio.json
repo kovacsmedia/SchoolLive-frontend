@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Sound file library",
     "netradio": "Internet radio",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Live audio input"
   },
   "target": {
     "label": "Target",
@@ -82,7 +83,37 @@
     "play": "Resume",
     "pause": "Pause",
     "stop": "Stop live broadcast",
-    "onAirBadge": "On air"
+    "onAirBadge": "On air",
+    "description": "Digitises the audio input of this computer (microphone, line-in, USB sound card) and broadcasts it to the targeted players. For live talk, or for playing an analogue source – turntable, cassette, mixing desk – without digitising it first.",
+    "inputDeviceLabel": "Input device",
+    "systemDefault": "System default",
+    "unnamedInput": "Input {{n}}",
+    "labelsAfterPermission": "Device names appear after the first start (microphone permission).",
+    "meterLabel": "Level meter",
+    "onAir": "ON AIR",
+    "inputGainLabel": "Input gain",
+    "inputGainHint": "Turn a quiet source up, a distorting one down. Red on the meter already means distortion – turn it down there. Adjustable while on air.",
+    "outputVolumeLabel": "Output volume",
+    "outputVolumeHint": "The volume heard on the players. The same slider as in the header.",
+    "startButton": "Go on air",
+    "stopButton": "Stop broadcast",
+    "latencyHint": "The chain adds a few seconds of delay (capture, network, player buffer). Fine for one-way broadcast, not for two-way conversation.",
+    "nowPlayingName": "Live audio input",
+    "unsupported": "This browser does not support live audio capture.",
+    "permissionDenied": "The browser was not granted permission to use the audio input.",
+    "noInputDevice": "No audio input device found.",
+    "snapOffline": "The audio server is unreachable – cannot go on air.",
+    "replaced": "Another live input took over the broadcast.",
+    "disconnected": "Connection to the server was lost.",
+    "connectFailed": "Could not connect to the server.",
+    "connectTimeout": "The server did not respond in time.",
+    "serverError": "Server error: {{code}}",
+    "eqLabel": "Tone control",
+    "eqLow": "Bass",
+    "eqMid": "Mid",
+    "eqHigh": "Treble",
+    "eqReset": "Flat",
+    "eqHint": "Lift the treble for a dull tape or record; pull the mid down for a boxy sound. After a strong boost watch the level meter – if it goes red, reduce the input gain."
   },
   "schedule": {
     "tooltip": "Schedule",

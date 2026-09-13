@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Hangfájl könyvtár",
     "netradio": "Internetrádió",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Élő hangbemenet"
   },
   "target": {
     "label": "Cél",
@@ -82,7 +83,37 @@
     "play": "Folytatás",
     "pause": "Szünet",
     "stop": "Élő adás leállítása",
-    "onAirBadge": "Élő adásban"
+    "onAirBadge": "Élő adásban",
+    "description": "A gép hangrögzítő eszközének (mikrofon, line-in, USB-hangkártya) jelét digitalizálja és sugározza a célzott lejátszókra. Élő beszélgetéshez vagy analóg forrás – lemezjátszó, kazetta, keverőpult – előzetes digitalizálás nélküli lejátszásához.",
+    "inputDeviceLabel": "Bemeneti eszköz",
+    "systemDefault": "Rendszer alapértelmezett",
+    "unnamedInput": "{{n}}. bemenet",
+    "labelsAfterPermission": "Az eszközök neve az első indítás (mikrofon-engedély) után jelenik meg.",
+    "meterLabel": "Kivezérlésjelző",
+    "onAir": "ADÁSBAN",
+    "inputGainLabel": "Bemeneti erősítés",
+    "inputGainHint": "Halk forrást told feljebb, torzítót vegyél vissza. A jelzőn a piros tartomány már torzítás – ott lejjebb kell venni. Adás közben is állítható.",
+    "outputVolumeLabel": "Kimeneti hangerő",
+    "outputVolumeHint": "A lejátszókon megszólaló hangerő. Ugyanaz a csúszka, mint a fejlécben.",
+    "startButton": "Adás indítása",
+    "stopButton": "Adás leállítása",
+    "latencyHint": "A lánc néhány másodperces késleltetéssel jár (felvétel, hálózat, lejátszó-puffer). Egyirányú közvetítéshez jó, oda-vissza beszélgetéshez nem.",
+    "nowPlayingName": "Élő hangbemenet",
+    "unsupported": "Ez a böngésző nem támogatja az élő hangfelvételt.",
+    "permissionDenied": "A böngésző nem kapott engedélyt a hangbemenet használatához.",
+    "noInputDevice": "Nem található hangrögzítő eszköz.",
+    "snapOffline": "A hangszerver nem elérhető – az adás nem indítható.",
+    "replaced": "Az adást egy másik élő bemenet vette át.",
+    "disconnected": "Megszakadt a kapcsolat a szerverrel.",
+    "connectFailed": "Nem sikerült csatlakozni a szerverhez.",
+    "connectTimeout": "A szerver nem válaszolt időben.",
+    "serverError": "Szerverhiba: {{code}}",
+    "eqLabel": "Hangszínszabályzó",
+    "eqLow": "Mély",
+    "eqMid": "Közép",
+    "eqHigh": "Magas",
+    "eqReset": "Semleges",
+    "eqHint": "Régi szalag vagy lemez tompaságát a magas sáv emelésével, a dobozos hangot a közép visszavételével javítod. Erős kiemelés után nézd a kivezérlésjelzőt – ha pirosba megy, vedd vissza a bemeneti erősítést."
   },
   "schedule": {
     "tooltip": "Ütemezés",

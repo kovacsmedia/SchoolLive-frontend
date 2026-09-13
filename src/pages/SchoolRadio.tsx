@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { stripAccents } from "../lib/text";
-import { apiFetch } from "../lib/api";
+import { apiFetch, getWsUrl } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────
@@ -432,6 +432,16 @@ const CSS = `
   .sr-files-scroll::-webkit-scrollbar-track{background:transparent}
 
   /* ── Új: tab bar a bal alsó panelen (Könyvtár / Internetrádió) ───────── */
+  /* Élő hangbemenet – kivezérlésjelző */
+  .sr-vu-row{display:flex;align-items:center;gap:8px}
+  .sr-vu-label{width:14px;font-size:11px;font-weight:800;color:var(--sl-muted);text-align:center}
+  .sr-vu-track{position:relative;flex:1;height:12px;border-radius:6px;background:var(--sl-border);overflow:hidden}
+  .sr-vu-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:#22c55e;transition:width 0.05s linear}
+  /* Csúcstartó: nem tud kilógni, mert a sáv overflow:hidden */
+  .sr-vu-peak{position:absolute;top:0;bottom:0;width:2px;left:0%;background:var(--sl-text);opacity:0.75}
+  .sr-vu-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--sl-muted);margin-top:2px;letter-spacing:0.3px}
+  .sr-live-dot{width:10px;height:10px;border-radius:50%;background:#dc2626;animation:sr-live-blink 1.2s infinite}
+  @keyframes sr-live-blink{0%,100%{opacity:1}50%{opacity:0.25}}
   .sr-tab-bar{display:flex;gap:0;border-bottom:1.5px solid var(--sl-border);background:var(--sl-bg)}
   .sr-tab{flex:1;padding:11px 16px;border:none;background:transparent;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;color:var(--sl-muted);transition:all 0.15s;border-bottom:2.5px solid transparent}
   .sr-tab:hover{color:var(--sl-text-2);background:rgba(59,130,246,0.04)}
@@ -683,7 +693,7 @@ export default function SchoolRadio() {
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // ── Új: bal alsó panel tabok – Hangfájl könyvtár / Internetrádió ───────────
-  const [sourceTab, setSourceTab] = useState<"library" | "playlist" | "netradio" | "youtube">("library");
+  const [sourceTab, setSourceTab] = useState<"library" | "playlist" | "netradio" | "youtube" | "live">("library");
 
   // ── Új: internetrádió listája + kiválasztott állomás/stream/target ─────────
   const [netRadios, setNetRadios] = useState<NetRadio[]>(() => loadNetRadiosFromLS());
@@ -736,6 +746,57 @@ export default function SchoolRadio() {
    * pillanatnyi állapot.
    */
   const [ytStartPos, setYtStartPos] = useState("");
+
+  /* ══════════════════════════════════════════════════════════════════════
+   * ÉLŐ HANGBEMENET
+   *
+   * A gép alapértelmezett (vagy kiválasztott) hangrögzítő eszközének jelét
+   * digitalizáljuk és küldjük a backendnek, ami a snap streamre keveri.
+   *
+   * Jelút a böngészőben:
+   *
+   *   getUserMedia ─► MediaStreamSource ─► GainNode ─┬─► MediaStreamDestination
+   *   (mikrofon/line-in)                  (bemeneti  │      └─► MediaRecorder
+   *                                        erősítés) │           (Opus, WS-re)
+   *                                                  └─► ChannelSplitter
+   *                                                        └─► 2× Analyser
+   *                                                            (L/R mérő)
+   *
+   * A mérő SZÁNDÉKOSAN a gain UTÁN mér: azt kell látni, ami ténylegesen
+   * kimegy – így a csúcsos (piros) jel valódi torzítást jelez, nem a
+   * szabályzás előtti nyers szintet.
+   * ═══════════════════════════════════════════════════════════════════════ */
+  const [liveInputDevices, setLiveInputDevices] = useState<{ deviceId: string; label: string }[]>([]);
+  const [liveDeviceId,   setLiveDeviceId]   = useState("");     // "" = rendszer alapértelmezett
+  const [liveTargetType, setLiveTargetType] = useState<"ALL"|"DEVICE"|"GROUP">("ALL");
+  const [liveTargetId,   setLiveTargetId]   = useState("");
+  const [liveOn,         setLiveOn]         = useState(false);
+  const [liveStarting,   setLiveStarting]   = useState(false);
+  const [liveError,      setLiveError]      = useState<string | null>(null);
+  /** Bemeneti erősítés dB-ben (-12 … +24). 0 = változatlan. */
+  const [liveGainDb,     setLiveGainDb]     = useState(0);
+  /* Háromsávos hangszínszabályzó (-12 … +12 dB sávonként). Régi, mély- vagy
+     magasszegény forrás korrigálására – szalag, lemez, telefonvonal. */
+  const [liveEqLow,      setLiveEqLow]      = useState(0);
+  const [liveEqMid,      setLiveEqMid]      = useState(0);
+  const [liveEqHigh,     setLiveEqHigh]     = useState(0);
+
+  const liveWsRef       = useRef<WebSocket | null>(null);
+  const liveStreamRef   = useRef<MediaStream | null>(null);
+  const liveCtxRef      = useRef<AudioContext | null>(null);
+  const liveGainRef     = useRef<GainNode | null>(null);
+  /** [mély-shelf, közép-peaking, magas-shelf] – a gain után, a mérő előtt. */
+  const liveEqRef       = useRef<BiquadFilterNode[]>([]);
+  const liveRecRef      = useRef<MediaRecorder | null>(null);
+  const liveAnalysersRef = useRef<AnalyserNode[]>([]);
+  const liveRafRef      = useRef<number | null>(null);
+  /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
+     keresztül ez percenként több ezer újrarajzolás lenne az egész oldalra. */
+  const liveMeterRef    = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const livePeakRef     = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const livePeakHoldRef = useRef<{ db: number; until: number }[]>([
+    { db: -90, until: 0 }, { db: -90, until: 0 },
+  ]);
 
   // ── Internetrádió időzítése (állomásonként nyíló sor-panel) ─────────────
   const [stationSchedId,    setStationSchedId]    = useState<string | null>(null);
@@ -1183,6 +1244,331 @@ export default function SchoolRadio() {
   }
 
   // ── Internetrádió: stream indítás egy állomás kiválasztott alstream-jével ──
+  // ══ ÉLŐ HANGBEMENET – vezérlés ═════════════════════════════════════════
+
+  /** A gain-csúszka dB-értéke lineáris szorzóvá. 0 dB → 1.0 */
+  function dbToLinear(db: number): number {
+    return Math.pow(10, db / 20);
+  }
+
+  // A csúszka mozgatása a MÁR FUTÓ láncra is azonnal hat – nem kell újra-
+  // indítani a bemenetet egy halk forrás feljebb tekeréséhez.
+  useEffect(() => {
+    const g = liveGainRef.current;
+    if (!g || !liveCtxRef.current) return;
+    // setTargetAtTime: kattanásmentes átmenet (a lineáris ugrás hallható
+    // pattanást okozna a már szóló jelen).
+    g.gain.setTargetAtTime(dbToLinear(liveGainDb), liveCtxRef.current.currentTime, 0.02);
+  }, [liveGainDb]);
+
+  // Ugyanígy a hangszínszabályzó: adás közben is állítható, kattanás nélkül.
+  useEffect(() => {
+    const eq = liveEqRef.current;
+    const ctx = liveCtxRef.current;
+    if (eq.length !== 3 || !ctx) return;
+    const vals = [liveEqLow, liveEqMid, liveEqHigh];
+    eq.forEach((node, i) => node.gain.setTargetAtTime(vals[i], ctx.currentTime, 0.02));
+  }, [liveEqLow, liveEqMid, liveEqHigh]);
+
+  /** Bemeneti eszközök listája. Címke csak megadott engedély után látszik. */
+  async function refreshLiveInputDevices() {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      setLiveInputDevices(
+        all.filter(d => d.kind === "audioinput")
+           .map(d => ({ deviceId: d.deviceId, label: d.label }))
+      );
+    } catch { /* engedély nélkül üres marad – a default eszköz így is megy */ }
+  }
+
+  useEffect(() => {
+    if (sourceTab === "live") void refreshLiveInputDevices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTab]);
+
+  /** Mérő-ciklus: RMS + csúcs csatornánként, dBFS-ben. */
+  function liveMeterLoop() {
+    const analysers = liveAnalysersRef.current;
+    if (analysers.length === 2) {
+      const now = performance.now();
+      for (let ch = 0; ch < 2; ch++) {
+        const an  = analysers[ch];
+        const buf = new Float32Array(an.fftSize);
+        an.getFloatTimeDomainData(buf);
+
+        let sum = 0, peak = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = buf[i];
+          sum += v * v;
+          const a = Math.abs(v);
+          if (a > peak) peak = a;
+        }
+        const rmsDb  = 20 * Math.log10(Math.sqrt(sum / buf.length) + 1e-9);
+        const peakDb = 20 * Math.log10(peak + 1e-9);
+
+        // Csúcstartás 1,2 mp-ig – e nélkül a rövid csúcsok észrevehetetlenek.
+        const hold = livePeakHoldRef.current[ch];
+        if (peakDb >= hold.db || now > hold.until) {
+          hold.db = peakDb;
+          hold.until = now + 1200;
+        }
+
+        // -60 dB … 0 dB leképezés a sáv szélességére.
+        const pct = (db: number) => Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+
+        const bar = liveMeterRef.current[ch];
+        if (bar) {
+          bar.style.width = `${pct(rmsDb)}%`;
+          // Zöld → sárga (-12 dB fölött) → piros (-1 dB fölött = torzítás közeli)
+          bar.style.background =
+            peakDb > -1  ? "linear-gradient(90deg,#22c55e,#eab308 70%,#dc2626)" :
+            peakDb > -12 ? "linear-gradient(90deg,#22c55e,#eab308)" :
+                           "#22c55e";
+        }
+        const pk = livePeakRef.current[ch];
+        if (pk) pk.style.left = `${pct(hold.db)}%`;
+      }
+    }
+    liveRafRef.current = requestAnimationFrame(liveMeterLoop);
+  }
+
+  /**
+   * Felvevő (újra)indítása friss WebM-fejléccel.
+   *
+   * A backend akkor kéri, amikor a mixerben ténylegesen aktívvá vált az élő
+   * forrás – vagyis induláskor ÉS minden csengetés/üzenet utáni folytatásnál.
+   * Ilyenkor új ffmpeg fut, ami fejléccel kezdődő folyamot vár; egy futó
+   * felvevő közepéből érkező darab dekódolhatatlan lenne.
+   */
+  function restartLiveRecorder() {
+    const ws = liveWsRef.current;
+    const ctx = liveCtxRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || !ctx) return;
+
+    const dest = (liveGainRef.current as any)?._slDest as MediaStreamAudioDestinationNode | undefined;
+    if (!dest) return;
+
+    const begin = () => {
+      try {
+        const rec = new MediaRecorder(dest.stream, {
+          mimeType: "audio/webm;codecs=opus",
+          // ~96 kbps: beszédre és zenére is jó, és elfér egy iskolai
+          // feltöltésen. A lánc végén a snapserver úgyis Opust sugároz.
+          audioBitsPerSecond: 96_000,
+        });
+        rec.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0 && liveWsRef.current?.readyState === WebSocket.OPEN) {
+            liveWsRef.current.send(ev.data);
+          }
+        };
+        liveRecRef.current = rec;
+        // 200 ms-os darabolás: a késleltetés és a darab-overhead között
+        // ésszerű kompromisszum.
+        rec.start(200);
+      } catch (e: any) {
+        setLiveError(e?.message ?? t("errors.unknown"));
+      }
+    };
+
+    const prev = liveRecRef.current;
+    if (prev && prev.state !== "inactive") {
+      prev.onstop = begin;             // a friss felvevő csak a régi leállta UTÁN
+      try { prev.stop(); } catch { begin(); }
+    } else {
+      begin();
+    }
+  }
+
+  async function startLiveInput() {
+    if (liveOn || liveStarting) return;
+    setLiveError(null);
+
+    /*
+     * A szerver oldali ffmpeg WebM/Opus folyamot vár (`-f webm`), ezért a
+     * konténer-támogatást ELŐRE megnézzük. A Safari MediaRecorder-e csak
+     * audio/mp4-et tud – ott a felvétel elindulna, de a szerveren
+     * dekódolhatatlan lenne, azaz néma "adás" menne ki. Inkább mondjuk meg
+     * előre, hogy ez a böngésző nem alkalmas.
+     */
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined" ||
+      !MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus")
+    ) {
+      setLiveError(t("live.unsupported"));
+      return;
+    }
+    if (liveTargetType !== "ALL" && !liveTargetId) {
+      setLiveError(t("errors.chooseTarget"));
+      return;
+    }
+
+    setLiveStarting(true);
+    try {
+      /*
+       * A böngésző „hangkonferencia" alapértelmezései (visszhangszűrés,
+       * zajszűrés, automatikus szintszabályzás) egy zenei/line-in forrást
+       * tönkretesznek: pumpálnak, kapuznak, kivágják a halk részeket.
+       * Mindhármat KIKAPCSOLJUK – a szintet a saját gain-csúszkánk adja.
+       */
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          ...(liveDeviceId ? { deviceId: { exact: liveDeviceId } } : {}),
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl:  false,
+          channelCount:     2,
+        },
+        video: false,
+      });
+      liveStreamRef.current = stream;
+
+      // Az engedély megadása után jönnek meg az eszközcímkék.
+      void refreshLiveInputDevices();
+
+      const ctx = new AudioContext({ sampleRate: 48_000 });
+      liveCtxRef.current = ctx;
+      if (ctx.state === "suspended") await ctx.resume();
+
+      const src   = ctx.createMediaStreamSource(stream);
+      const gain  = ctx.createGain();
+      gain.gain.value = dbToLinear(liveGainDb);
+      const dest  = ctx.createMediaStreamDestination();
+      const split = ctx.createChannelSplitter(2);
+
+      const anL = ctx.createAnalyser(); anL.fftSize = 1024; anL.smoothingTimeConstant = 0.3;
+      const anR = ctx.createAnalyser(); anR.fftSize = 1024; anR.smoothingTimeConstant = 0.3;
+
+      /*
+       * Háromsávos hangszínszabályzó a gain UTÁN, a mérő ELŐTT.
+       *
+       * Sorrend szándékos: a mérő így azt látja, ami ténylegesen kimegy –
+       * egy erős mély-kiemelés torzításba viheti a jelet, és ennek a
+       * kivezérlésjelzőn is látszania kell.
+       *
+       * Sávok: 120 Hz lowshelf (dobozosság / mélyhiány), 1 kHz peaking
+       * (beszédérthetőség, Q=0,9 – széles, zenei harang), 6 kHz highshelf
+       * (szalag/lemez tompasága, sziszegés visszavétele).
+       */
+      const eqLow  = ctx.createBiquadFilter();
+      eqLow.type = "lowshelf";  eqLow.frequency.value = 120; eqLow.gain.value = liveEqLow;
+      const eqMid  = ctx.createBiquadFilter();
+      eqMid.type = "peaking";   eqMid.frequency.value = 1000; eqMid.Q.value = 0.9; eqMid.gain.value = liveEqMid;
+      const eqHigh = ctx.createBiquadFilter();
+      eqHigh.type = "highshelf"; eqHigh.frequency.value = 6000; eqHigh.gain.value = liveEqHigh;
+
+      src.connect(gain);
+      gain.connect(eqLow);
+      eqLow.connect(eqMid);
+      eqMid.connect(eqHigh);
+      eqHigh.connect(dest);
+      eqHigh.connect(split);
+      split.connect(anL, 0);
+      split.connect(anR, 1);
+
+      liveEqRef.current = [eqLow, eqMid, eqHigh];
+
+      // A destination node-ot a gain-en tároljuk, hogy a felvevő-újraindítás
+      // el tudja érni anélkül, hogy még egy refet vezetnénk be.
+      (gain as any)._slDest = dest;
+      liveGainRef.current = gain;
+      liveAnalysersRef.current = [anL, anR];
+
+      if (liveRafRef.current === null) liveRafRef.current = requestAnimationFrame(liveMeterLoop);
+
+      const token =
+        sessionStorage.getItem("accessToken") ??
+        localStorage.getItem("accessToken") ?? "";
+      const qs = new URLSearchParams({
+        token,
+        targetType: liveTargetType,
+        ...(liveTargetType !== "ALL" ? { targetId: liveTargetId } : {}),
+        title: t("live.nowPlayingName"),
+      });
+      const ws = new WebSocket(`${getWsUrl("/live-input")}?${qs.toString()}`);
+      ws.binaryType = "arraybuffer";
+      liveWsRef.current = ws;
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(String(ev.data));
+          // A szerver akkor szól, amikor a mixerben aktív lett a forrás.
+          if (msg?.action === "start") restartLiveRecorder();
+          if (msg?.action === "error") setLiveError(t("live.serverError", { code: msg.error }));
+        } catch { /* nem JSON – nem érdekes */ }
+      };
+      ws.onclose = (ev) => {
+        /* A `liveOn` állapotot NEM nézhetjük: ez a closure még a
+           `setLiveOn(true)` előtt jött létre, tehát mindig false-ot látna.
+           Azt kérdezzük, hogy ez a WS volt-e még a miénk – ha igen, a bontás
+           nem a saját leállításunk következménye. */
+        const wasOurs = liveWsRef.current === ws;
+        if (ev.code === 4006) setLiveError(t("live.snapOffline"));
+        else if (ev.code === 4008) setLiveError(t("live.replaced"));
+        else if (wasOurs && ev.code !== 1000) setLiveError(t("live.disconnected"));
+        stopLiveInput(true);
+      };
+      ws.onerror = () => setLiveError(t("live.connectFailed"));
+
+      await new Promise<void>((resolve, reject) => {
+        const to = setTimeout(() => reject(new Error(t("live.connectTimeout"))), 8000);
+        ws.onopen = () => { clearTimeout(to); resolve(); };
+      });
+
+      setLiveOn(true);
+      setManualNowPlaying({ name: t("live.nowPlayingName"), source: "stream" });
+    } catch (e: any) {
+      setLiveError(
+        e?.name === "NotAllowedError" ? t("live.permissionDenied")
+        : e?.name === "NotFoundError" ? t("live.noInputDevice")
+        : (e?.message ?? t("errors.unknown"))
+      );
+      stopLiveInput(true);
+    } finally {
+      setLiveStarting(false);
+    }
+  }
+
+  /** @param silent belső hívás (hibaág / WS-bontás) – ne nyúljunk a hibaüzenethez */
+  function stopLiveInput(silent = false) {
+    try { liveRecRef.current?.stop(); } catch { /* ignore */ }
+    liveRecRef.current = null;
+
+    const ws = liveWsRef.current;
+    liveWsRef.current = null;
+    if (ws) { ws.onclose = null; try { ws.close(1000, "stopped"); } catch { /* ignore */ } }
+
+    if (liveRafRef.current !== null) { cancelAnimationFrame(liveRafRef.current); liveRafRef.current = null; }
+    liveAnalysersRef.current = [];
+    for (let ch = 0; ch < 2; ch++) {
+      const bar = liveMeterRef.current[ch];
+      if (bar) bar.style.width = "0%";
+      const pk = livePeakRef.current[ch];
+      if (pk) pk.style.left = "0%";
+      livePeakHoldRef.current[ch] = { db: -90, until: 0 };
+    }
+
+    liveStreamRef.current?.getTracks().forEach(tr => { try { tr.stop(); } catch { /* ignore */ } });
+    liveStreamRef.current = null;
+
+    const ctx = liveCtxRef.current;
+    liveCtxRef.current = null;
+    liveGainRef.current = null;
+    liveEqRef.current = [];
+    if (ctx && ctx.state !== "closed") { void ctx.close().catch(() => { /* ignore */ }); }
+
+    setLiveOn(false);
+    if (!silent) setLiveError(null);
+    setManualNowPlaying(prev => (prev?.name === t("live.nowPlayingName") ? null : prev));
+  }
+
+  // Lapelhagyás / kilépés: a mikrofon nem maradhat nyitva, és a rádió sem
+  // szólhat tovább egy már nem létező böngészőfül bemenetéről.
+  useEffect(() => {
+    return () => { stopLiveInput(true); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Az állomás időzítés-panelének nyitása/zárása, mai dátummal előtöltve. */
   function toggleStationSchedule(station: NetRadio) {
     if (stationSchedId === station.id) { setStationSchedId(null); return; }
@@ -2221,6 +2607,13 @@ export default function SchoolRadio() {
                 onClick={() => setSourceTab("youtube")}>
                 🎬 {t("tabs.youtube")}
               </button>
+              <button
+                className={`sr-tab${sourceTab === "live" ? " active" : ""}`}
+                type="button"
+                onClick={() => setSourceTab("live")}>
+                🎙 {t("tabs.liveInput")}
+                {liveOn && " 🔴"}
+              </button>
             </div>
 
             {/* ── Lejátszási lista készítő tab ───────────────────────── */}
@@ -2924,6 +3317,223 @@ export default function SchoolRadio() {
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {/* ── Élő hangbemenet tab ───────────────────────────────────── */}
+            {sourceTab === "live" && (
+              <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:14}}>
+                <div style={{fontSize:12,color:"var(--sl-muted)"}}>
+                  {t("live.description")}
+                </div>
+
+                {liveError && (
+                  <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{liveError}</span></div>
+                )}
+
+                {/* Bemeneti eszköz */}
+                <div>
+                  <label className="sr-label">🎚 {t("live.inputDeviceLabel")}</label>
+                  <select
+                    className="sr-select"
+                    style={{width:"100%"}}
+                    value={liveDeviceId}
+                    disabled={liveOn}
+                    onChange={(e) => setLiveDeviceId(e.target.value)}
+                  >
+                    <option value="">{t("live.systemDefault")}</option>
+                    {liveInputDevices.map((d, i) => (
+                      <option key={d.deviceId || i} value={d.deviceId}>
+                        {d.label || t("live.unnamedInput", { n: i + 1 })}
+                      </option>
+                    ))}
+                  </select>
+                  {liveInputDevices.every(d => !d.label) && (
+                    <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+                      💡 {t("live.labelsAfterPermission")}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cél választó */}
+                <div>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                    {(["ALL","DEVICE","GROUP"] as const).map(opt => (
+                      <button key={opt} type="button"
+                        className={`sr-btn ${liveTargetType===opt?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
+                        disabled={liveOn}
+                        onClick={() => { setLiveTargetType(opt); setLiveTargetId(""); }}>
+                        {opt==="ALL"?`📡 ${t("target.all")}`:opt==="DEVICE"?`🔊 ${t("target.device")}`:`👥 ${t("target.group")}`}
+                      </button>
+                    ))}
+                    {liveTargetType==="DEVICE" && (
+                      <select className="sr-select" style={{flex:1,minWidth:140}} disabled={liveOn}
+                        value={liveTargetId} onChange={e => setLiveTargetId(e.target.value)}>
+                        <option value="">— {t("target.devicePlaceholder")} —</option>
+                        {devices.map(d => (
+                          <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {liveTargetType==="GROUP" && (
+                      <select className="sr-select" style={{flex:1,minWidth:140}} disabled={liveOn}
+                        value={liveTargetId} onChange={e => setLiveTargetId(e.target.value)}>
+                        <option value="">— {t("target.groupPlaceholder")} —</option>
+                        {groups.map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Kivezérlésjelző (sztereó) ────────────────────────────
+                    A gain UTÁN mér, tehát a piros tartomány valódi torzítást
+                    jelez. A vékony függőleges vonal az utolsó 1,2 mp csúcsa. */}
+                <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
+                      📊 {t("live.meterLabel")}
+                    </div>
+                    {liveOn && (
+                      <div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#dc2626"}}>
+                        <span className="sr-live-dot" /> {t("live.onAir")}
+                      </div>
+                    )}
+                  </div>
+                  {(["L","R"] as const).map((ch, i) => (
+                    <div className="sr-vu-row" key={ch}>
+                      <div className="sr-vu-label">{ch}</div>
+                      <div className="sr-vu-track">
+                        <div className="sr-vu-fill" ref={(el) => { liveMeterRef.current[i] = el; }} />
+                        <div className="sr-vu-peak" ref={(el) => { livePeakRef.current[i] = el; }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="sr-vu-scale">
+                    <span>-60</span><span>-40</span><span>-20</span><span>-12</span><span>-6</span><span>0 dB</span>
+                  </div>
+                </div>
+
+                {/* ── Bemeneti erősítés ────────────────────────────────────
+                    Halk analóg forrás feltolására / torzító forrás
+                    visszavételére. A már futó láncra is azonnal hat. */}
+                <div>
+                  <label className="sr-label">
+                    🎛 {t("live.inputGainLabel")}
+                    <span style={{fontWeight:800,color:"var(--sl-text)",marginLeft:8}}>
+                      {liveGainDb > 0 ? "+" : ""}{liveGainDb} dB
+                    </span>
+                  </label>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <input
+                      type="range"
+                      min={-12}
+                      max={24}
+                      step={1}
+                      value={liveGainDb}
+                      onChange={(e) => setLiveGainDb(Number(e.target.value))}
+                      style={{flex:1}}
+                    />
+                    <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                      onClick={() => setLiveGainDb(0)} disabled={liveGainDb === 0}>
+                      0 dB
+                    </button>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+                    💡 {t("live.inputGainHint")}
+                  </div>
+                </div>
+
+                {/* ── Háromsávos hangszínszabályzó ─────────────────────────
+                    Régi vagy szűk sávú forrás korrigálására. A jelútban a
+                    gain után van, tehát a kiemelés a kivezérlésjelzőn is
+                    látszik – erős emelésnél a bemeneti erősítést vissza kell
+                    venni, nehogy torzítson. */}
+                <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
+                      🎚 {t("live.eqLabel")}
+                    </div>
+                    <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                      disabled={liveEqLow === 0 && liveEqMid === 0 && liveEqHigh === 0}
+                      onClick={() => { setLiveEqLow(0); setLiveEqMid(0); setLiveEqHigh(0); }}>
+                      ↺ {t("live.eqReset")}
+                    </button>
+                  </div>
+                  {([
+                    { key: "low",  label: t("live.eqLow"),  hz: "120 Hz",  val: liveEqLow,  set: setLiveEqLow  },
+                    { key: "mid",  label: t("live.eqMid"),  hz: "1 kHz",   val: liveEqMid,  set: setLiveEqMid  },
+                    { key: "high", label: t("live.eqHigh"), hz: "6 kHz",   val: liveEqHigh, set: setLiveEqHigh },
+                  ] as const).map((band) => (
+                    <div key={band.key} style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:88,minWidth:88,fontSize:12,fontWeight:700}}>
+                        {band.label}
+                        <div style={{fontSize:10,fontWeight:600,color:"var(--sl-muted)"}}>{band.hz}</div>
+                      </div>
+                      <input
+                        type="range"
+                        min={-12}
+                        max={12}
+                        step={1}
+                        value={band.val}
+                        onChange={(e) => band.set(Number(e.target.value))}
+                        style={{flex:1}}
+                      />
+                      <div style={{width:52,textAlign:"right",fontSize:12,fontWeight:800,
+                                   color: band.val === 0 ? "var(--sl-muted)" : "var(--sl-text)"}}>
+                        {band.val > 0 ? "+" : ""}{band.val} dB
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                    💡 {t("live.eqHint")}
+                  </div>
+                </div>
+
+                {/* ── Kimeneti hangerő ─────────────────────────────────────
+                    Ugyanaz a tenant-szintű élő rádió-gain, amit a fejléc
+                    csúszkája is állít – szándékosan közös állapot, hogy a
+                    kettő ne mondjon ellent egymásnak. */}
+                <div>
+                  <label className="sr-label">
+                    🔊 {t("live.outputVolumeLabel")}
+                    <span style={{fontWeight:800,color:"var(--sl-text)",marginLeft:8}}>{streamVolume}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={streamVolume}
+                    onChange={(e) => setStreamVolume(Number(e.target.value))}
+                    style={{width:"100%"}}
+                  />
+                  <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
+                    💡 {t("live.outputVolumeHint")}
+                  </div>
+                </div>
+
+                {/* Indítás / leállítás */}
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                  {!liveOn ? (
+                    <button className="sr-btn sr-btn-primary" type="button"
+                      style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
+                      onClick={() => void startLiveInput()} disabled={liveStarting}>
+                      {liveStarting ? `⏳ ${t("busy.saving")}` : `🔴 ${t("live.startButton")}`}
+                    </button>
+                  ) : (
+                    <button className="sr-btn sr-btn-danger" type="button"
+                      onClick={() => stopLiveInput()}>
+                      ⏹ {t("live.stopButton")}
+                    </button>
+                  )}
+                </div>
+
+                <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                  ⏱ {t("live.latencyHint")}
+                </div>
               </div>
             )}
 

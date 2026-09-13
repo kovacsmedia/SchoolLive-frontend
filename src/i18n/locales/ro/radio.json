@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Bibliotecă de fișiere audio",
     "netradio": "Radio pe internet",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Intrare audio live"
   },
   "target": {
     "label": "Țintă",
@@ -82,7 +83,37 @@
     "play": "Continuă",
     "pause": "Pauză",
     "stop": "Oprește transmisia live",
-    "onAirBadge": "În direct"
+    "onAirBadge": "În direct",
+    "description": "Digitizează semnalul intrării audio a acestui computer (microfon, line-in, placă de sunet USB) și îl transmite către difuzoarele vizate. Pentru discuții live sau pentru redarea unei surse analogice – pick-up, casetă, mixer – fără digitizare prealabilă.",
+    "inputDeviceLabel": "Dispozitiv de intrare",
+    "systemDefault": "Implicit de sistem",
+    "unnamedInput": "Intrarea {{n}}",
+    "labelsAfterPermission": "Numele dispozitivelor apar după prima pornire (permisiunea pentru microfon).",
+    "meterLabel": "Indicator de nivel",
+    "onAir": "ÎN EMISIE",
+    "inputGainLabel": "Amplificare la intrare",
+    "inputGainHint": "Ridică o sursă slabă, coboară una care distorsionează. Roșul pe indicator înseamnă deja distorsiune – acolo trebuie coborât. Se poate regla și în timpul emisiei.",
+    "outputVolumeLabel": "Volum de ieșire",
+    "outputVolumeHint": "Volumul auzit pe difuzoare. Același cursor ca în antet.",
+    "startButton": "Pornește emisia",
+    "stopButton": "Oprește emisia",
+    "latencyHint": "Lanțul adaugă câteva secunde de întârziere (captură, rețea, buffer-ul playerului). Bun pentru transmisie într-un singur sens, nu pentru conversație.",
+    "nowPlayingName": "Intrare audio live",
+    "unsupported": "Acest browser nu acceptă captura audio live.",
+    "permissionDenied": "Browserul nu a primit permisiunea de a folosi intrarea audio.",
+    "noInputDevice": "Nu s-a găsit niciun dispozitiv de intrare audio.",
+    "snapOffline": "Serverul audio nu este accesibil – emisia nu poate porni.",
+    "replaced": "O altă intrare live a preluat emisia.",
+    "disconnected": "Conexiunea cu serverul s-a întrerupt.",
+    "connectFailed": "Conectarea la server a eșuat.",
+    "connectTimeout": "Serverul nu a răspuns la timp.",
+    "serverError": "Eroare de server: {{code}}",
+    "eqLabel": "Corecție de ton",
+    "eqLow": "Joase",
+    "eqMid": "Medii",
+    "eqHigh": "Înalte",
+    "eqReset": "Neutru",
+    "eqHint": "Ridică înaltele pentru o bandă sau un disc mat; coboară mediile pentru un sunet închis. După o accentuare puternică urmărește indicatorul de nivel – dacă intră în roșu, redu amplificarea la intrare."
   },
   "schedule": {
     "tooltip": "Programează",

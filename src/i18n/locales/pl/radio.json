@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Biblioteka plików dźwiękowych",
     "netradio": "Radio internetowe",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Wejście audio na żywo"
   },
   "target": {
     "label": "Cel",
@@ -82,7 +83,37 @@
     "play": "Wznów",
     "pause": "Pauza",
     "stop": "Zatrzymaj transmisję na żywo",
-    "onAirBadge": "Na żywo"
+    "onAirBadge": "Na żywo",
+    "description": "Digitalizuje sygnał wejścia audio tego komputera (mikrofon, line-in, karta dźwiękowa USB) i transmituje go do wybranych odtwarzaczy. Do rozmowy na żywo lub do odtwarzania źródła analogowego – gramofon, kaseta, mikser – bez wcześniejszej digitalizacji.",
+    "inputDeviceLabel": "Urządzenie wejściowe",
+    "systemDefault": "Domyślne systemowe",
+    "unnamedInput": "Wejście {{n}}",
+    "labelsAfterPermission": "Nazwy urządzeń pojawią się po pierwszym uruchomieniu (zgoda na mikrofon).",
+    "meterLabel": "Wskaźnik wysterowania",
+    "onAir": "NA ANTENIE",
+    "inputGainLabel": "Wzmocnienie wejścia",
+    "inputGainHint": "Ciche źródło podgłoś, zniekształcające przycisz. Czerwony na wskaźniku oznacza już zniekształcenie – tam trzeba przyciszyć. Regulowane także podczas emisji.",
+    "outputVolumeLabel": "Głośność wyjściowa",
+    "outputVolumeHint": "Głośność słyszana na odtwarzaczach. Ten sam suwak co w nagłówku.",
+    "startButton": "Rozpocznij emisję",
+    "stopButton": "Zatrzymaj emisję",
+    "latencyHint": "Łańcuch wnosi kilka sekund opóźnienia (nagrywanie, sieć, bufor odtwarzacza). Nadaje się do transmisji jednokierunkowej, nie do rozmowy.",
+    "nowPlayingName": "Wejście audio na żywo",
+    "unsupported": "Ta przeglądarka nie obsługuje nagrywania dźwięku na żywo.",
+    "permissionDenied": "Przeglądarka nie otrzymała zgody na użycie wejścia audio.",
+    "noInputDevice": "Nie znaleziono urządzenia wejścia audio.",
+    "snapOffline": "Serwer dźwięku jest niedostępny – nie można rozpocząć emisji.",
+    "replaced": "Emisję przejęło inne wejście na żywo.",
+    "disconnected": "Połączenie z serwerem zostało przerwane.",
+    "connectFailed": "Nie udało się połączyć z serwerem.",
+    "connectTimeout": "Serwer nie odpowiedział na czas.",
+    "serverError": "Błąd serwera: {{code}}",
+    "eqLabel": "Korekcja barwy",
+    "eqLow": "Niskie",
+    "eqMid": "Średnie",
+    "eqHigh": "Wysokie",
+    "eqReset": "Neutralnie",
+    "eqHint": "Matową taśmę lub płytę popraw podbiciem wysokich, dudniący dźwięk – obniżeniem średnich. Po mocnym podbiciu obserwuj wskaźnik wysterowania – jeśli wchodzi na czerwono, zmniejsz wzmocnienie wejścia."
   },
   "schedule": {
     "tooltip": "Zaplanuj",

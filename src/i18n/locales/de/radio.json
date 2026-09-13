@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Tondatei-Bibliothek",
     "netradio": "Internetradio",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Live-Audioeingang"
   },
   "target": {
     "label": "Ziel",
@@ -82,7 +83,37 @@
     "play": "Fortsetzen",
     "pause": "Pause",
     "stop": "Live-Sendung stoppen",
-    "onAirBadge": "Auf Sendung"
+    "onAirBadge": "Auf Sendung",
+    "description": "Digitalisiert das Signal des Audioeingangs dieses Rechners (Mikrofon, Line-in, USB-Soundkarte) und überträgt es an die ausgewählten Player. Für Live-Gespräche oder zum Abspielen analoger Quellen – Plattenspieler, Kassette, Mischpult – ohne vorherige Digitalisierung.",
+    "inputDeviceLabel": "Eingabegerät",
+    "systemDefault": "Systemstandard",
+    "unnamedInput": "Eingang {{n}}",
+    "labelsAfterPermission": "Die Gerätenamen erscheinen nach dem ersten Start (Mikrofonberechtigung).",
+    "meterLabel": "Aussteuerungsanzeige",
+    "onAir": "AUF SENDUNG",
+    "inputGainLabel": "Eingangsverstärkung",
+    "inputGainHint": "Leise Quelle anheben, verzerrende absenken. Rot in der Anzeige bedeutet bereits Verzerrung – dort absenken. Auch während der Sendung einstellbar.",
+    "outputVolumeLabel": "Ausgangslautstärke",
+    "outputVolumeHint": "Die Lautstärke auf den Playern. Derselbe Regler wie in der Kopfzeile.",
+    "startButton": "Sendung starten",
+    "stopButton": "Sendung beenden",
+    "latencyHint": "Die Kette bringt einige Sekunden Verzögerung mit sich (Aufnahme, Netzwerk, Player-Puffer). Für einseitige Übertragung geeignet, nicht für Wechselgespräche.",
+    "nowPlayingName": "Live-Audioeingang",
+    "unsupported": "Dieser Browser unterstützt keine Live-Audioaufnahme.",
+    "permissionDenied": "Der Browser hat keine Berechtigung für den Audioeingang erhalten.",
+    "noInputDevice": "Kein Audioeingabegerät gefunden.",
+    "snapOffline": "Der Audioserver ist nicht erreichbar – Sendung nicht möglich.",
+    "replaced": "Ein anderer Live-Eingang hat die Sendung übernommen.",
+    "disconnected": "Die Verbindung zum Server wurde unterbrochen.",
+    "connectFailed": "Verbindung zum Server fehlgeschlagen.",
+    "connectTimeout": "Der Server hat nicht rechtzeitig geantwortet.",
+    "serverError": "Serverfehler: {{code}}",
+    "eqLabel": "Klangregelung",
+    "eqLow": "Bass",
+    "eqMid": "Mitten",
+    "eqHigh": "Höhen",
+    "eqReset": "Neutral",
+    "eqHint": "Dumpfes Band oder Platte: Höhen anheben. Kastiger Klang: Mitten absenken. Nach starker Anhebung die Aussteuerungsanzeige beachten – wird sie rot, die Eingangsverstärkung zurücknehmen."
   },
   "schedule": {
     "tooltip": "Planen",

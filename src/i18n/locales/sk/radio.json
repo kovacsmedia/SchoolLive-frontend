@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Knižnica zvukových súborov",
     "netradio": "Internetové rádio",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Živý zvukový vstup"
   },
   "target": {
     "label": "Cieľ",
@@ -82,7 +83,37 @@
     "play": "Pokračovať",
     "pause": "Pozastaviť",
     "stop": "Zastaviť živé vysielanie",
-    "onAirBadge": "Vysiela sa"
+    "onAirBadge": "Vysiela sa",
+    "description": "Digitalizuje signál zvukového vstupu tohto počítača (mikrofón, line-in, USB zvuková karta) a vysiela ho na cieľové prehrávače. Na živý rozhovor alebo na prehrávanie analógového zdroja – gramofón, kazeta, mixpult – bez predchádzajúcej digitalizácie.",
+    "inputDeviceLabel": "Vstupné zariadenie",
+    "systemDefault": "Predvolené systémom",
+    "unnamedInput": "Vstup {{n}}",
+    "labelsAfterPermission": "Názvy zariadení sa zobrazia po prvom spustení (povolenie mikrofónu).",
+    "meterLabel": "Indikátor vybudenia",
+    "onAir": "VYSIELA",
+    "inputGainLabel": "Vstupné zosilnenie",
+    "inputGainHint": "Tichý zdroj pridajte, skresľujúci uberte. Červená na indikátore už znamená skreslenie – tam uberte. Nastaviteľné aj počas vysielania.",
+    "outputVolumeLabel": "Výstupná hlasitosť",
+    "outputVolumeHint": "Hlasitosť na prehrávačoch. Ten istý posuvník ako v hlavičke.",
+    "startButton": "Spustiť vysielanie",
+    "stopButton": "Zastaviť vysielanie",
+    "latencyHint": "Reťazec pridáva niekoľkosekundové oneskorenie (snímanie, sieť, vyrovnávacia pamäť prehrávača). Vhodné na jednosmerné vysielanie, nie na obojsmerný rozhovor.",
+    "nowPlayingName": "Živý zvukový vstup",
+    "unsupported": "Tento prehliadač nepodporuje živé snímanie zvuku.",
+    "permissionDenied": "Prehliadač nedostal povolenie na použitie zvukového vstupu.",
+    "noInputDevice": "Nenašlo sa žiadne zvukové vstupné zariadenie.",
+    "snapOffline": "Zvukový server je nedostupný – vysielanie sa nedá spustiť.",
+    "replaced": "Vysielanie prevzal iný živý vstup.",
+    "disconnected": "Spojenie so serverom sa prerušilo.",
+    "connectFailed": "Nepodarilo sa pripojiť k serveru.",
+    "connectTimeout": "Server neodpovedal včas.",
+    "serverError": "Chyba servera: {{code}}",
+    "eqLabel": "Ekvalizér",
+    "eqLow": "Basy",
+    "eqMid": "Stredy",
+    "eqHigh": "Výšky",
+    "eqReset": "Neutrál",
+    "eqHint": "Tupý pásik alebo platňu opravíte pridaním výšok, dutý zvuk ubratím stredov. Po silnom zdvihnutí sledujte indikátor vybudenia – ak je červený, uberte vstupné zosilnenie."
   },
   "schedule": {
     "tooltip": "Naplánovať",

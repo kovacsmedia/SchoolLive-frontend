@@ -12,7 +12,8 @@
   "tabs": {
     "library": "Knjižnica zvučnih datoteka",
     "netradio": "Internetski radio",
-    "youtube": "YouTube"
+    "youtube": "YouTube",
+    "liveInput": "Živi audio ulaz"
   },
   "target": {
     "label": "Cilj",
@@ -82,7 +83,37 @@
     "play": "Nastavi",
     "pause": "Pauza",
     "stop": "Zaustavi prijenos uživo",
-    "onAirBadge": "Uživo"
+    "onAirBadge": "Uživo",
+    "description": "Digitalizira signal audio ulaza ovog računala (mikrofon, line-in, USB zvučna kartica) i emitira ga na ciljane reproduktore. Za razgovor uživo ili za reprodukciju analognog izvora – gramofon, kaseta, mikseta – bez prethodne digitalizacije.",
+    "inputDeviceLabel": "Ulazni uređaj",
+    "systemDefault": "Zadano sustavom",
+    "unnamedInput": "Ulaz {{n}}",
+    "labelsAfterPermission": "Nazivi uređaja pojavljuju se nakon prvog pokretanja (dopuštenje za mikrofon).",
+    "meterLabel": "Pokazivač razine",
+    "onAir": "U ETERU",
+    "inputGainLabel": "Ulazno pojačanje",
+    "inputGainHint": "Tihi izvor pojačaj, izobličeni stišaj. Crveno na pokazivaču već znači izobličenje – tamo treba stišati. Može se podešavati i tijekom emitiranja.",
+    "outputVolumeLabel": "Izlazna glasnoća",
+    "outputVolumeHint": "Glasnoća na reproduktorima. Isti klizač kao u zaglavlju.",
+    "startButton": "Pokreni emitiranje",
+    "stopButton": "Zaustavi emitiranje",
+    "latencyHint": "Lanac donosi nekoliko sekundi kašnjenja (snimanje, mreža, međuspremnik reproduktora). Dobro za jednosmjerni prijenos, ne i za razgovor.",
+    "nowPlayingName": "Živi audio ulaz",
+    "unsupported": "Ovaj preglednik ne podržava snimanje zvuka uživo.",
+    "permissionDenied": "Preglednik nije dobio dopuštenje za korištenje audio ulaza.",
+    "noInputDevice": "Nije pronađen nijedan audio ulazni uređaj.",
+    "snapOffline": "Audio poslužitelj nije dostupan – emitiranje se ne može pokrenuti.",
+    "replaced": "Emitiranje je preuzeo drugi živi ulaz.",
+    "disconnected": "Veza s poslužiteljem je prekinuta.",
+    "connectFailed": "Povezivanje s poslužiteljem nije uspjelo.",
+    "connectTimeout": "Poslužitelj nije odgovorio na vrijeme.",
+    "serverError": "Greška poslužitelja: {{code}}",
+    "eqLabel": "Regulacija tona",
+    "eqLow": "Duboki",
+    "eqMid": "Srednji",
+    "eqHigh": "Visoki",
+    "eqReset": "Neutralno",
+    "eqHint": "Tupu vrpcu ili ploču popravi podizanjem visokih, a bačvast zvuk spuštanjem srednjih. Nakon jakog podizanja prati pokazivač razine – ako ode u crveno, smanji ulazno pojačanje."
   },
   "schedule": {
     "tooltip": "Zakaži",
