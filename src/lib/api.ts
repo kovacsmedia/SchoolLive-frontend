@@ -1,5 +1,7 @@
 // src/lib/api.ts
 
+import { hasPlayerCredentials, tryPlayerRelogin } from "./playerAuth";
+
 type ApiErrorData = {
   error?: string;
   message?: string;
@@ -214,12 +216,28 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = f
       // jöjjön is a kérés, azonnal töröljük a helyi auth-állapotot és
       // login-ra navigálunk – nem várjuk meg a köv. periodikus refresh-tick-et
       // (AuthContext), ami akár percekig is eltarthatna.
-      if (res.status === 401 && d?.error === "session_revoked") {
+      /*
+       * BÁRMELYIK 401 – nem csak a `session_revoked`.
+       *
+       * Eddig a csendes újra-bejelentkezés kizárólag a `session_revoked`
+       * hibakódra futott. Az `authJwt` viszont "Invalid token"-t ad, ha maga
+       * a token válik érvénytelenné – például amikor a backend JWT-titka
+       * cserélődik egy deploynál. Az a webplayert a login-képernyőre dobta,
+       * ami a követelmény szerint nem történhet meg.
+       *
+       * Sorrend: ha a VirtualPlayer regisztrált kezelőt, azt hívjuk; ha nem
+       * (pl. még be sem töltődött), de van tárolt webplayer-hitelesítés,
+       * közvetlenül újra bejelentkezünk. Csak ha egyik sem áll fenn – tehát
+       * tényleg admin-felületről van szó – marad a login-navigálás.
+       */
+      if (res.status === 401) {
         if (_sessionRevokedHandler) {
           // Webplayer: csendes újra-bejelentkezés, NINCS login-képernyő és
           // NINCS token-törlés (a relogin úgyis felülírja). Ld. a fenti
           // magyarázatot.
           try { void _sessionRevokedHandler(); } catch { /* ignore */ }
+        } else if (hasPlayerCredentials()) {
+          void tryPlayerRelogin(baseUrl);
         } else {
           try {
             sessionStorage.removeItem("accessToken");

@@ -9,6 +9,8 @@ import React, {
 import type { Me, LoginResponse } from "../lib/auth";
 import { me as fetchMe, clearSession, login as apiLogin, refreshAccessToken } from "../lib/auth";
 import { applyLocale } from "../i18n";
+import { getApiBaseUrl } from "../lib/api";
+import { hasPlayerCredentials, tryPlayerRelogin } from "../lib/playerAuth";
 
 type AuthState =
   | { status: "loading" }
@@ -278,7 +280,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const status = e?.status;
 
         if (status === 401) {
-          // A token/munkamenet tényleg érvénytelen – itt van értelme kilépni.
+          /*
+           * A webplayer ITT SEM léphet ki.
+           *
+           * Ez a kód az induló `/auth/me` hívás hibaágán fut – olyankor,
+           * amikor a VirtualPlayer komponens még be sem töltődött, tehát
+           * `setSessionRevokedHandler`-t sem regisztrálhatott. Ha van tárolt
+           * webplayer-hitelesítés, csendben újra bejelentkezünk és
+           * újrapróbáljuk; a kijelző legfeljebb a "csatlakozás..." állapotot
+           * mutatja pár másodpercig, de SOHA nem a login-képernyőt.
+           */
+          if (hasPlayerCredentials()) {
+            const ok = await tryPlayerRelogin(getApiBaseUrl());
+            console.warn(
+              `[auth] /auth/me 401 – webplayer csendes ujra-bejelentkezes: ${ok ? "sikeres" : "sikertelen"}`
+            );
+            attempt++;
+            await new Promise((r) => setTimeout(r, ok ? 250 : Math.min(30_000, 2_000 * attempt)));
+            continue;
+          }
+
+          // Admin felület: a token/munkamenet tényleg érvénytelen – itt van
+          // értelme kilépni.
           logout();
           return;
         }

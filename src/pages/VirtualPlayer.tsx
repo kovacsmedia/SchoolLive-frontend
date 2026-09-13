@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode, setSessionRevokedHandler } from "../lib/api";
 import { SnapWsClient } from "../lib/snapWsClient";
 import { getClientKey } from "../lib/clientKey";
+import { tryPlayerRelogin } from "../lib/playerAuth";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────────
 type PlayerStatus = "registering" | "pending" | "active";
@@ -527,22 +528,11 @@ export default function VirtualPlayer() {
   //  a localStorage-ben). Az élő /sync és /snap-stream WS-ek megmaradnak (azokat
   //  upgrade-kor authentikáljuk egyszer); csak a következő HTTP-kérés viszi az
   //  új tokent.
+  // A tényleges logika a `lib/playerAuth.ts`-ben van, mert az `api.ts` és az
+  // `AuthContext.tsx` is ugyanezt hívja (ld. ott a magyarázatot). Egy
+  // implementáció, egy egyidejűség-védelem.
   const reloginPlayer = useCallback(async () => {
-    try {
-      const storedCreds = localStorage.getItem("vpCredentials");
-      if (!storedCreds) return;
-      const { email, password } = JSON.parse(storedCreds) as { email: string; password: string };
-      const res = await fetch(`${API_BASE()}/auth/login`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.accessToken) {
-        if (sessionStorage.getItem("accessToken")) sessionStorage.setItem("accessToken", data.accessToken);
-        else localStorage.setItem("accessToken", data.accessToken);
-      }
-    } catch (e) { console.warn("[VP] reloginPlayer hiba:", e); }
+    await tryPlayerRelogin(API_BASE());
   }, []);
   reloginPlayerRef.current = reloginPlayer;
 
