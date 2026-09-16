@@ -149,6 +149,49 @@ export class SnapWsClient {
    * Most bájtokat gyűjtünk, és csak TELJES kereteket dolgozunk fel.
    */
   private rxBuf = new Uint8Array(0);
+  /*
+   * Olvasási mutató a pufferben.
+   *
+   * Feldolgozott keret után NEM vágunk új nézetet (`subarray`), csak
+   * léptetjük ezt a mutatót. Két okból: így keretenként nem keletkezik
+   * másolat/nézet, és az `rxBuf` mező KIZÁRÓLAG `new Uint8Array(...)`
+   * értéket kap – a származtatott nézetek tágabb
+   * `Uint8Array<ArrayBufferLike>` típusa nem ütközik a mező szűkebb
+   * `Uint8Array<ArrayBuffer>` típusával.
+   */
+  private rxOff = 0;
+
+  /*
+   * Forgalom-számlálók a hibakereséshez.
+   *
+   * Az "okonként egyszer" logolás nem tudja megmutatni, hogy a kodek-fejléc
+   * UTÁN érkezik-e még hangcsomag – pedig pont ez a kérdés, ha a stream
+   * csendben marad. Ezért számolunk, és a csatlakozás után kétszer (2 és 10
+   * másodperccel) kiírunk egy összegző sort. Utána csend: ez nem futásidejű
+   * naplózás, hanem indulási diagnosztika.
+   */
+  private cnt = { wire: 0, decoded: 0, scheduled: 0, dropCodec: 0, dropNotReady: 0, dropSamples: 0, dropNoSync: 0, dropSuspended: 0, dropLate: 0 };
+  private statsTimers: ReturnType<typeof setTimeout>[] = [];
+
+  private resetStats(): void {
+    this.statsTimers.forEach(clearTimeout);
+    this.statsTimers = [];
+    this.cnt = { wire: 0, decoded: 0, scheduled: 0, dropCodec: 0, dropNotReady: 0, dropSamples: 0, dropNoSync: 0, dropSuspended: 0, dropLate: 0 };
+  }
+
+  private armStats(): void {
+    for (const ms of [2000, 10000]) {
+      this.statsTimers.push(setTimeout(() => {
+        const c = this.cnt;
+        console.log(
+          `[SnapWS] ${ms / 1000}s mérleg: WireChunk=${c.wire} dekódolt=${c.decoded} ütemezett=${c.scheduled} | ` +
+          `eldobva – kodek:${c.dropCodec} dekóder:${c.dropNotReady} 0minta:${c.dropSamples} ` +
+          `időszink:${c.dropNoSync} suspended:${c.dropSuspended} későn:${c.dropLate} | ` +
+          `codec=${this.codec} ctx=${this.opts.audioCtx.state} offsetKnown=${this.serverOffsetKnown}`
+        );
+      }, ms));
+    }
+  }
 
   private diagOnce(key: string, msg: string): void {
     if (this.diagSeen.has(key)) return;
@@ -178,6 +221,8 @@ export class SnapWsClient {
     this.running = false;
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
     if (this.timeSyncTimer)  { clearInterval(this.timeSyncTimer); this.timeSyncTimer = null; }
+    this.statsTimers.forEach(clearTimeout);
+    this.statsTimers = [];
     try { this.ws?.close(1000, "client stop"); } catch {}
     this.ws = null;
     this.anchored = false;
@@ -233,6 +278,9 @@ export class SnapWsClient {
       this.nextPlayCtxTime = 0;
       this.diagSeen.clear();
       this.rxBuf = new Uint8Array(0);
+      this.rxOff = 0;
+      this.resetStats();
+      this.armStats();
       this.sendHello();
       // Egy gyors TIME-csomag a kezdeti offset-becsléshez.
       setTimeout(() => this.sendTimeRequest(), 200);
@@ -352,22 +400,21 @@ export class SnapWsClient {
    */
   private ingest(incoming: Uint8Array): void {
     /*
-     * Mindig ÚJ pufferbe másolunk, akkor is, ha eddig üres volt.
-     *
-     * A beérkező nézetet elvileg aliasolhatnánk (spórolva egy másolással),
-     * de annak a típusa a tágabb `Uint8Array<ArrayBufferLike>`, a mezőnké
-     * pedig a szűkebb `Uint8Array<ArrayBuffer>` – a `set()` viszont sima
-     * `ArrayLike<number>`-t vár, tehát a másolás típusfüggetlenül működik.
-     * A költség elhanyagolható: ~500 bájtos csomagok másodpercenként
-     * ötvenszer, azaz nagyságrendileg 25 kB/s memóriamásolás.
+     * Tömörítés + hozzáfűzés egy lépésben: a már feldolgozott előtagot
+     * eldobjuk, a maradékot és az új bájtokat egy friss pufferbe másoljuk.
+     * Ingestenként EGY másolat (nem keretenként), és a mező mindig
+     * `new Uint8Array(...)` értéket kap.
      */
-    const merged = new Uint8Array(this.rxBuf.length + incoming.length);
-    merged.set(this.rxBuf, 0);
-    merged.set(incoming, this.rxBuf.length);
+    const rest   = this.rxBuf.length - this.rxOff;
+    const merged = new Uint8Array(rest + incoming.length);
+    if (rest > 0) merged.set(this.rxBuf.subarray(this.rxOff), 0);
+    merged.set(incoming, rest);
     this.rxBuf = merged;
+    this.rxOff = 0;
 
-    while (this.rxBuf.length >= FRAME_HEADER_BYTES) {
-      const dv = new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset, this.rxBuf.length);
+    while (this.rxBuf.length - this.rxOff >= FRAME_HEADER_BYTES) {
+      const avail = this.rxBuf.length - this.rxOff;
+      const dv = new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset + this.rxOff, avail);
       const size = dv.getInt32(22, true);
 
       if (size < 0 || size > MAX_FRAME_PAYLOAD) {
@@ -376,14 +423,15 @@ export class SnapWsClient {
         // ezt pont az a hiba volt, amit itt javítunk.
         console.warn(`[SnapWS] érvénytelen keretméret (${size}) – vételi puffer ürítve`);
         this.rxBuf = new Uint8Array(0);
+        this.rxOff = 0;
         return;
       }
 
       const total = FRAME_HEADER_BYTES + size;
-      if (this.rxBuf.length < total) return;   // fél keret – várunk a folytatásra
+      if (avail < total) return;   // fél keret – várunk a folytatásra
 
-      this.handleFrame(new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset, total));
-      this.rxBuf = this.rxBuf.subarray(total);
+      this.handleFrame(new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset + this.rxOff, total));
+      this.rxOff += total;
     }
   }
 
@@ -490,6 +538,7 @@ export class SnapWsClient {
   }
 
   private handleWireChunk(payload: Uint8Array): void {
+    this.cnt.wire++;
     this.diagOnce("wire", `első WireChunk megérkezett (${payload.byteLength} bájt)`);
     if (payload.byteLength <= 12) {
       this.diagOnce("wire-short", "⚠ eldobva: túl rövid WireChunk");
@@ -509,6 +558,7 @@ export class SnapWsClient {
       if (!this.opusDecoder || !this.opusReady) {
         // Átmenetileg normális: a kodek-fejléc után újraépül a dekóder.
         // Ha viszont ez az ág RAGAD BENT, sosem szólal meg a hang.
+        this.cnt.dropNotReady++;
         this.diagOnce("opus-not-ready", "⏳ eldobva: az Opus dekóder még nem áll készen");
         return;
       }
@@ -516,6 +566,7 @@ export class SnapWsClient {
         const decoded = this.opusDecoder.decodeFrame(encoded);
         const samples = decoded.samplesDecoded;
         if (samples <= 0) {
+          this.cnt.dropSamples++;
           this.diagOnce("samples0", "⚠ eldobva: a dekódolás 0 mintát adott");
           return;
         }
@@ -549,11 +600,12 @@ export class SnapWsClient {
       }
       chunk = { buffer: audioBuf, serverTimestampMs };
     } else {
+      this.cnt.dropCodec++;
       this.diagOnce("codec-unknown", `⚠ eldobva: ismeretlen kodek ('${this.codec}')`);
       return;
     }
 
-    if (chunk) this.scheduleChunk(chunk);
+    if (chunk) { this.cnt.decoded++; this.scheduleChunk(chunk); }
   }
 
   private handleServerSettings(payload: Uint8Array): void {
@@ -579,6 +631,7 @@ export class SnapWsClient {
     if (!this.serverOffsetKnown) {
       // Még kalibrálunk; eldobható kezdő chunk. Ha ez az ág RAGAD BENT, a
       // snapserver TIME-válasza nem érkezik meg → sosem szólal meg a hang.
+      this.cnt.dropNoSync++;
       this.diagOnce("no-timesync", "⏳ eldobva: még nincs idő-szinkron (TIME válasz)");
       return;
     }
@@ -586,6 +639,7 @@ export class SnapWsClient {
     const ctx = this.opts.audioCtx;
     if (ctx.state === "suspended") {
       // A user még nem unlock-olt; eldobjuk, mert a scheduling úgyis hibás lenne
+      this.cnt.dropSuspended++;
       this.diagOnce("suspended", `⏸ eldobva: az AudioContext '${ctx.state}' – hiányzik a felhasználói feloldás`);
       return;
     }
@@ -609,6 +663,8 @@ export class SnapWsClient {
       // ── HORGONYZÁS: az első chunk pozícionálja a stream-időt a snap-TIME-ra
       if (aheadMs < -300) {
         // ennyire elcsúszott chunk-ot el is dobunk, várjuk a következőt
+        this.cnt.dropLate++;
+        this.diagOnce("late", `⏱ eldobva: a csomag ${(-aheadMs).toFixed(0)} ms-mal elkésett`);
         return;
       }
       scheduleAt = Math.max(ctx.currentTime + 0.005, idealCtxTime);
@@ -640,6 +696,7 @@ export class SnapWsClient {
       }
     }
 
+    this.cnt.scheduled++;
     this.diagOnce("scheduled", "▶ első hangcsomag ütemezve – innentől szólnia kell");
 
     const src = ctx.createBufferSource();
