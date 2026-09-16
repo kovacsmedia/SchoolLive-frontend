@@ -180,15 +180,32 @@ export default function MonitorPill() {
        * ezt a paramétert figyelmen kívül hagyja.
        */
       const tenantId = resolveTenantId(token) ?? "";
+      const clientId = monitorClientId();
       const qs = new URLSearchParams({ token, ...(tenantId ? { tenantId } : {}) });
 
       setPhase("connecting");
       const client = new SnapWsClient({
         url:      `${getWsUrl("/snap-stream")}?${qs.toString()}`,
-        deviceId: monitorClientId(),
+        deviceId: clientId,
         audioCtx: ctx,
         tapNode:  split,
-        onConnected:     () => { setPhase("connected"); setError(null); },
+        onConnected: () => {
+          setPhase("connected");
+          setError(null);
+          /*
+           * A snapserver megjegyzi a kliensek némítását azonosító szerint, és
+           * a NÉMÍTOTT kliensnek nem küld hangcsomagot. A monitor célzott
+           * eszköznek sosem számít, így egy korábbi célzás némán ottfelejtheti
+           * némítva – ilyenkor a kapcsolat és a kodek-egyeztetés hibátlan, csak
+           * hang nem jön. A backend a célzásnál már kihagyja a monitort, de a
+           * MÁR TÁROLT néma állapotot itt kell feloldani.
+           */
+          void apiFetch("/radio/monitor/unmute", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ clientId }),
+          }).catch(() => { /* nem kritikus – a hang ettől még jöhet */ });
+        },
         onStreamStarted: () => setPhase("playing"),
         // A kliens magától újracsatlakozik; a fázist visszavesszük, hogy a
         // felületen látszódjon, ha a kapcsolat elszállt.
