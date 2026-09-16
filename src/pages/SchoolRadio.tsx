@@ -4059,6 +4059,39 @@ export default function SchoolRadio() {
 
                 </div>
 
+                {/* Elkészült felvétel: meghallgatás, mentés, letöltés. */}
+                {liveRecState === "recorded" && liveRecUrl && (
+                  <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
+                      ⏺ {t("live.recordReady", { length: fmtDuration(liveRecSeconds) })}
+                    </div>
+                    <audio controls src={liveRecUrl} style={{width:"100%",height:36}} />
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
+                        onClick={() => void saveLiveRecordingToServer()}
+                        disabled={liveRecUploading || liveRecSaved}>
+                        {liveRecUploading ? `⏳ ${t("busy.saving")}`
+                          : liveRecSaved ? `✓ ${t("live.recordSaved")}`
+                          : `💾 ${t("live.recordSaveToServer")}`}
+                      </button>
+                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                        onClick={() => downloadLiveRecording()}>
+                        ⬇ {t("live.recordDownload")}
+                      </button>
+                      <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
+                        onClick={() => void (async () => {
+                          if (liveRecSaved || await askConfirm(t("live.recordDiscardConfirm"))) discardLiveRecording();
+                        })()}
+                        disabled={liveRecUploading}>
+                        🗑 {t("live.recordDiscard")}
+                      </button>
+                    </div>
+                    <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                      💡 {t("live.recordHint")}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Kivezérlésjelző (sztereó) ────────────────────────────
                     A gain UTÁN mér, tehát a piros tartomány valódi torzítást
                     jelez. A vékony függőleges vonal az utolsó 1,2 mp csúcsa. */}
@@ -4200,38 +4233,6 @@ export default function SchoolRadio() {
                   </div>
                 </div>
 
-                {/* Elkészült felvétel: meghallgatás, mentés, letöltés. */}
-                {liveRecState === "recorded" && liveRecUrl && (
-                  <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
-                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
-                      ⏺ {t("live.recordReady", { length: fmtDuration(liveRecSeconds) })}
-                    </div>
-                    <audio controls src={liveRecUrl} style={{width:"100%",height:36}} />
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                      <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
-                        onClick={() => void saveLiveRecordingToServer()}
-                        disabled={liveRecUploading || liveRecSaved}>
-                        {liveRecUploading ? `⏳ ${t("busy.saving")}`
-                          : liveRecSaved ? `✓ ${t("live.recordSaved")}`
-                          : `💾 ${t("live.recordSaveToServer")}`}
-                      </button>
-                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                        onClick={() => downloadLiveRecording()}>
-                        ⬇ {t("live.recordDownload")}
-                      </button>
-                      <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
-                        onClick={() => void (async () => {
-                          if (liveRecSaved || await askConfirm(t("live.recordDiscardConfirm"))) discardLiveRecording();
-                        })()}
-                        disabled={liveRecUploading}>
-                        🗑 {t("live.recordDiscard")}
-                      </button>
-                    </div>
-                    <div style={{fontSize:11,color:"var(--sl-muted)"}}>
-                      💡 {t("live.recordHint")}
-                    </div>
-                  </div>
-                )}
 
                 <div style={{fontSize:11,color:"var(--sl-muted)"}}>
                   ⏱ {t("live.latencyHint")}
