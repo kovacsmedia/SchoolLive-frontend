@@ -351,14 +351,20 @@ export class SnapWsClient {
    * üzenetig. Ld. az `rxBuf` mező kommentjét.
    */
   private ingest(incoming: Uint8Array): void {
-    if (this.rxBuf.length === 0) {
-      this.rxBuf = incoming;
-    } else {
-      const merged = new Uint8Array(this.rxBuf.length + incoming.length);
-      merged.set(this.rxBuf, 0);
-      merged.set(incoming, this.rxBuf.length);
-      this.rxBuf = merged;
-    }
+    /*
+     * Mindig ÚJ pufferbe másolunk, akkor is, ha eddig üres volt.
+     *
+     * A beérkező nézetet elvileg aliasolhatnánk (spórolva egy másolással),
+     * de annak a típusa a tágabb `Uint8Array<ArrayBufferLike>`, a mezőnké
+     * pedig a szűkebb `Uint8Array<ArrayBuffer>` – a `set()` viszont sima
+     * `ArrayLike<number>`-t vár, tehát a másolás típusfüggetlenül működik.
+     * A költség elhanyagolható: ~500 bájtos csomagok másodpercenként
+     * ötvenszer, azaz nagyságrendileg 25 kB/s memóriamásolás.
+     */
+    const merged = new Uint8Array(this.rxBuf.length + incoming.length);
+    merged.set(this.rxBuf, 0);
+    merged.set(incoming, this.rxBuf.length);
+    this.rxBuf = merged;
 
     while (this.rxBuf.length >= FRAME_HEADER_BYTES) {
       const dv = new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset, this.rxBuf.length);
