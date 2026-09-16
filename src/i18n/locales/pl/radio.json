@@ -116,7 +116,18 @@
     "eqHint": "Matową taśmę lub płytę popraw podbiciem wysokich, dudniący dźwięk – obniżeniem średnich. Po mocnym podbiciu obserwuj wskaźnik wysterowania – jeśli wchodzi na czerwono, zmniejsz wzmocnienie wejścia.",
     "monitorOn": "Pomiar działa",
     "monitorStart": "Uruchom pomiar",
-    "meterHint": "Wskaźnik działa także poza emisją, aby ustawić poziom z wyprzedzeniem. Dobre ustawienie: szczyty między -12 a -6 dB, czerwień dotykają tylko najgłośniejsze fragmenty."
+    "meterHint": "Wskaźnik działa także poza emisją, aby ustawić poziom z wyprzedzeniem. Dobre ustawienie: szczyty między -12 a -6 dB, czerwień dotykają tylko najgłośniejsze fragmenty.",
+    "recordStart": "Nagrywaj",
+    "recordStop": "Zatrzymaj nagrywanie",
+    "recording": "NAGRYWA",
+    "recordReady": "Nagranie gotowe · {{length}}",
+    "recordSaveToServer": "Zapisz w bibliotece",
+    "recordSaved": "Zapisano",
+    "recordDownload": "Pobierz",
+    "recordDiscard": "Odrzuć",
+    "recordDiscardConfirm": "Na pewno odrzucić nagranie? Tego nie można cofnąć.",
+    "recordNoSignal": "Brak sygnału na żywo do nagrania.",
+    "recordHint": "Nagranie rejestruje dźwięk PO wzmocnieniu wejścia i korekcji barwy – dokładnie to, co idzie na antenę. Nagranie zapisane w bibliotece pojawia się w zakładce Biblioteka dźwięków."
   },
   "schedule": {
     "tooltip": "Zaplanuj",

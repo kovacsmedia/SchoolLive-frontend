@@ -116,7 +116,18 @@
     "eqHint": "Ridică înaltele pentru o bandă sau un disc mat; coboară mediile pentru un sunet închis. După o accentuare puternică urmărește indicatorul de nivel – dacă intră în roșu, redu amplificarea la intrare.",
     "monitorOn": "Măsurare activă",
     "monitorStart": "Pornește măsurarea",
-    "meterHint": "Indicatorul funcționează și fără emisie, ca să poți regla nivelul din timp. Setare bună: vârfurile între -12 și -6 dB, doar pasajele tari ating roșul."
+    "meterHint": "Indicatorul funcționează și fără emisie, ca să poți regla nivelul din timp. Setare bună: vârfurile între -12 și -6 dB, doar pasajele tari ating roșul.",
+    "recordStart": "Înregistrare",
+    "recordStop": "Oprește înregistrarea",
+    "recording": "ÎNREGISTREAZĂ",
+    "recordReady": "Înregistrare gata · {{length}}",
+    "recordSaveToServer": "Salvează în bibliotecă",
+    "recordSaved": "Salvat",
+    "recordDownload": "Descarcă",
+    "recordDiscard": "Renunță",
+    "recordDiscardConfirm": "Sigur renunți la înregistrare? Nu se poate anula.",
+    "recordNoSignal": "Nu există semnal live pentru înregistrare.",
+    "recordHint": "Înregistrarea captează sunetul DUPĂ amplificare și corecția de ton – exact ce intră în emisie. Înregistrarea salvată apare în fila Bibliotecă audio."
   },
   "schedule": {
     "tooltip": "Programează",

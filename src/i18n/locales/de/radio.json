@@ -116,7 +116,18 @@
     "eqHint": "Dumpfes Band oder Platte: Höhen anheben. Kastiger Klang: Mitten absenken. Nach starker Anhebung die Aussteuerungsanzeige beachten – wird sie rot, die Eingangsverstärkung zurücknehmen.",
     "monitorOn": "Messung läuft",
     "monitorStart": "Messung starten",
-    "meterHint": "Die Anzeige läuft auch ohne Sendung, damit der Pegel vorab eingestellt werden kann. Gute Einstellung: Spitzen zwischen -12 und -6 dB, nur die lautesten Stellen berühren Rot."
+    "meterHint": "Die Anzeige läuft auch ohne Sendung, damit der Pegel vorab eingestellt werden kann. Gute Einstellung: Spitzen zwischen -12 und -6 dB, nur die lautesten Stellen berühren Rot.",
+    "recordStart": "Aufnahme",
+    "recordStop": "Aufnahme beenden",
+    "recording": "NIMMT AUF",
+    "recordReady": "Aufnahme fertig · {{length}}",
+    "recordSaveToServer": "In Bibliothek speichern",
+    "recordSaved": "Gespeichert",
+    "recordDownload": "Herunterladen",
+    "recordDiscard": "Verwerfen",
+    "recordDiscardConfirm": "Aufnahme verwerfen? Das lässt sich nicht rückgängig machen.",
+    "recordNoSignal": "Kein Live-Signal zum Aufnehmen.",
+    "recordHint": "Die Aufnahme erfasst den Ton NACH Eingangsverstärkung und Klangregelung – genau das, was gesendet wird. Eine in der Bibliothek gespeicherte Aufnahme erscheint im Tab „Audiothek“."
   },
   "schedule": {
     "tooltip": "Planen",

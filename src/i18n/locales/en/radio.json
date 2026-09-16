@@ -116,7 +116,18 @@
     "eqHint": "Lift the treble for a dull tape or record; pull the mid down for a boxy sound. After a strong boost watch the level meter – if it goes red, reduce the input gain.",
     "monitorOn": "Metering",
     "monitorStart": "Start metering",
-    "meterHint": "The meter runs even off air so you can set the level in advance. A good setting: peaks between -12 and -6 dB, with only the loudest parts touching red."
+    "meterHint": "The meter runs even off air so you can set the level in advance. A good setting: peaks between -12 and -6 dB, with only the loudest parts touching red.",
+    "recordStart": "Record",
+    "recordStop": "Stop recording",
+    "recording": "RECORDING",
+    "recordReady": "Recording ready · {{length}}",
+    "recordSaveToServer": "Save to library",
+    "recordSaved": "Saved",
+    "recordDownload": "Download",
+    "recordDiscard": "Discard",
+    "recordDiscardConfirm": "Discard the recording? This cannot be undone.",
+    "recordNoSignal": "No live signal to record.",
+    "recordHint": "The recording captures the audio after input gain and tone control – exactly what goes on air. A recording saved to the library appears on the Audio library tab."
   },
   "schedule": {
     "tooltip": "Schedule",

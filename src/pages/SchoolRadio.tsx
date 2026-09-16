@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { stripAccents } from "../lib/text";
-import { apiFetch, getWsUrl } from "../lib/api";
+import { apiFetch, getWsUrl, getBaseUrl } from "../lib/api";
 import { VU_GRADIENT, VU_DIM, vuPercent, vuClip, vuRmsDb, vuPeakDb } from "../lib/vuMeter";
 import { useAuth } from "../auth/AuthContext";
 
@@ -798,6 +798,27 @@ export default function SchoolRadio() {
   /** [mély-shelf, közép-peaking, magas-shelf] – a gain után, a mérő előtt. */
   const liveEqRef       = useRef<BiquadFilterNode[]>([]);
   const liveRecRef      = useRef<MediaRecorder | null>(null);
+
+  /* ── Adásfelvétel ───────────────────────────────────────────────────────
+   *
+   * KÜLÖN felvevő, nem az adásé. Az adás felvevője minden csengetés után
+   * újraindul (friss WebM-fejléc kell az ffmpeg-nek), ami darabokra vágná a
+   * felvételt. Ez a második felvevő ugyanarról a jelről dolgozik – tehát a
+   * bemeneti erősítés és a hangszín UTÁNI, kimenő hangot rögzíti –, de
+   * folyamatosan fut, amíg le nem állítod.
+   *
+   * Adás nélkül is működik: a jelút a fül megnyitásakor felépül, tehát
+   * felvehetsz úgy is, hogy közben nem megy ki semmi.
+   */
+  const [liveRecState,     setLiveRecState]     = useState<"idle"|"recording"|"recorded">("idle");
+  const [liveRecSeconds,   setLiveRecSeconds]   = useState(0);
+  const [liveRecBlob,      setLiveRecBlob]      = useState<Blob|null>(null);
+  const [liveRecUrl,       setLiveRecUrl]       = useState<string|null>(null);
+  const [liveRecUploading, setLiveRecUploading] = useState(false);
+  const [liveRecSaved,     setLiveRecSaved]     = useState(false);
+  const liveRecRecorder = useRef<MediaRecorder|null>(null);
+  const liveRecChunks   = useRef<BlobPart[]>([]);
+  const liveRecTimer    = useRef<ReturnType<typeof setInterval>|null>(null);
   const liveAnalysersRef = useRef<AnalyserNode[]>([]);
   const liveRafRef      = useRef<number | null>(null);
   /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
@@ -1541,6 +1562,13 @@ export default function SchoolRadio() {
 
   /** A monitorozó lánc lebontása: mikrofon elengedése, mérő megállítása. */
   function stopLiveMonitor() {
+    /*
+     * A felvétel ugyanerről a jelútról dolgozik – ha a lánc lebomlik, a
+     * felvevő forrása megszűnik. Lezárjuk, hogy a addig rögzített anyag
+     * megmaradjon és menthető legyen, ne szakadjon félbe használhatatlanul.
+     */
+    if (liveRecRecorder.current) stopLiveRecording();
+
     if (liveRafRef.current !== null) { cancelAnimationFrame(liveRafRef.current); liveRafRef.current = null; }
     liveAnalysersRef.current = [];
     resetLiveMeterBars();
@@ -1564,6 +1592,145 @@ export default function SchoolRadio() {
       const pk = livePeakRef.current[ch];
       if (pk) pk.style.left = "0%";
       livePeakHoldRef.current[ch] = { db: -90, until: 0 };
+    }
+  }
+
+  // ══ ADÁSFELVÉTEL ═══════════════════════════════════════════════════════
+
+  /** A felvevő és az időzítő lebontása. A blobot NEM bántja. */
+  function teardownLiveRecorder() {
+    if (liveRecTimer.current) { clearInterval(liveRecTimer.current); liveRecTimer.current = null; }
+    const mr = liveRecRecorder.current;
+    liveRecRecorder.current = null;
+    if (mr && mr.state !== "inactive") { try { mr.stop(); } catch { /* ignore */ } }
+  }
+
+  async function startLiveRecording() {
+    if (liveRecState === "recording") return;
+    setLiveError(null);
+
+    // A felvétel a jelútról dolgozik – ha az még nem áll (pl. elutasított
+    // mikrofon-engedély), most próbáljuk meg felépíteni.
+    const monitorErr = await ensureLiveMonitor();
+    if (monitorErr) { setLiveError(monitorErr); return; }
+
+    const dest = (liveGainRef.current as any)?._slDest as MediaStreamAudioDestinationNode | undefined;
+    if (!dest) { setLiveError(t("live.recordNoSignal")); return; }
+
+    // Előző felvétel eldobása, hogy ne keveredjen az újba.
+    if (liveRecUrl) URL.revokeObjectURL(liveRecUrl);
+    setLiveRecUrl(null);
+    setLiveRecBlob(null);
+    setLiveRecSaved(false);
+    setLiveRecSeconds(0);
+    liveRecChunks.current = [];
+
+    try {
+      /*
+       * MINŐSÉG: a felvétel nem lehet rosszabb annál, amit a hallgatók kapnak.
+       *
+       * A konténer WebM, de a kodek Opus – ugyanaz, amit a snapserver is
+       * sugároz, ugyanazon a 192 kbps-en. A lényeges különbség a
+       * GENERÁCIÓSZÁM:
+       *
+       *   felvétel:  tiszta PCM ─► Opus 192          (egy generáció)
+       *   adás:      PCM ─► Opus 96 ─► dekód ─► PCM ─► Opus 192   (kettő,
+       *              és az első csak 96 kbps, mert az a feltöltési irány)
+       *
+       * A felvétel tehát jobb, mint amit a hangszórókon bárki hall. A 192-t
+       * az adás bitrátája helyett SZÁNDÉKOSAN a snapserverétől vesszük: itt
+       * nem a feltöltési sávszélesség a szűk keresztmetszet, hanem a
+       * fájlméret, az pedig bőven belefér (192 kbps ≈ 1,4 MB/perc, a
+       * szerveroldali feltöltési korlát 200 MB ≈ 2 óra).
+       */
+      const mr = new MediaRecorder(dest.stream, {
+        mimeType: "audio/webm;codecs=opus",
+        audioBitsPerSecond: 192_000,
+      });
+      mr.ondataavailable = (e) => { if (e.data && e.data.size > 0) liveRecChunks.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(liveRecChunks.current, { type: "audio/webm" });
+        liveRecChunks.current = [];
+        if (blob.size === 0) { setLiveRecState("idle"); return; }
+        setLiveRecBlob(blob);
+        setLiveRecUrl(URL.createObjectURL(blob));
+        setLiveRecState("recorded");
+      };
+      liveRecRecorder.current = mr;
+      mr.start(1000);                  // 1 mp-es darabok – hosszú felvételnél is bírja
+      setLiveRecState("recording");
+      liveRecTimer.current = setInterval(() => setLiveRecSeconds((n) => n + 1), 1000);
+    } catch (e: any) {
+      setLiveError(e?.message ?? t("errors.unknown"));
+      teardownLiveRecorder();
+      setLiveRecState("idle");
+    }
+  }
+
+  function stopLiveRecording() {
+    if (liveRecTimer.current) { clearInterval(liveRecTimer.current); liveRecTimer.current = null; }
+    const mr = liveRecRecorder.current;
+    liveRecRecorder.current = null;
+    if (mr && mr.state !== "inactive") { try { mr.stop(); } catch { setLiveRecState("idle"); } }
+    else setLiveRecState("idle");
+  }
+
+  function discardLiveRecording() {
+    teardownLiveRecorder();
+    if (liveRecUrl) URL.revokeObjectURL(liveRecUrl);
+    liveRecChunks.current = [];
+    setLiveRecUrl(null);
+    setLiveRecBlob(null);
+    setLiveRecSaved(false);
+    setLiveRecSeconds(0);
+    setLiveRecState("idle");
+  }
+
+  /** Letöltés a saját gépre – a böngésző letöltésként kezeli a blobot. */
+  function downloadLiveRecording() {
+    if (!liveRecUrl) return;
+    const a = document.createElement("a");
+    a.href = liveRecUrl;
+    a.download = `adas_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  /**
+   * Mentés a szerverre a hangfájl-könyvtárba.
+   *
+   * SZÁNDÉKOSAN nem a `handleUpload`-ot hívja: az kiterjesztés szerint szűr,
+   * és a `.webm`-et elutasítaná. A backend viszont elfogadja és átkódolja –
+   * ugyanaz az út, amit a lejátszási lista készítő felvétele is használ.
+   */
+  async function saveLiveRecordingToServer() {
+    if (!liveRecBlob) return;
+    setLiveRecUploading(true);
+    setLiveError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", liveRecBlob, `live_${Date.now()}.webm`);
+      const token =
+        sessionStorage.getItem("accessToken") ?? localStorage.getItem("accessToken") ?? "";
+      const tenantId =
+        sessionStorage.getItem("activeTenantId") ?? localStorage.getItem("activeTenantId") ?? "";
+      const resp = await fetch(`${getBaseUrl()}/radio/files`, {
+        method: "POST",
+        headers: {
+          ...(token    ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+        },
+        body: fd,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || t("errors.uploadFailed"));
+      setLiveRecSaved(true);
+      await loadAll();          // az új felvétel jelenjen meg a könyvtárban
+    } catch (e: any) {
+      setLiveError(e?.message ?? t("errors.uploadFailed"));
+    } finally {
+      setLiveRecUploading(false);
     }
   }
 
@@ -1679,7 +1846,13 @@ export default function SchoolRadio() {
   // Lapelhagyás / kilépés: a mikrofon nem maradhat nyitva, és a rádió sem
   // szólhat tovább egy már nem létező böngészőfül bemenetéről.
   useEffect(() => {
-    return () => { stopLiveInput(true); stopLiveMonitor(); };
+    return () => {
+      stopLiveInput(true);
+      stopLiveMonitor();
+      teardownLiveRecorder();
+      // A blob-URL-t el kell engedni, különben a felvétel a memóriában ragad.
+      if (liveRecUrl) URL.revokeObjectURL(liveRecUrl);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3680,7 +3853,59 @@ export default function SchoolRadio() {
                       ⏹ {t("live.stopButton")}
                     </button>
                   )}
+
+                  {/* Felvétel – az adástól FÜGGETLEN. Rögzíthetsz úgy is, hogy
+                      közben nem megy ki semmi, és adás közben is bármikor
+                      elindítható/leállítható. */}
+                  {liveRecState === "recording" ? (
+                    <button className="sr-btn sr-btn-danger" type="button"
+                      onClick={() => stopLiveRecording()}>
+                      ⏹ {t("live.recordStop")} · {fmtDuration(liveRecSeconds)}
+                    </button>
+                  ) : (
+                    <button className="sr-btn sr-btn-ghost" type="button"
+                      onClick={() => void startLiveRecording()}>
+                      ⏺ {t("live.recordStart")}
+                    </button>
+                  )}
+
+                  {liveRecState === "recording" && (
+                    <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#dc2626"}}>
+                      <span className="sr-live-dot" /> {t("live.recording")}
+                    </span>
+                  )}
                 </div>
+
+                {/* Elkészült felvétel: meghallgatás, mentés, letöltés. */}
+                {liveRecState === "recorded" && liveRecUrl && (
+                  <div className="sr-panel" style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
+                      ⏺ {t("live.recordReady", { length: fmtDuration(liveRecSeconds) })}
+                    </div>
+                    <audio controls src={liveRecUrl} style={{width:"100%",height:36}} />
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
+                        onClick={() => void saveLiveRecordingToServer()}
+                        disabled={liveRecUploading || liveRecSaved}>
+                        {liveRecUploading ? `⏳ ${t("busy.saving")}`
+                          : liveRecSaved ? `✓ ${t("live.recordSaved")}`
+                          : `💾 ${t("live.recordSaveToServer")}`}
+                      </button>
+                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                        onClick={() => downloadLiveRecording()}>
+                        ⬇ {t("live.recordDownload")}
+                      </button>
+                      <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
+                        onClick={() => { if (liveRecSaved || window.confirm(t("live.recordDiscardConfirm"))) discardLiveRecording(); }}
+                        disabled={liveRecUploading}>
+                        🗑 {t("live.recordDiscard")}
+                      </button>
+                    </div>
+                    <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                      💡 {t("live.recordHint")}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{fontSize:11,color:"var(--sl-muted)"}}>
                   ⏱ {t("live.latencyHint")}

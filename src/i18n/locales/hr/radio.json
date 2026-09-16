@@ -116,7 +116,18 @@
     "eqHint": "Tupu vrpcu ili ploču popravi podizanjem visokih, a bačvast zvuk spuštanjem srednjih. Nakon jakog podizanja prati pokazivač razine – ako ode u crveno, smanji ulazno pojačanje.",
     "monitorOn": "Mjerenje radi",
     "monitorStart": "Pokreni mjerenje",
-    "meterHint": "Pokazivač radi i bez emitiranja, da razinu možeš namjestiti unaprijed. Dobra postavka: vrhovi između -12 i -6 dB, crveno dodiruju samo najglasniji dijelovi."
+    "meterHint": "Pokazivač radi i bez emitiranja, da razinu možeš namjestiti unaprijed. Dobra postavka: vrhovi između -12 i -6 dB, crveno dodiruju samo najglasniji dijelovi.",
+    "recordStart": "Snimanje",
+    "recordStop": "Zaustavi snimanje",
+    "recording": "SNIMA",
+    "recordReady": "Snimka gotova · {{length}}",
+    "recordSaveToServer": "Spremi u knjižnicu",
+    "recordSaved": "Spremljeno",
+    "recordDownload": "Preuzmi",
+    "recordDiscard": "Odbaci",
+    "recordDiscardConfirm": "Sigurno odbaciti snimku? To se ne može poništiti.",
+    "recordNoSignal": "Nema živog signala za snimanje.",
+    "recordHint": "Snimka bilježi zvuk NAKON ulaznog pojačanja i regulacije tona – točno ono što ide u eter. Snimka spremljena u knjižnicu pojavljuje se na kartici Knjižnica zvuka."
   },
   "schedule": {
     "tooltip": "Zakaži",

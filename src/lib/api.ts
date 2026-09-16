@@ -30,7 +30,7 @@ export class ApiError extends Error {
 // újratöltött fület), mint egy plusz 409+retry kör minden reload után.
 let _baseUrlOverride: string | null = null;
 
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (_baseUrlOverride) return _baseUrlOverride;
   const v = (import.meta as any)?.env?.VITE_API_BASE_URL as string | undefined;
   const base = (v ?? "").trim();

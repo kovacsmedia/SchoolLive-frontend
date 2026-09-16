@@ -116,7 +116,18 @@
     "eqHint": "Tupý pásik alebo platňu opravíte pridaním výšok, dutý zvuk ubratím stredov. Po silnom zdvihnutí sledujte indikátor vybudenia – ak je červený, uberte vstupné zosilnenie.",
     "monitorOn": "Meranie beží",
     "monitorStart": "Spustiť meranie",
-    "meterHint": "Indikátor beží aj bez vysielania, aby ste úroveň nastavili vopred. Dobré nastavenie: špičky medzi -12 a -6 dB, červenú zasiahnu len najhlasnejšie miesta."
+    "meterHint": "Indikátor beží aj bez vysielania, aby ste úroveň nastavili vopred. Dobré nastavenie: špičky medzi -12 a -6 dB, červenú zasiahnu len najhlasnejšie miesta.",
+    "recordStart": "Nahrávať",
+    "recordStop": "Zastaviť nahrávanie",
+    "recording": "NAHRÁVA",
+    "recordReady": "Nahrávka hotová · {{length}}",
+    "recordSaveToServer": "Uložiť do knižnice",
+    "recordSaved": "Uložené",
+    "recordDownload": "Stiahnuť",
+    "recordDiscard": "Zahodiť",
+    "recordDiscardConfirm": "Naozaj zahodiť nahrávku? Nedá sa to vrátiť.",
+    "recordNoSignal": "Žiadny živý signál na nahrávanie.",
+    "recordHint": "Nahrávka zachytáva zvuk PO vstupnom zosilnení a ekvalizácii – presne to, čo ide do vysielania. Nahrávka uložená do knižnice sa objaví na karte Knižnica zvukov."
   },
   "schedule": {
     "tooltip": "Naplánovať",
