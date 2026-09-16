@@ -447,6 +447,9 @@ const CSS = `
   .sr-vu-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--sl-muted);margin-top:2px;letter-spacing:0.3px}
   .sr-live-dot{width:10px;height:10px;border-radius:50%;background:#dc2626;animation:sr-live-blink 1.2s infinite}
   @keyframes sr-live-blink{0%,100%{opacity:1}50%{opacity:0.25}}
+  /* Belehallgatás jelzése: 1 mp-es pulzálás a gombon. */
+  .sr-preview-on{animation:sr-preview-pulse 1s ease-in-out infinite}
+  @keyframes sr-preview-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
   .sr-tab-bar{display:flex;gap:0;border-bottom:1.5px solid var(--sl-border);background:var(--sl-bg)}
   .sr-tab{flex:1;padding:11px 16px;border:none;background:transparent;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;color:var(--sl-muted);transition:all 0.15s;border-bottom:2.5px solid transparent}
   .sr-tab:hover{color:var(--sl-text-2);background:rgba(59,130,246,0.04)}
@@ -713,6 +716,15 @@ export default function SchoolRadio() {
   /* A műveleti gombok a lista FÖLÖTT vannak, és a kijelölt állomásra hatnak –
      a soronkénti gombsor túl sok helyet foglalt. */
   const [netSelectedId, setNetSelectedId] = useState<string | null>(null);
+  /*
+   * A belehallgatás REJTETT lejátszóval megy.
+   *
+   * Korábban a sor alatt nyílt egy `<audio controls>` sáv: elmozdította a
+   * listát, és a saját gombjai összekeveredtek a művelet-gombsoréval.
+   * Most a hang egy DOM-on kívüli `Audio` példányon szól, a visszajelzést
+   * pedig a pulzáló gomb adja – újra rákattintva elhallgat.
+   */
+  const netPreviewAudioRef = useRef<HTMLAudioElement | null>(null);
   // Per-állomás státusz a ▶ gomb vizualizációjához:
   //   "connecting" - épp indítjuk (zöld villogás)
   //   "playing"    - sikerült indítani, fut (folyamatos zöld)
@@ -1979,6 +1991,67 @@ export default function SchoolRadio() {
       setStationSchedBusy(false);
     }
   }
+
+  /** Belehallgatás leállítása és a lejátszó elengedése. */
+  function stopNetPreview() {
+    const a = netPreviewAudioRef.current;
+    netPreviewAudioRef.current = null;
+    if (a) {
+      try {
+        a.pause();
+        // A forrás elengedése nélkül a böngésző tovább töltené a streamet.
+        a.removeAttribute("src");
+        a.load();
+      } catch { /* ignore */ }
+    }
+    setNetPreviewId(null);
+  }
+
+  /** Belehallgatás ki/be a megadott állomásra (csak ezen a gépen szól). */
+  function toggleNetPreview(station: NetRadio) {
+    if (netPreviewId === station.id) { stopNetPreview(); return; }
+    stopNetPreview();                       // egyszerre egy szóljon
+
+    const idx = Math.min(streamPick[station.id] ?? 0, station.streams.length - 1);
+    const url = station.streams[idx]?.url;
+    if (!url) return;
+
+    try {
+      const a = new Audio(url);
+      a.preload = "none";
+      a.onerror = () => {
+        setStreamError(t("errors.emptyStreamUrl", { name: station.name }));
+        stopNetPreview();
+      };
+      netPreviewAudioRef.current = a;
+      setNetPreviewId(station.id);
+      void a.play().catch((e: any) => {
+        // Pl. autoplay-tiltás vagy elérhetetlen stream.
+        setStreamError(e?.message ?? t("errors.streamStartFailed"));
+        stopNetPreview();
+      });
+    } catch (e: any) {
+      setStreamError(e?.message ?? t("errors.streamStartFailed"));
+      stopNetPreview();
+    }
+  }
+
+  // Lapelhagyás: a belehallgatás ne szóljon tovább a háttérben.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => stopNetPreview, []);
+
+  /*
+   * Fülváltáskor is leállítjuk.
+   *
+   * A belehallgatás EGYETLEN jelzése a pulzáló gomb, ami csak ezen a fülön
+   * látszik. Más fülre lépve a hang szólna tovább, a jelzése viszont eltűnne
+   * – könnyű lenne ottfelejteni, és a kezelő a saját gépén nem értené, honnan
+   * jön a zene.
+   */
+  useEffect(() => {
+    if (sourceTab !== "netradio" && netPreviewAudioRef.current) stopNetPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTab]);
 
   async function playStation(station: NetRadio) {
     setStreamError(null);
@@ -4031,9 +4104,11 @@ export default function SchoolRadio() {
                             title={t("netradio.playTooltip.idle")}>
                             {busy ? `⏳ ${t("busy.saving")}` : status === "error" ? `✕ ${t("netradio.playButton")}` : `▶ ${t("netradio.playButton")}`}
                           </button>
+                          {/* Belehallgatás közben a gomb pulzál – nincs
+                              külön lejátszósáv a listában. */}
                           <button type="button"
-                            className={`sr-btn sr-btn-sm ${sel && netPreviewId === sel.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
-                            onClick={() => sel && setNetPreviewId(netPreviewId === sel.id ? null : sel.id)}
+                            className={`sr-btn sr-btn-sm ${sel && netPreviewId === sel.id ? "sr-btn-primary sr-preview-on" : "sr-btn-ghost"}`}
+                            onClick={() => sel && toggleNetPreview(sel)}
                             disabled={!sel || !hasUrl}
                             title={t("netradio.previewTooltip")}>
                             🎧 {t("netradio.previewButton")}
@@ -4170,12 +4245,6 @@ export default function SchoolRadio() {
                           </div>
                         )}
 
-                        {netPreviewId === r.id && r.streams[safeIdx]?.url && (
-                          <div className="sr-player" onClick={e => e.stopPropagation()} style={{gridColumn:"1/-1"}}>
-                            <div className="sr-player-name">🎧 {r.name}{r.streams[safeIdx].label && r.streams[safeIdx].label !== "Főadás" ? " · " + r.streams[safeIdx].label : ""}</div>
-                            <audio controls autoPlay src={r.streams[safeIdx].url} preload="none" style={{ width: "100%", height: 32 }} />
-                          </div>
-                        )}
                       </div>
                     );
                   })}
