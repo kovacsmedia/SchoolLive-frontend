@@ -424,7 +424,11 @@ export class SnapWsClient {
   }
 
   private handleWireChunk(payload: Uint8Array): void {
-    if (payload.byteLength <= 12) return;
+    this.diagOnce("wire", `első WireChunk megérkezett (${payload.byteLength} bájt)`);
+    if (payload.byteLength <= 12) {
+      this.diagOnce("wire-short", "⚠ eldobva: túl rövid WireChunk");
+      return;
+    }
     const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
     const sec     = dv.getInt32(0, true);
     const us      = dv.getInt32(4, true);
@@ -436,11 +440,19 @@ export class SnapWsClient {
 
     let chunk: AudioChunk | null = null;
     if (this.codec === "opus") {
-      if (!this.opusDecoder || !this.opusReady) return; // codec még készül
+      if (!this.opusDecoder || !this.opusReady) {
+        // Átmenetileg normális: a kodek-fejléc után újraépül a dekóder.
+        // Ha viszont ez az ág RAGAD BENT, sosem szólal meg a hang.
+        this.diagOnce("opus-not-ready", "⏳ eldobva: az Opus dekóder még nem áll készen");
+        return;
+      }
       try {
         const decoded = this.opusDecoder.decodeFrame(encoded);
         const samples = decoded.samplesDecoded;
-        if (samples <= 0) return;
+        if (samples <= 0) {
+          this.diagOnce("samples0", "⚠ eldobva: a dekódolás 0 mintát adott");
+          return;
+        }
         const audioBuf = this.opts.audioCtx.createBuffer(
           this.channelCount, samples, this.sampleRate
         );
@@ -471,6 +483,7 @@ export class SnapWsClient {
       }
       chunk = { buffer: audioBuf, serverTimestampMs };
     } else {
+      this.diagOnce("codec-unknown", `⚠ eldobva: ismeretlen kodek ('${this.codec}')`);
       return;
     }
 
