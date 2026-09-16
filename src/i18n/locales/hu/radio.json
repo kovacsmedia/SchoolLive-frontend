@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Vége-időpont nélkül az adás kézi leállításig szól.",
     "actionsLabel": "Műveletek",
     "selectHint": "Válassz állomást a listából",
-    "playButton": "Lejátszás"
+    "playButton": "Rádió indítása",
+    "previewButton": "Belehallgatás",
+    "scheduleButton": "Időzítés",
+    "editButton": "Szerkesztés"
   },
   "library": {
     "uploading": "Feltöltés… {{pct}}%",

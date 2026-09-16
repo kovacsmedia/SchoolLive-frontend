@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Bez vremena završetka emisija traje do ručnog zaustavljanja.",
     "actionsLabel": "Radnje",
     "selectHint": "Odaberi postaju s popisa",
-    "playButton": "Reprodukcija"
+    "playButton": "Pokreni radio",
+    "previewButton": "Preslušavanje",
+    "scheduleButton": "Zakazivanje",
+    "editButton": "Uredi"
   },
   "library": {
     "uploading": "Prijenos… {{pct}}%",

@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Ohne Endzeit läuft die Sendung bis zum manuellen Stopp.",
     "actionsLabel": "Aktionen",
     "selectHint": "Wähle einen Sender aus der Liste",
-    "playButton": "Wiedergabe"
+    "playButton": "Radio starten",
+    "previewButton": "Vorhören",
+    "scheduleButton": "Planen",
+    "editButton": "Bearbeiten"
   },
   "library": {
     "uploading": "Wird hochgeladen… {{pct}}%",

@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Без часу завершення ефір триває до ручної зупинки.",
     "actionsLabel": "Дії",
     "selectHint": "Вибери станцію зі списку",
-    "playButton": "Відтворити"
+    "playButton": "Запустити радіо",
+    "previewButton": "Прослухати",
+    "scheduleButton": "Запланувати",
+    "editButton": "Редагувати"
   },
   "library": {
     "uploading": "Завантаження… {{pct}}%",

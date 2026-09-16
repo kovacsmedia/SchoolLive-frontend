@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Без времена завршетка емисија траје до ручног заустављања.",
     "actionsLabel": "Радње",
     "selectHint": "Изабери станицу са листе",
-    "playButton": "Репродукција"
+    "playButton": "Покрени радио",
+    "previewButton": "Преслушавање",
+    "scheduleButton": "Заказивање",
+    "editButton": "Уреди"
   },
   "library": {
     "uploading": "Отпремање… {{pct}}%",

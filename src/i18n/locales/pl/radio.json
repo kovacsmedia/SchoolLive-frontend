@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Bez godziny zakończenia audycja trwa do ręcznego zatrzymania.",
     "actionsLabel": "Akcje",
     "selectHint": "Wybierz stację z listy",
-    "playButton": "Odtwórz"
+    "playButton": "Uruchom radio",
+    "previewButton": "Odsłuch",
+    "scheduleButton": "Zaplanuj",
+    "editButton": "Edytuj"
   },
   "library": {
     "uploading": "Przesyłanie… {{pct}}%",

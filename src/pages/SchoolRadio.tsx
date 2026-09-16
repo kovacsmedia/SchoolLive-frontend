@@ -4036,20 +4036,20 @@ export default function SchoolRadio() {
                             onClick={() => sel && setNetPreviewId(netPreviewId === sel.id ? null : sel.id)}
                             disabled={!sel || !hasUrl}
                             title={t("netradio.previewTooltip")}>
-                            🎧
+                            🎧 {t("netradio.previewButton")}
                           </button>
                           <button type="button"
                             className={`sr-btn sr-btn-sm ${sel && stationSchedId === sel.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
                             onClick={() => sel && toggleStationSchedule(sel)}
                             disabled={!sel || !hasUrl}
                             title={t("netradio.scheduleTooltip")}>
-                            ⏰
+                            ⏰ {t("netradio.scheduleButton")}
                           </button>
                           <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
                             onClick={() => sel && openEditStation(sel)}
                             disabled={!sel}
                             title={t("netradio.editTooltip")}>
-                            ✏️
+                            ✏️ {t("netradio.editButton")}
                           </button>
                           <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
                             onClick={() => sel && void removeStation(sel.id)}

@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Bez času ukončenia vysielanie beží až do manuálneho zastavenia.",
     "actionsLabel": "Akcie",
     "selectHint": "Vyber stanicu zo zoznamu",
-    "playButton": "Prehrať"
+    "playButton": "Spustiť rádio",
+    "previewButton": "Vypočuť",
+    "scheduleButton": "Naplánovať",
+    "editButton": "Upraviť"
   },
   "library": {
     "uploading": "Nahrávanie… {{pct}}%",

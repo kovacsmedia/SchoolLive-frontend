@@ -53,7 +53,10 @@
     "scheduleNoEndHint": "Fără oră de final, emisia rulează până la oprirea manuală.",
     "actionsLabel": "Acțiuni",
     "selectHint": "Alege un post din listă",
-    "playButton": "Redare"
+    "playButton": "Pornește radioul",
+    "previewButton": "Ascultare",
+    "scheduleButton": "Programare",
+    "editButton": "Editare"
   },
   "library": {
     "uploading": "Se încarcă… {{pct}}%",
