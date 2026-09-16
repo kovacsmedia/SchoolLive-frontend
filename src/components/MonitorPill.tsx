@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SnapWsClient } from "../lib/snapWsClient";
 import { apiFetch, getWsUrl, resolveTenantId } from "../lib/api";
+import { VU_SEGMENTS, VU_DIM, vuSegmentColor, vuLitCount, vuRmsDb } from "../lib/vuMeter";
 
 /** Egyedi, de felismerhető snap-kliens azonosító. Nem ütközik Device.id-vel. */
 function monitorClientId(): string {
@@ -58,12 +59,18 @@ export default function MonitorPill() {
   /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
      keresztül ez az egész app-shell újrarajzolása lenne másodpercenként
      hatvanszor. */
-  const barRef       = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const segRef       = useRef<(HTMLDivElement | null)[][]>([[], []]);
+  /* Csatornánként hány LED ég – csak a VÁLTOZÓ szegmenseket írjuk át, hogy
+     ne legyen 40 stílus-módosítás minden képkockán. */
+  const litRef       = useRef<number[]>([0, 0]);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     analysersRef.current = [];
-    for (const bar of barRef.current) if (bar) bar.style.width = "0%";
+    for (let ch = 0; ch < 2; ch++) {
+      for (const el of segRef.current[ch] ?? []) if (el) el.style.opacity = VU_DIM;
+      litRef.current[ch] = 0;
+    }
 
     clientRef.current?.stop();
     clientRef.current = null;
@@ -79,6 +86,19 @@ export default function MonitorPill() {
   // Lapelhagyás / kijelentkezés: ne maradjon nyitva a hang és a WS.
   useEffect(() => stop, [stop]);
 
+  function setLit(ch: number, lit: number) {
+    const prev = litRef.current[ch];
+    if (lit === prev) return;
+    // Csak a két állás közti szegmenseket bántjuk.
+    const from = Math.min(prev, lit);
+    const to   = Math.max(prev, lit);
+    for (let i = from; i < to; i++) {
+      const el = segRef.current[ch]?.[i];
+      if (el) el.style.opacity = i < lit ? "1" : VU_DIM;
+    }
+    litRef.current[ch] = lit;
+  }
+
   function meterLoop() {
     const ans = analysersRef.current;
     if (ans.length === 2) {
@@ -86,16 +106,7 @@ export default function MonitorPill() {
         const an  = ans[ch];
         const buf = new Float32Array(an.fftSize);
         an.getFloatTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-        const db  = 20 * Math.log10(Math.sqrt(sum / buf.length) + 1e-9);
-        // -60 dB … 0 dB → 0 … 100%
-        const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
-        const bar = barRef.current[ch];
-        if (bar) {
-          bar.style.width = `${pct}%`;
-          bar.style.background = db > -1 ? "#dc2626" : db > -12 ? "#eab308" : "#22c55e";
-        }
+        setLit(ch, vuLitCount(vuRmsDb(buf)));
       }
     }
     rafRef.current = requestAnimationFrame(meterLoop);
@@ -259,23 +270,30 @@ export default function MonitorPill() {
         </span>
       )}
 
-      {/* Kisméretű sztereó kivezérlésjelző – két vékony sáv egymás alatt. */}
+      {/* Sztereó kivezérlésjelző – LED-soros kinézet, csatornánként egy sor.
+          A szélesség felső korlát: keskeny kijelzőn a szegmensek szűkülnek,
+          nem lógnak ki. A fejléc `flex-wrap`-je miatt a jelző álló nézetben
+          magától saját sorba kerül. */}
       <div
-        style={{ display: "flex", flexDirection: "column", gap: 2, width: 104 }}
+        style={{ display: "flex", flexDirection: "column", gap: 3, width: 208, maxWidth: "48vw" }}
         aria-label={t("appshell:monitorMeterAria")}
       >
         {[0, 1].map((ch) => (
-          <div
-            key={ch}
-            style={{
-              height: 4, borderRadius: 2, overflow: "hidden",
-              background: "var(--sl-border)",
-            }}
-          >
-            <div
-              ref={(el) => { barRef.current[ch] = el; }}
-              style={{ width: "0%", height: "100%", background: "#22c55e", transition: "width 0.05s linear" }}
-            />
+          <div key={ch} style={{ display: "flex", gap: 2, height: 6 }}>
+            {Array.from({ length: VU_SEGMENTS }, (_, i) => (
+              <div
+                key={i}
+                ref={(el) => { segRef.current[ch][i] = el; }}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  borderRadius: 1,
+                  background: vuSegmentColor(i),
+                  opacity: VU_DIM,
+                  transition: "opacity 0.04s linear",
+                }}
+              />
+            ))}
           </div>
         ))}
       </div>

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { stripAccents } from "../lib/text";
 import { apiFetch, getWsUrl } from "../lib/api";
+import { VU_SEGMENTS, VU_DIM, vuSegmentColor, vuLitCount, vuRmsDb, vuPeakDb } from "../lib/vuMeter";
 import { useAuth } from "../auth/AuthContext";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────
@@ -435,10 +436,10 @@ const CSS = `
   /* Élő hangbemenet – kivezérlésjelző */
   .sr-vu-row{display:flex;align-items:center;gap:8px}
   .sr-vu-label{width:14px;font-size:11px;font-weight:800;color:var(--sl-muted);text-align:center}
-  .sr-vu-track{position:relative;flex:1;height:12px;border-radius:6px;background:var(--sl-border);overflow:hidden}
-  .sr-vu-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:#22c55e;transition:width 0.05s linear}
-  /* Csúcstartó: nem tud kilógni, mert a sáv overflow:hidden */
-  .sr-vu-peak{position:absolute;top:0;bottom:0;width:2px;left:0%;background:var(--sl-text);opacity:0.75}
+  /* LED-sor: külön szegmensek, fix színzónákkal. Ugyanaz a megjelenítés,
+     mint a fejléc monitorozásánál – a közös definíciók a lib/vuMeter.ts-ben. */
+  .sr-vu-track{display:flex;flex:1;gap:2px;height:12px}
+  .sr-vu-seg{flex:1;min-width:0;border-radius:2px;transition:opacity 0.04s linear}
   .sr-vu-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--sl-muted);margin-top:2px;letter-spacing:0.3px}
   .sr-live-dot{width:10px;height:10px;border-radius:50%;background:#dc2626;animation:sr-live-blink 1.2s infinite}
   @keyframes sr-live-blink{0%,100%{opacity:1}50%{opacity:0.25}}
@@ -797,8 +798,11 @@ export default function SchoolRadio() {
   const liveRafRef      = useRef<number | null>(null);
   /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
      keresztül ez percenként több ezer újrarajzolás lenne az egész oldalra. */
-  const liveMeterRef    = useRef<(HTMLDivElement | null)[]>([null, null]);
-  const livePeakRef     = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const liveSegRef      = useRef<(HTMLDivElement | null)[][]>([[], []]);
+  /* Csatornánként hány LED ég, és melyik a csúcstartó szegmense – csak a
+     VÁLTOZÓ elemeket írjuk át, hogy ne legyen 40 stílus-módosítás képkockánként. */
+  const liveLitRef      = useRef<number[]>([0, 0]);
+  const livePeakSegRef  = useRef<number[]>([-1, -1]);
   const livePeakHoldRef = useRef<{ db: number; until: number }[]>([
     { db: -90, until: 0 }, { db: -90, until: 0 },
   ]);
@@ -1336,6 +1340,33 @@ export default function SchoolRadio() {
   }
 
   /** Mérő-ciklus: RMS + csúcs csatornánként, dBFS-ben. */
+  /**
+   * Egy csatorna LED-sorának frissítése.
+   *
+   * Csak az érintett szegmenseket írjuk: a két szintállás közti tartományt,
+   * plusz a régi és az új csúcstartó-LED-et. Így képkockánként tipikusan
+   * néhány stílus-módosítás történik a 40 helyett.
+   */
+  function setLiveLit(ch: number, lit: number, peakSeg: number) {
+    const row      = liveSegRef.current[ch];
+    if (!row || row.length === 0) return;
+    const prevLit  = liveLitRef.current[ch];
+    const prevPeak = livePeakSegRef.current[ch];
+    if (lit === prevLit && peakSeg === prevPeak) return;
+
+    const paint = (i: number) => {
+      const el = row[i];
+      if (el) el.style.opacity = (i < lit || i === peakSeg) ? "1" : VU_DIM;
+    };
+
+    for (let i = Math.min(prevLit, lit); i < Math.max(prevLit, lit); i++) paint(i);
+    if (prevPeak !== peakSeg && prevPeak >= 0) paint(prevPeak);
+    if (peakSeg >= 0) paint(peakSeg);
+
+    liveLitRef.current[ch]     = lit;
+    livePeakSegRef.current[ch] = peakSeg;
+  }
+
   function liveMeterLoop() {
     const analysers = liveAnalysersRef.current;
     if (analysers.length === 2) {
@@ -1345,37 +1376,21 @@ export default function SchoolRadio() {
         const buf = new Float32Array(an.fftSize);
         an.getFloatTimeDomainData(buf);
 
-        let sum = 0, peak = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = buf[i];
-          sum += v * v;
-          const a = Math.abs(v);
-          if (a > peak) peak = a;
-        }
-        const rmsDb  = 20 * Math.log10(Math.sqrt(sum / buf.length) + 1e-9);
-        const peakDb = 20 * Math.log10(peak + 1e-9);
+        const rmsDb  = vuRmsDb(buf);
+        const peakDb = vuPeakDb(buf);
 
         // Csúcstartás 1,2 mp-ig – e nélkül a rövid csúcsok észrevehetetlenek.
+        // A csúcs a LED-soron egyetlen, égve maradó szegmens (mint egy valódi
+        // kivezérlésjelzőn), nem külön vonal.
         const hold = livePeakHoldRef.current[ch];
         if (peakDb >= hold.db || now > hold.until) {
           hold.db = peakDb;
           hold.until = now + 1200;
         }
 
-        // -60 dB … 0 dB leképezés a sáv szélességére.
-        const pct = (db: number) => Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
-
-        const bar = liveMeterRef.current[ch];
-        if (bar) {
-          bar.style.width = `${pct(rmsDb)}%`;
-          // Zöld → sárga (-12 dB fölött) → piros (-1 dB fölött = torzítás közeli)
-          bar.style.background =
-            peakDb > -1  ? "linear-gradient(90deg,#22c55e,#eab308 70%,#dc2626)" :
-            peakDb > -12 ? "linear-gradient(90deg,#22c55e,#eab308)" :
-                           "#22c55e";
-        }
-        const pk = livePeakRef.current[ch];
-        if (pk) pk.style.left = `${pct(hold.db)}%`;
+        const lit  = vuLitCount(rmsDb);
+        const peak = Math.max(0, vuLitCount(hold.db) - 1);
+        setLiveLit(ch, lit, peak);
       }
     }
     liveRafRef.current = requestAnimationFrame(liveMeterLoop);
@@ -1569,10 +1584,9 @@ export default function SchoolRadio() {
 
   function resetLiveMeterBars() {
     for (let ch = 0; ch < 2; ch++) {
-      const bar = liveMeterRef.current[ch];
-      if (bar) bar.style.width = "0%";
-      const pk = livePeakRef.current[ch];
-      if (pk) pk.style.left = "0%";
+      for (const el of liveSegRef.current[ch] ?? []) if (el) el.style.opacity = VU_DIM;
+      liveLitRef.current[ch]      = 0;
+      livePeakSegRef.current[ch]  = -1;
       livePeakHoldRef.current[ch] = { db: -90, until: 0 };
     }
   }
@@ -3555,13 +3569,23 @@ export default function SchoolRadio() {
                     <div className="sr-vu-row" key={ch}>
                       <div className="sr-vu-label">{ch}</div>
                       <div className="sr-vu-track">
-                        <div className="sr-vu-fill" ref={(el) => { liveMeterRef.current[i] = el; }} />
-                        <div className="sr-vu-peak" ref={(el) => { livePeakRef.current[i] = el; }} />
+                        {Array.from({ length: VU_SEGMENTS }, (_, seg) => (
+                          <div
+                            key={seg}
+                            className="sr-vu-seg"
+                            ref={(el) => { liveSegRef.current[i][seg] = el; }}
+                            style={{ background: vuSegmentColor(seg), opacity: VU_DIM }}
+                          />
+                        ))}
                       </div>
                     </div>
                   ))}
+                  {/* A skála LINEÁRIS -60…0 dB között, a feliratok pedig
+                      egyenletesen oszlanak el (space-between). Ezért 12 dB-es
+                      lépések kellenek – a korábbi -40/-20/-12/-6 sorozat
+                      egyenletesen kirakva rossz helyre mutatott volna. */}
                   <div className="sr-vu-scale">
-                    <span>-60</span><span>-40</span><span>-20</span><span>-12</span><span>-6</span><span>0 dB</span>
+                    <span>-60</span><span>-48</span><span>-36</span><span>-24</span><span>-12</span><span>0 dB</span>
                   </div>
                   <div style={{fontSize:11,color:"var(--sl-muted)"}}>
                     💡 {t("live.meterHint")}
