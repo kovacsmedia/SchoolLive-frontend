@@ -238,7 +238,8 @@
     "deleteSchedule": "Delete this schedule?",
     "teachingHourOverlap": "⚠️ This radio program overlaps with class time!\n\nAre you sure you want to schedule it anyway?",
     "trimToFitBreak": "⚠️ The sound file ({{fileDur}}) doesn't fit into the break ({{breakDur}})!\n\nTrim the end so it fits (with a 5s fade-out)? The original file will be kept.\n\nYes → schedule the trimmed version\nNo → schedule the original, longer file",
-    "stopAll": "Stop all playback?"
+    "stopAll": "Stop all playback?",
+    "title": "Confirm"
   },
   "errors": {
     "loadFailed": "Failed to load",

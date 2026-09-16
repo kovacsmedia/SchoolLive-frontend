@@ -1856,6 +1856,33 @@ export default function SchoolRadio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ══ NEM BLOKKOLÓ MEGERŐSÍTÉS ═════════════════════════════════════════
+   *
+   * MIÉRT NEM `window.confirm`: az megállítja a JavaScript FŐSZÁLÁT, amíg a
+   * párbeszéd nyitva van. Ilyenkor nemcsak a felület fagy le, hanem a
+   * snap-stream WebSocket üzenetkezelője sem fut – vagyis nem érkezik be és
+   * nem ütemeződik újabb hangcsomag. A már beütemezett ~1 másodpercnyi hang
+   * után a monitorozás elnémul, majd a párbeszéd bezárásakor a beérkezett
+   * torlódás miatt újra kell horgonyozni (ld. `snapWsClient` drift-ága).
+   *
+   * Ez a változat egy sima React-modal, ami ígéretet ad vissza: a hívó
+   * ugyanúgy `if (!(await askConfirm(...))) return;` alakban használja, de a
+   * főszál közben szabadon fut, és a hang megy tovább.
+   */
+  const [confirmBox, setConfirmBox] = useState<{ message: string; resolve: (ok: boolean) => void } | null>(null);
+
+  function askConfirm(message: string): Promise<boolean> {
+    return new Promise<boolean>((resolve) => setConfirmBox({ message, resolve }));
+  }
+
+  function closeConfirm(ok: boolean) {
+    // A `resolve`-ot a state-frissítés UTÁN hívjuk, nem a frissítőn belül:
+    // a React a frissítő függvényt kétszer is meghívhatja.
+    const box = confirmBox;
+    setConfirmBox(null);
+    box?.resolve(ok);
+  }
+
   /** Az állomás időzítés-panelének nyitása/zárása, mai dátummal előtöltve. */
   function toggleStationSchedule(station: NetRadio) {
     if (stationSchedId === station.id) { setStationSchedId(null); return; }
@@ -2021,15 +2048,15 @@ export default function SchoolRadio() {
     }
     setStationForm(null);
   }
-  function removeStation(id: string) {
+  async function removeStation(id: string) {
     const r = netRadios.find(x => x.id === id);
     if (!r) return;
-    if (!window.confirm(t("confirm.deleteStation", { name: r.name }))) return;
+    if (!(await askConfirm(t("confirm.deleteStation", { name: r.name })))) return;
     setNetRadios(prev => prev.filter(x => x.id !== id));
     setStreamPick(prev => { const c = { ...prev }; delete c[id]; return c; });
   }
-  function restoreDefaultStations() {
-    if (!window.confirm(t("confirm.restoreDefaults"))) return;
+  async function restoreDefaultStations() {
+    if (!(await askConfirm(t("confirm.restoreDefaults")))) return;
     setNetRadios(NET_RADIOS_INITIAL);
     setStreamPick({});
   }
@@ -2061,7 +2088,7 @@ export default function SchoolRadio() {
         const parsed = JSON.parse(String(reader.result || "[]"));
         const list = normalizeNetRadios(parsed);
         if (list.length === 0) { alert(t("errors.importEmptyOrInvalid")); return; }
-        if (!window.confirm(t("confirm.importReplace", { current: netRadios.length, next: list.length }))) return;
+        if (!(await askConfirm(t("confirm.importReplace", { current: netRadios.length, next: list.length })))) return;
         setNetRadios(list); setStreamPick({});
       } catch (e:any) {
         alert(t("errors.readError", { message: e?.message ?? t("errors.unknown") }));
@@ -2077,7 +2104,7 @@ export default function SchoolRadio() {
   // betölteni, ha még nincs lokális szerkesztett adatuk.
   const [defaultBusy, setDefaultBusy] = useState(false);
   async function setAsTenantDefault() {
-    if (!window.confirm(t("confirm.setTenantDefault", { count: netRadios.length }))) return;
+    if (!(await askConfirm(t("confirm.setTenantDefault", { count: netRadios.length })))) return;
     setDefaultBusy(true);
     try {
       await apiFetch("/admin/tenants/me/netradio-presets", {
@@ -2260,7 +2287,7 @@ export default function SchoolRadio() {
         ? t("confirm.deleteFileWithSchedules", { count: file._count.schedules, name: file.originalName })
         : t("confirm.deleteFile", { name: file.originalName });
 
-    if (!window.confirm(warn)) return;
+    if (!(await askConfirm(warn))) return;
 
     try {
       await apiFetch(`/radio/files/${file.id}`, { method: "DELETE" });
@@ -2273,7 +2300,7 @@ export default function SchoolRadio() {
 
   // ── Ütemezés törlés ───────────────────────────────────────────────────────
   async function deleteSchedule(id: string) {
-    if (!window.confirm(t("confirm.deleteSchedule"))) return;
+    if (!(await askConfirm(t("confirm.deleteSchedule")))) return;
     try {
       await apiFetch(`/radio/schedules/${id}`, { method: "DELETE" });
       await loadAll();
@@ -2327,7 +2354,7 @@ export default function SchoolRadio() {
 
     // Tanítási óra ütközés
     if (checkTeachingHourOverlap(scheduledAt, durSec, mainBells)) {
-      if (!window.confirm(t("confirm.teachingHourOverlap"))) return;
+      if (!(await askConfirm(t("confirm.teachingHourOverlap")))) return;
     }
 
     // Szünetbe nem fér el – trim ajánlat
@@ -2338,7 +2365,7 @@ export default function SchoolRadio() {
       if (nextLesson) {
         const breakSec = (nextLesson.start.getTime() - scheduledAt.getTime()) / 1000;
         if (durSec > breakSec) {
-          const wantTrim = window.confirm(
+          const wantTrim = await askConfirm(
             t("confirm.trimToFitBreak", {
               fileDur: fmtDuration(durSec),
               breakDur: fmtDuration(Math.floor(breakSec)),
@@ -2802,7 +2829,7 @@ export default function SchoolRadio() {
             disabled={stopBusy}
             type="button"
             onClick={async () => {
-              if (!window.confirm(t("confirm.stopAll"))) return;
+              if (!(await askConfirm(t("confirm.stopAll")))) return;
               setStopBusy(true);
               // Azonnali UI feedback – a header-state-eket nem várjuk be a
               // backend válaszra, hogy a felhasználó rögtön lássa: STOP ment.
@@ -2913,9 +2940,9 @@ export default function SchoolRadio() {
                   <button
                     className="sr-btn sr-btn-danger sr-btn-sm"
                     type="button"
-                    onClick={() => {
-                      if (window.confirm(t("playlist.deleteConfirm"))) setPlItems([]);
-                    }}
+                    onClick={() => void (async () => {
+                      if (await askConfirm(t("playlist.deleteConfirm"))) setPlItems([]);
+                    })()}
                   >
                     🗑 {t("common:actions.delete")}
                   </button>
@@ -3896,7 +3923,9 @@ export default function SchoolRadio() {
                         ⬇ {t("live.recordDownload")}
                       </button>
                       <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
-                        onClick={() => { if (liveRecSaved || window.confirm(t("live.recordDiscardConfirm"))) discardLiveRecording(); }}
+                        onClick={() => void (async () => {
+                          if (liveRecSaved || await askConfirm(t("live.recordDiscardConfirm"))) discardLiveRecording();
+                        })()}
                         disabled={liveRecUploading}>
                         🗑 {t("live.recordDiscard")}
                       </button>
@@ -4331,6 +4360,35 @@ export default function SchoolRadio() {
         </div>
 
       </div>
+
+      {/* ══════════ Megerősítés ══════════
+          Nem blokkoló, ígéret-alapú párbeszéd – ld. `askConfirm`. A natív
+          `window.confirm` megállítaná a főszálat, és vele a monitorozás
+          hangját is. */}
+      {confirmBox && (
+        <div className="sr-overlay" onClick={() => closeConfirm(false)}>
+          <div className="sr-overlay-modal" style={{maxWidth:460}} onClick={e => e.stopPropagation()}>
+            <div className="sr-overlay-hdr">
+              <div className="sr-overlay-title">❓ {t("confirm.title")}</div>
+              <button className="sr-overlay-close" type="button" onClick={() => closeConfirm(false)}>✕</button>
+            </div>
+            <div className="sr-overlay-body">
+              {/* A `confirm.*` szövegek több bekezdésesek is lehetnek. */}
+              <div style={{fontSize:14,lineHeight:1.5,whiteSpace:"pre-line"}}>{confirmBox.message}</div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+                <button className="sr-btn sr-btn-ghost" type="button" autoFocus
+                  onClick={() => closeConfirm(false)}>
+                  {t("common:actions.cancel")}
+                </button>
+                <button className="sr-btn sr-btn-primary" type="button"
+                  onClick={() => closeConfirm(true)}>
+                  {t("common:actions.confirm")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════ Új ütemezés modal ══════════ */}
       {/* Korábban a jobb hasábban ült, állandóan fenntartva egy fél oszlopnyi

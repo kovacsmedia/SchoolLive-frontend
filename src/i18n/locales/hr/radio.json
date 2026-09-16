@@ -238,7 +238,8 @@
     "deleteSchedule": "Izbrisati ovo zakazivanje?",
     "teachingHourOverlap": "⚠️ Ovaj radijski program preklapa se s nastavom!\n\nJeste li sigurni da ga želite tako zakazati?",
     "trimToFitBreak": "⚠️ Zvučna datoteka ({{fileDur}}) ne stane u odmor ({{breakDur}})!\n\nOdrezati kraj da stane (s 5s fade-outom)? Izvorna datoteka bit će sačuvana.\n\nDa → zakaži skraćenu verziju\nNe → zakaži izvornu, dužu datoteku",
-    "stopAll": "Zaustaviti sve reprodukcije?"
+    "stopAll": "Zaustaviti sve reprodukcije?",
+    "title": "Potvrda"
   },
   "errors": {
     "loadFailed": "Učitavanje nije uspjelo",

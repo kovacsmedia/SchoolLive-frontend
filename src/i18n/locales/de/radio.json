@@ -238,7 +238,8 @@
     "deleteSchedule": "Diese Planung löschen?",
     "teachingHourOverlap": "⚠️ Diese Radiosendung überschneidet sich mit dem Unterricht!\n\nMöchten Sie wirklich so planen?",
     "trimToFitBreak": "⚠️ Die Tondatei ({{fileDur}}) passt nicht in die Pause ({{breakDur}})!\n\nEnde abschneiden, damit sie passt (mit 5s Fade-out)? Die Originaldatei bleibt erhalten.\n\nJa → gekürzte Version planen\nNein → die längere Originaldatei planen",
-    "stopAll": "Alle Wiedergaben stoppen?"
+    "stopAll": "Alle Wiedergaben stoppen?",
+    "title": "Bestätigung"
   },
   "errors": {
     "loadFailed": "Laden fehlgeschlagen",

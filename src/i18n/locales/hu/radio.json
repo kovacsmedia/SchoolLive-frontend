@@ -238,7 +238,8 @@
     "deleteSchedule": "Törlöd ezt az ütemezést?",
     "teachingHourOverlap": "⚠️ A rádióműsor tanítási órát érint!\n\nBiztosan így szeretnéd ütemezni?",
     "trimToFitBreak": "⚠️ A hangfájl ({{fileDur}}) nem fér bele a szünetbe ({{breakDur}})!\n\nLevágjuk a végét, hogy beleférjen (5mp fade-out átmenettel)? Az eredeti fájl megmarad.\n\nIgen → levágott verzió ütemezése\nNem → az eredeti hosszú fájl ütemezése",
-    "stopAll": "Leállítod az összes lejátszót?"
+    "stopAll": "Leállítod az összes lejátszót?",
+    "title": "Megerősítés"
   },
   "errors": {
     "loadFailed": "Betöltés sikertelen",

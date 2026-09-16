@@ -238,7 +238,8 @@
     "deleteSchedule": "Vymazať toto naplánovanie?",
     "teachingHourOverlap": "⚠️ Toto rádiové vysielanie sa prekrýva s vyučovaním!\n\nNaozaj ho chcete takto naplánovať?",
     "trimToFitBreak": "⚠️ Zvukový súbor ({{fileDur}}) sa nezmestí do prestávky ({{breakDur}})!\n\nOrezať koniec, aby sa zmestil (s 5s fade-out)? Pôvodný súbor zostane zachovaný.\n\nÁno → naplánovať skrátenú verziu\nNie → naplánovať pôvodný, dlhší súbor",
-    "stopAll": "Zastaviť všetky prehrávania?"
+    "stopAll": "Zastaviť všetky prehrávania?",
+    "title": "Potvrdenie"
   },
   "errors": {
     "loadFailed": "Načítanie zlyhalo",
