@@ -210,22 +210,43 @@ function fmtDuration(sec: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** Egy YouTube-videó a listákban (találat és előzmény egyaránt). */
+type YtVideo = { id: string; title: string; duration: string; thumbnail: string };
+
+const YT_HISTORY_MAX  = 24;
+const LS_KEY_YT_HIST  = "sl-yt-history";
+const LS_KEY_YT_LAST  = "sl-yt-last";
+
 /*
- * fmtDuration fordítottja: "1:23:45", "2:30" vagy "90" → másodperc.
- *
- * Szándékosan megengedő, mert szabad szöveges mezőből jön: a részeket
- * jobbról balra olvassuk (mp, perc, óra), így a "90" 90 másodperc, a "1:30"
- * másfél perc. Érvénytelen bemenetnél null – a hívó ilyenkor a videó
- * elejéről indít, nem pedig valami félreértett pozícióról.
+ * Az előzmények TENANT-ONKÉNT élnek, mint a netrádió-lista: egy gépen több
+ * intézmény is kezelhető, és nem keveredhetnek össze a megnézett videók.
  */
-function parseHms(text: string): number | null {
-  const raw = text.trim();
-  if (!raw) return null;
-  if (!/^\d{1,2}(:\d{1,2}){0,2}$/.test(raw)) return null;
-  const parts = raw.split(":").map(Number);
-  if (parts.some((n) => !Number.isFinite(n))) return null;
-  const sec = parts.reverse().reduce((acc, n, i) => acc + n * Math.pow(60, i), 0);
-  return sec >= 0 ? sec : null;
+function ytKey(base: string): string {
+  return `${base}:${getActiveTenantId() || "none"}`;
+}
+
+function loadYtHistory(): YtVideo[] {
+  try {
+    const raw = window.localStorage.getItem(ytKey(LS_KEY_YT_HIST));
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((v: any) => v?.id && v?.title) : [];
+  } catch { return []; }
+}
+
+function saveYtHistory(list: YtVideo[]): void {
+  try { window.localStorage.setItem(ytKey(LS_KEY_YT_HIST), JSON.stringify(list)); } catch { /* ignore */ }
+}
+
+function loadYtLast(): YtVideo | null {
+  try {
+    const raw = window.localStorage.getItem(ytKey(LS_KEY_YT_LAST));
+    const v = raw ? JSON.parse(raw) : null;
+    return v?.id && v?.title ? v : null;
+  } catch { return null; }
+}
+
+function saveYtLast(v: YtVideo): void {
+  try { window.localStorage.setItem(ytKey(LS_KEY_YT_LAST), JSON.stringify(v)); } catch { /* ignore */ }
 }
 
 function fmtSize(bytes: number): string {
@@ -450,6 +471,23 @@ const CSS = `
   /* Belehallgatás jelzése: 1 mp-es pulzálás a gombon. */
   .sr-preview-on{animation:sr-preview-pulse 1s ease-in-out infinite}
   @keyframes sr-preview-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
+  /* ── YouTube fül: rögzített lejátszó + görgethető lista ───────────────
+     Nagy kijelzőn két hasáb, keskenyen egymás alatt – a videó FELÜL. */
+  .sr-yt-tab{padding:14px 18px;display:flex;flex-direction:column;gap:12}
+  .sr-yt-head{display:flex;gap:14;flex-wrap:wrap;align-items:flex-start}
+  .sr-yt-split{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:14;align-items:start}
+  .sr-yt-stage{display:flex;flex-direction:column;gap:8;min-width:0}
+  .sr-yt-title{font-size:14px;font-weight:800;color:var(--sl-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sr-yt-side{display:flex;flex-direction:column;min-width:0}
+  /* A lista görget, a lejátszó nem mozdul. */
+  .sr-yt-list{max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6;padding-right:4px}
+  .sr-yt-list::-webkit-scrollbar{width:8px}
+  .sr-yt-list::-webkit-scrollbar-thumb{background:var(--sl-border);border-radius:4px}
+  .sr-yt-current{outline:2px solid var(--sl-blue);outline-offset:-2px;border-radius:10px}
+  @media(max-width:900px){
+    .sr-yt-split{grid-template-columns:1fr}
+    .sr-yt-list{max-height:320px}
+  }
   .sr-tab-bar{display:flex;gap:0;border-bottom:1.5px solid var(--sl-border);background:var(--sl-bg)}
   .sr-tab{flex:1;padding:11px 16px;border:none;background:transparent;font-size:13px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;color:var(--sl-muted);transition:all 0.15s;border-bottom:2.5px solid transparent}
   .sr-tab:hover{color:var(--sl-text-2);background:rgba(59,130,246,0.04)}
@@ -742,8 +780,6 @@ export default function SchoolRadio() {
   const [ytLiveQuery,       setYtLiveQuery]       = useState("");
   const [ytLiveResults,     setYtLiveResults]     = useState<{ id: string; title: string; duration: string; thumbnail: string }[]>([]);
   const [ytLiveSearching,   setYtLiveSearching]   = useState(false);
-  const [ytLivePasteUrl,    setYtLivePasteUrl]    = useState("");
-  const [ytLiveFetching,    setYtLiveFetching]    = useState(false);
   const [ytLiveVideoId,     setYtLiveVideoId]     = useState<string | null>(null);
   const [ytLiveTitle,       setYtLiveTitle]       = useState("");
   const [ytLiveDurationSec, setYtLiveDurationSec] = useState<number | null>(null);
@@ -758,15 +794,15 @@ export default function SchoolRadio() {
   const [ytLiveScheduleBusy,  setYtLiveScheduleBusy]  = useState(false);
   const [ytLiveScheduleError, setYtLiveScheduleError] = useState<string | null>(null);
   const [ytLiveScheduleEnd,   setYtLiveScheduleEnd]   = useState("");
+  const [ytDownloading,       setYtDownloading]       = useState(false);
   /*
-   * Indulási pozíció a kiválasztott videóban ("m:ss" / "h:mm:ss").
+   * Legutóbb megnézett videók – a jobb oldali lista alapállapota.
    *
-   * ÜRESEN HAGYVA az élő indítás a régi viselkedést tartja: onnan szól,
-   * ahol az előnézet éppen áll. Kitöltve viszont EZ az erősebb – a mező a
-   * szándékot rögzíti, az előnézet csak oda-vissza tekergetés közben álló
-   * pillanatnyi állapot.
+   * Tenant-onként a localStorage-ban él, mint a netrádió-lista: a
+   * böngészőhöz tartozik, nem a szerverhez. A legutóbb betöltött videó is
+   * innen tér vissza, ha újra a fülre lépünk.
    */
-  const [ytStartPos, setYtStartPos] = useState("");
+  const [ytHistory, setYtHistory] = useState<YtVideo[]>(() => loadYtHistory());
 
   /* ══════════════════════════════════════════════════════════════════════
    * ÉLŐ HANGBEMENET
@@ -953,23 +989,97 @@ export default function SchoolRadio() {
     setYtLiveDurationSec(null);
   }
 
-  async function fetchYtLiveFromUrl() {
-    const url = ytLivePasteUrl.trim();
-    if (!url) return;
-    setYtLiveFetching(true);
+  /*
+   * A legutóbb nézett videó visszatöltése a fülre lépéskor.
+   *
+   * Csak akkor, ha még nincs betöltve – így egy futó lejátszást nem
+   * szakítunk félbe azzal, hogy oda-vissza váltunk a fülek között.
+   */
+  useEffect(() => {
+    if (sourceTab !== "youtube" || ytLiveVideoId) return;
+    const last = loadYtLast();
+    if (last) pickYtLiveResult(last.id, last.title);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTab]);
+
+  /*
+   * A SNAP-LEJÁTSZÁS KÖVETI A VIDEÓABLAK IDEJÉT.
+   *
+   * Nincs külön seek-sáv: a beágyazott lejátszó a vezérlő. Másodpercenként
+   * megnézzük, hol tart – ha a pozíció UGRIK (nem a normál előrehaladás),
+   * az csak tekerés lehet, és a snapet is odaküldjük.
+   *
+   * A küszöb azért 2 másodperc, mert a mérés maga is egy másodpercenként
+   * fut, és a hálózati oda-vissza is beleszámít; ennél kisebb eltérésre
+   * ugrálni fölösleges újraindításokat okozna a szerveroldali forráson.
+   */
+  const ytLastPosRef = useRef<number>(0);
+  useEffect(() => {
+    if (!ytLiveIsLive) return;
+    ytLastPosRef.current = ytCurrentTime();
+    const timer = setInterval(() => {
+      const now = ytCurrentTime();
+      const prev = ytLastPosRef.current;
+      ytLastPosRef.current = now;
+      // Normál lejátszásnál ~1 mp a különbség; minden más tekerés.
+      if (Math.abs(now - prev - 1) > 2) void handleLiveSeek(now);
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytLiveIsLive]);
+
+  /** A beágyazott lejátszó aktuális pozíciója egész másodpercben. */
+  function ytCurrentTime(): number {
+    return Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0));
+  }
+
+  /** Felvétel az előzményekbe (legutóbbi elöl, duplikátum nélkül). */
+  function rememberYtVideo(v: YtVideo) {
+    setYtHistory(prev => {
+      const next = [v, ...prev.filter(x => x.id !== v.id)].slice(0, YT_HISTORY_MAX);
+      saveYtHistory(next);
+      return next;
+    });
+    saveYtLast(v);
+  }
+
+  /**
+   * A snap-lejátszás leállítása a YouTube fülről.
+   *
+   * Ugyanaz, amit a fejléc RÁDIÓ STOP gombja csinál – így a gomb valóban
+   * kapcsoló: bekapcsolva elindítja, újra megnyomva leállítja.
+   */
+  async function stopYoutubeLive() {
+    try {
+      await apiFetch("/radio/stop-all", { method: "POST" });
+    } catch { /* a következő állapot-poll úgyis helyreteszi */ }
+    setYtLiveIsLive(false);
+    setManualNowPlaying(null);
+  }
+
+  /** A betöltött videó hangja a hangfájl könyvtárba. */
+  async function downloadYtToLibrary() {
+    if (!ytLiveVideoId || ytDownloading) return;
+    setYtDownloading(true);
     setYtLiveError(null);
     try {
-      const info = await apiFetch<{ ok: boolean; title: string; durationSec: number }>(
-        `/radio/yt-info?url=${encodeURIComponent(url)}`
-      );
-      const idMatch = url.match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{6,})/);
-      const videoId = idMatch?.[1] ?? url;
-      pickYtLiveResult(videoId, info.title);
-      setYtLiveDurationSec(info.durationSec ?? null);
+      const startSec = ytCurrentTime();
+      await apiFetch("/radio/youtube/download", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          url:   `https://www.youtube.com/watch?v=${ytLiveVideoId}`,
+          title: ytLiveTitle,
+          // A letöltés is onnan indul, ahol a lejátszó áll – ugyanaz az elv,
+          // mint az élő indításnál és az ütemezésnél.
+          ...(startSec > 0 ? { startSec } : {}),
+        }),
+      });
+      await loadAll();          // az új fájl jelenjen meg a könyvtárban
     } catch (e: any) {
-      setYtLiveError(e?.message ?? t("errors.ytInfoFailed"));
+      setYtLiveError(e?.message ?? t("errors.uploadFailed"));
     } finally {
-      setYtLiveFetching(false);
+      setYtDownloading(false);
     }
   }
 
@@ -986,10 +1096,7 @@ export default function SchoolRadio() {
       // kimondott szándéka. Üresen a régi viselkedés marad: onnan indul, ahol
       // az előnézet áll; ezt MOST olvassuk ki, mielőtt a "🔴 Élő adásba
       // küldés" utáni állapotváltásokkal a lejátszó továbbmenne.
-      const typedStart  = parseHms(ytStartPos);
-      const startAtSec  = typedStart !== null
-        ? typedStart
-        : Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0));
+      const startAtSec  = ytCurrentTime();
       const watchUrl = `https://www.youtube.com/watch?v=${ytLiveVideoId}`;
       const resolved = await apiFetch<{ ok: boolean; url: string; title: string; durationSec: number | null }>(
         `/radio/yt-live-url?url=${encodeURIComponent(watchUrl)}`
@@ -1057,8 +1164,8 @@ export default function SchoolRadio() {
         scheduledAt: startDate.toISOString(),
       };
       if (endDate) body.endsAt = endDate.toISOString();
-      const startSec = parseHms(ytStartPos);
-      if (startSec !== null && startSec > 0) body.startSec = startSec;
+      const startSec = ytCurrentTime();
+      if (startSec > 0) body.startSec = startSec;
       if (ytLiveTargetType !== "ALL") body.targetId = ytLiveTargetId;
       await apiFetch("/radio/youtube/schedule", {
         method: "POST",
@@ -3560,229 +3667,219 @@ export default function SchoolRadio() {
 
             {/* ── YouTube tab ───────────────────────────────────────────── */}
             {sourceTab === "youtube" && (
-              <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:12}}>
-                <div style={{fontSize:12,color:"var(--sl-muted)"}}>
-                  {t("youtube.description")}
-                </div>
+              /*
+               * ÁLLANDÓ YOUTUBE-KLIENS.
+               *
+               * Bal oldalt a lejátszó (rögzített), jobb oldalt a lista
+               * (görgethető): kereséskor a találatok, egyébként a legutóbb
+               * megnézett videók. Keskeny kijelzőn egymás alá kerülnek, a
+               * videó felülre – a `sr-yt-split` osztály kezeli.
+               *
+               * A snap-lejátszáshoz NINCS külön seek-sáv: a beágyazott
+               * lejátszó ideje a vezérlő, és ha beletekersz, a snap is
+               * odaugrik (ld. a követő effektust).
+               */
+              <div className="sr-yt-tab">
 
-                <div style={{display:"flex",gap:8}}>
-                  <input
-                    className="sr-input"
-                    style={{flex:1}}
-                    placeholder={t("youtube.searchPlaceholder")}
-                    value={ytLiveQuery}
-                    onChange={(e) => setYtLiveQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && searchYtLive()}
-                  />
-                  <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
-                    onClick={() => void searchYtLive()} disabled={ytLiveSearching}>
-                    {ytLiveSearching ? "⏳" : "🔍"}
-                  </button>
-                </div>
+                {/* Fejléc: cél balra, adás-vezérlés jobbra */}
+                <div className="sr-yt-head">
+                  <div style={{flex:"1 1 260px",minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {(["ALL","DEVICE","GROUP"] as const).map(opt => (
+                        <button key={opt} type="button"
+                          className={`sr-btn ${ytLiveTargetType===opt?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
+                          disabled={ytLiveIsLive}
+                          onClick={() => { setYtLiveTargetType(opt); setYtLiveTargetId(""); }}>
+                          {opt==="ALL"?`📡 ${t("target.all")}`:opt==="DEVICE"?`🔊 ${t("target.device")}`:`👥 ${t("target.group")}`}
+                        </button>
+                      ))}
+                      {ytLiveTargetType==="DEVICE" && (
+                        <select className="sr-select" style={{flex:1,minWidth:140}} disabled={ytLiveIsLive}
+                          value={ytLiveTargetId} onChange={e => setYtLiveTargetId(e.target.value)}>
+                          <option value="">— {t("target.devicePlaceholder")} —</option>
+                          {devices.map(d => (
+                            <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
+                          ))}
+                        </select>
+                      )}
+                      {ytLiveTargetType==="GROUP" && (
+                        <select className="sr-select" style={{flex:1,minWidth:140}} disabled={ytLiveIsLive}
+                          value={ytLiveTargetId} onChange={e => setYtLiveTargetId(e.target.value)}>
+                          <option value="">— {t("target.groupPlaceholder")} —</option>
+                          {groups.map(g => (<option key={g.id} value={g.id}>{g.name}</option>))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
 
-                <div style={{display:"flex",gap:8}}>
-                  <input
-                    className="sr-input"
-                    style={{flex:1}}
-                    placeholder={t("youtube.urlPlaceholder")}
-                    value={ytLivePasteUrl}
-                    onChange={(e) => setYtLivePasteUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && fetchYtLiveFromUrl()}
-                  />
-                  <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                    onClick={() => void fetchYtLiveFromUrl()} disabled={ytLiveFetching}>
-                    {ytLiveFetching ? "⏳" : t("youtube.loadUrlButton")}
-                  </button>
+                  <div style={{flex:"1 1 300px",minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>
+                      🎛 {t("netradio.actionsLabel")}
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {/* Kapcsoló: aktívan pulzáló piros, újra megnyomva leáll. */}
+                      <button
+                        className={`sr-btn ${ytLiveIsLive ? "sr-btn-danger sr-preview-on" : "sr-btn-primary"}`}
+                        type="button"
+                        style={ytLiveIsLive ? undefined : {background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
+                        disabled={!ytLiveVideoId || ytLiveGoingLive}
+                        onClick={() => ytLiveIsLive ? void stopYoutubeLive() : void goLiveYoutube()}>
+                        {ytLiveGoingLive
+                          ? `⏳ ${t("busy.saving")}`
+                          : ytLiveIsLive
+                            ? `⏹ ${t("youtube.stopLiveButton")}`
+                            : `🔴 ${t("youtube.goLiveButton")}`}
+                      </button>
+
+                      <button className="sr-btn sr-btn-ghost" type="button"
+                        disabled={!ytLiveVideoId || ytDownloading}
+                        onClick={() => void downloadYtToLibrary()}>
+                        {ytDownloading ? `⏳ ${t("busy.saving")}` : `⬇ ${t("youtube.downloadButton")}`}
+                      </button>
+
+                      <button className="sr-btn sr-btn-ghost" type="button"
+                        disabled={!ytLiveVideoId}
+                        onClick={() => setYtLiveScheduleOpen(v => !v)}>
+                        📅 {t("youtube.scheduleButton")}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {ytLiveError && (
                   <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{ytLiveError}</span></div>
                 )}
 
-                {ytLiveResults.length > 0 && !ytLiveVideoId && (
-                  <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:220,overflowY:"auto"}}>
-                    {ytLiveResults.map((r) => (
-                      <div key={r.id} className="sr-search-result"
-                        onClick={() => pickYtLiveResult(r.id, r.title)}>
-                        <img src={`https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`} alt=""
-                          className="sr-search-thumb" referrerPolicy="no-referrer" />
-                        <div style={{minWidth:0}}>
-                          <div className="sr-search-title">{r.title}</div>
-                          <div className="sr-search-meta">⏱ {r.duration}</div>
-                        </div>
+                {/* Ütemezés – ugyanaz a form, mint eddig, csak most a
+                    fejléc alatt, teljes szélességben nyílik. */}
+                {ytLiveScheduleOpen && ytLiveVideoId && (
+                  <div className="sr-panel" style={{padding:14,display:"flex",flexDirection:"column",gap:10}}>
+                    {ytLiveScheduleError && (
+                      <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{ytLiveScheduleError}</span></div>
+                    )}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                      <div>
+                        <label className="sr-label">{t("schedule.dateLabel")}</label>
+                        <input type="date" className="sr-input" value={ytLiveScheduleDate}
+                          min={new Date().toISOString().slice(0,10)}
+                          onChange={(e) => setYtLiveScheduleDate(e.target.value)} />
                       </div>
-                    ))}
+                      <div>
+                        <label className="sr-label">{t("schedule.startTimeLabel")}</label>
+                        <input type="time" className="sr-input" value={ytLiveScheduleTime}
+                          onChange={(e) => setYtLiveScheduleTime(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="sr-label">
+                          {t("schedule.endTimeLabel")}
+                          <span style={{fontWeight:600,color:"var(--sl-muted)",marginLeft:6}}>{t("schedule.endTimeOptional")}</span>
+                        </label>
+                        <input type="time" className="sr-input" value={ytLiveScheduleEnd}
+                          min={ytLiveScheduleTime || undefined}
+                          onChange={(e) => setYtLiveScheduleEnd(e.target.value)} />
+                      </div>
+                    </div>
+                    <div style={{fontSize:11,color:"var(--sl-muted)"}}>💡 {t("youtube.scheduleFromHere")}</div>
+                    <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                      <button className="sr-btn sr-btn-ghost" type="button"
+                        onClick={() => setYtLiveScheduleOpen(false)} disabled={ytLiveScheduleBusy}>
+                        {t("common:actions.cancel")}
+                      </button>
+                      <button className="sr-btn sr-btn-primary" type="button"
+                        onClick={() => void scheduleYoutube()}
+                        disabled={ytLiveScheduleBusy || !ytLiveScheduleDate || !ytLiveScheduleTime}>
+                        {ytLiveScheduleBusy ? t("schedule.saving") : t("schedule.addButton")}
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {ytLiveVideoId && (
-                  <>
-                    <div className="sr-yt-embed-wrap">
-                      <div ref={ytPlayerElRef} />
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-                      <div style={{fontSize:13,fontWeight:700,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        🎬 {ytLiveTitle}
-                      </div>
-                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                        onClick={() => { setYtLiveVideoId(null); setYtLiveIsLive(false); setYtStartPos(""); ytPlayerRef.current = null; }}>
-                        ✕ {t("youtube.clearSelection")}
-                      </button>
-                    </div>
+                {/* ── Két hasáb: lejátszó | lista ───────────────────────── */}
+                <div className="sr-yt-split">
 
-                    {/* ── Indulási pozíció ─────────────────────────────────
-                        Élő indításnál és időzítésnél EGYARÁNT innen indul a
-                        videó. Időzítésnél a szerver a letöltött hangból vágja
-                        le az elejét, tehát a beállítás akkor is érvényes, ha
-                        a lejátszás csak órákkal később történik. */}
-                    <div>
-                      <label className="sr-label">
-                        ⏱ {t("youtube.startPositionLabel")}
-                        <span style={{fontWeight:600,color:"var(--sl-muted)",marginLeft:6}}>
-                          {t("youtube.startPositionOptional")}
-                        </span>
-                      </label>
-                      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                        <input
-                          type="text"
-                          className="sr-input"
-                          style={{maxWidth:130}}
-                          placeholder="0:00"
-                          inputMode="numeric"
-                          value={ytStartPos}
-                          onChange={(e) => setYtStartPos(e.target.value)}
-                        />
-                        <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                          onClick={() => setYtStartPos(
-                            fmtDuration(Math.max(0, Math.floor(ytPlayerRef.current?.getCurrentTime?.() ?? 0)))
-                          )}
-                          title={t("youtube.useCurrentPositionTooltip")}>
-                          🎯 {t("youtube.useCurrentPosition")}
-                        </button>
-                        {ytStartPos && (
-                          <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
-                            onClick={() => setYtStartPos("")}>
-                            ✕
-                          </button>
-                        )}
-                        {ytLiveDurationSec ? (
-                          <span style={{fontSize:12,color:"var(--sl-muted)"}}>
-                            / {fmtDuration(ytLiveDurationSec)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
-                        {ytStartPos && parseHms(ytStartPos) === null
-                          ? `⚠️ ${t("youtube.startPositionInvalid")}`
-                          : `💡 ${t("youtube.startPositionHint")}`}
-                      </div>
-                    </div>
-
-                    {/* Cél választó – a YouTube fül saját ytLiveTargetType/Id állapota,
-                        ugyanaz a minta, mint a netrádió/könyvtár füleken. */}
-                    <div>
-                      <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                        {(["ALL","DEVICE","GROUP"] as const).map(opt => (
-                          <button key={opt} type="button"
-                            className={`sr-btn ${ytLiveTargetType===opt?"sr-btn-primary":"sr-btn-ghost"} sr-btn-sm`}
-                            onClick={() => { setYtLiveTargetType(opt); setYtLiveTargetId(""); }}>
-                            {opt==="ALL"?`📡 ${t("target.all")}`:opt==="DEVICE"?`🔊 ${t("target.device")}`:`👥 ${t("target.group")}`}
-                          </button>
-                        ))}
-                        {ytLiveTargetType==="DEVICE" && (
-                          <select className="sr-select" style={{flex:1,minWidth:140}}
-                            value={ytLiveTargetId} onChange={e => setYtLiveTargetId(e.target.value)}>
-                            <option value="">— {t("target.devicePlaceholder")} —</option>
-                            {devices.map(d => (
-                              <option key={d.id} value={d.id}>{d.online?"🟢":"⚪"} {d.name}</option>
-                            ))}
-                          </select>
-                        )}
-                        {ytLiveTargetType==="GROUP" && (
-                          <select className="sr-select" style={{flex:1,minWidth:140}}
-                            value={ytLiveTargetId} onChange={e => setYtLiveTargetId(e.target.value)}>
-                            <option value="">— {t("target.groupPlaceholder")} —</option>
-                            {groups.map(g => (
-                              <option key={g.id} value={g.id}>{g.name}</option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    </div>
-
-                    {!ytLiveIsLive ? (
-                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                        <button className="sr-btn sr-btn-primary" type="button"
-                          style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
-                          onClick={() => void goLiveYoutube()} disabled={ytLiveGoingLive}>
-                          {ytLiveGoingLive ? `⏳ ${t("busy.saving")}` : `🔴 ${t("youtube.goLiveButton")}`}
-                        </button>
-                        <button className="sr-btn sr-btn-ghost" type="button"
-                          onClick={() => setYtLiveScheduleOpen((v) => !v)}>
-                          📅 {t("youtube.scheduleButton")}
-                        </button>
-                      </div>
-                    ) : liveState ? (
-                      <LiveProgressBar
-                        state={liveState}
-                        onSeek={(sec) => void handleLiveSeek(sec)}
-                        onTogglePause={() => void handleLiveTogglePause()}
-                        onStop={() => void handleLiveStop()}
-                        live
-                      />
-                    ) : null}
-
-                    {ytLiveScheduleOpen && (
-                      <div className="sr-panel" style={{padding:14,display:"flex",flexDirection:"column",gap:10}}>
-                        {ytLiveScheduleError && (
-                          <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{ytLiveScheduleError}</span></div>
-                        )}
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                          <div>
-                            <label className="sr-label">{t("schedule.dateLabel")}</label>
-                            <input type="date" className="sr-input"
-                              value={ytLiveScheduleDate}
-                              min={new Date().toISOString().slice(0,10)}
-                              onChange={(e) => setYtLiveScheduleDate(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="sr-label">{t("schedule.startTimeLabel")}</label>
-                            <input type="time" className="sr-input"
-                              value={ytLiveScheduleTime}
-                              onChange={(e) => setYtLiveScheduleTime(e.target.value)} />
-                          </div>
+                  <div className="sr-yt-stage">
+                    {ytLiveVideoId ? (
+                      <>
+                        <div className="sr-yt-embed-wrap">
+                          <div ref={ytPlayerElRef} />
                         </div>
-                        <div>
-                          <label className="sr-label">
-                            {t("schedule.endTimeLabel")}
-                            <span style={{fontWeight:600,color:"var(--sl-muted)",marginLeft:6}}>
-                              {t("schedule.endTimeOptional")}
-                            </span>
-                          </label>
-                          <input type="time" className="sr-input"
-                            value={ytLiveScheduleEnd}
-                            min={ytLiveScheduleTime || undefined}
-                            onChange={(e) => setYtLiveScheduleEnd(e.target.value)} />
-                          <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
-                            💡 {t("schedule.endTimeHint")}
-                          </div>
+                        <div className="sr-yt-title">
+                          🎬 {ytLiveTitle}
+                          {ytLiveDurationSec ? (
+                            <span style={{color:"var(--sl-muted)",fontWeight:600}}> · {fmtDuration(ytLiveDurationSec)}</span>
+                          ) : null}
                         </div>
-                        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                          <button className="sr-btn sr-btn-ghost" type="button"
-                            onClick={() => setYtLiveScheduleOpen(false)} disabled={ytLiveScheduleBusy}>
-                            {t("common:actions.cancel")}
-                          </button>
-                          <button className="sr-btn sr-btn-primary" type="button"
-                            onClick={() => void scheduleYoutube()}
-                            disabled={ytLiveScheduleBusy || !ytLiveScheduleDate || !ytLiveScheduleTime}>
-                            {ytLiveScheduleBusy ? t("schedule.saving") : t("schedule.addButton")}
-                          </button>
+                        <div style={{fontSize:11,color:"var(--sl-muted)"}}>
+                          💡 {t("youtube.followHint")}
                         </div>
+                      </>
+                    ) : (
+                      <div className="sr-empty" style={{padding:"48px 16px"}}>
+                        <div className="sr-empty-icon">🎬</div>
+                        <div style={{fontSize:13,fontWeight:700}}>{t("youtube.noVideoSelected")}</div>
                       </div>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  <div className="sr-yt-side">
+                    <div style={{display:"flex",gap:8,padding:"0 0 10px"}}>
+                      <input
+                        className="sr-input"
+                        style={{flex:1,minWidth:0}}
+                        placeholder={t("youtube.searchPlaceholder")}
+                        value={ytLiveQuery}
+                        onChange={(e) => setYtLiveQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && searchYtLive()}
+                      />
+                      <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
+                        onClick={() => void searchYtLive()} disabled={ytLiveSearching}>
+                        {ytLiveSearching ? "⏳" : "🔍"}
+                      </button>
+                      {ytLiveResults.length > 0 && (
+                        <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
+                          title={t("youtube.backToHistory")}
+                          onClick={() => { setYtLiveResults([]); setYtLiveQuery(""); }}>
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",paddingBottom:6}}>
+                      {ytLiveResults.length > 0 ? `🔍 ${t("youtube.resultsLabel")}` : `🕘 ${t("youtube.historyLabel")}`}
+                    </div>
+
+                    <div className="sr-yt-list">
+                      {(() => {
+                        const list = ytLiveResults.length > 0 ? ytLiveResults : ytHistory;
+                        if (list.length === 0) {
+                          return (
+                            <div className="sr-empty" style={{padding:"24px 12px"}}>
+                              <div className="sr-empty-icon">🕘</div>
+                              <div style={{fontSize:12,fontWeight:700}}>{t("youtube.historyEmpty")}</div>
+                            </div>
+                          );
+                        }
+                        return list.map((r) => (
+                          <div key={r.id}
+                            className={`sr-search-result${ytLiveVideoId === r.id ? " sr-yt-current" : ""}`}
+                            onClick={() => {
+                              pickYtLiveResult(r.id, r.title);
+                              rememberYtVideo(r);
+                            }}>
+                            <img src={r.thumbnail || `https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`} alt=""
+                              className="sr-search-thumb" referrerPolicy="no-referrer" />
+                            <div style={{minWidth:0}}>
+                              <div className="sr-search-title">{r.title}</div>
+                              <div className="sr-search-meta">⏱ {r.duration || "—"}</div>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+
+                </div>
               </div>
             )}
 
