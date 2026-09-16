@@ -286,6 +286,7 @@
     "buildFailed": "Zostavenie zlyhalo. Skontrolujte odkazy!",
     "buildStatusFetchError": "Chyba pri zisťovaní stavu",
     "buildError": "Chyba zostavenia",
-    "genericError": "Chyba: {{message}}"
+    "genericError": "Chyba: {{message}}",
+    "previewInsecureStream": "{{name}} poskytuje iba http:// stream, ktorý prehliadač na tejto zabezpečenej stránke blokuje. Prehrávanie v škole to NEOVPLYVNÍ: stream sťahuje server, tlačidlo Spustiť rádio funguje."
   }
 }

@@ -286,6 +286,7 @@
     "buildFailed": "Crearea a eșuat. Verificați linkurile!",
     "buildStatusFetchError": "Eroare la verificarea statusului",
     "buildError": "Eroare de creare",
-    "genericError": "Eroare: {{message}}"
+    "genericError": "Eroare: {{message}}",
+    "previewInsecureStream": "{{name}} oferă doar un flux http://, pe care browserul îl blochează pe această pagină securizată. NU afectează redarea în școală: fluxul este preluat de server, butonul Pornește radioul funcționează."
   }
 }

@@ -286,6 +286,7 @@
     "buildFailed": "Build failed. Check the links!",
     "buildStatusFetchError": "Error checking build status",
     "buildError": "Build error",
-    "genericError": "Error: {{message}}"
+    "genericError": "Error: {{message}}",
+    "previewInsecureStream": "{{name}} only serves an http:// stream, which the browser blocks on this secure page. This does NOT affect school playback: the server fetches the stream, so Start radio works."
   }
 }

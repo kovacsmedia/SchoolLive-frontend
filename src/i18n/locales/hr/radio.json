@@ -286,6 +286,7 @@
     "buildFailed": "Izrada nije uspjela. Provjerite poveznice!",
     "buildStatusFetchError": "Pogreška pri provjeri statusa",
     "buildError": "Pogreška izrade",
-    "genericError": "Pogreška: {{message}}"
+    "genericError": "Pogreška: {{message}}",
+    "previewInsecureStream": "{{name}} nudi samo http:// stream, koji preglednik blokira na ovoj sigurnoj stranici. Reprodukciju u školi to NE dira: stream preuzima poslužitelj, gumb Pokreni radio radi."
   }
 }

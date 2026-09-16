@@ -286,6 +286,7 @@
     "buildFailed": "Erstellen fehlgeschlagen. Überprüfen Sie die Links!",
     "buildStatusFetchError": "Fehler beim Abrufen des Status",
     "buildError": "Build-Fehler",
-    "genericError": "Fehler: {{message}}"
+    "genericError": "Fehler: {{message}}",
+    "previewInsecureStream": "{{name}} liefert nur einen http://-Stream, den der Browser auf dieser sicheren Seite blockiert. Die Wiedergabe in der Schule ist NICHT betroffen: den Stream holt der Server, „Radio starten“ funktioniert."
   }
 }

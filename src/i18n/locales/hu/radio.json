@@ -286,6 +286,7 @@
     "buildFailed": "Összeállítás sikertelen. Ellenőrizd a linkeket!",
     "buildStatusFetchError": "Hiba az állapotlekérdezéskor",
     "buildError": "Build hiba",
-    "genericError": "Hiba: {{message}}"
+    "genericError": "Hiba: {{message}}",
+    "previewInsecureStream": "A(z) {{name}} csak http:// streamet ad, amit a böngésző biztonsági okból nem játszik le ezen az oldalon. Az iskolai lejátszást ez NEM érinti: azt a szerver tölti le, a Rádió indítása gomb működik."
   }
 }

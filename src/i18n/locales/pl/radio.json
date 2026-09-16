@@ -286,6 +286,7 @@
     "buildFailed": "Tworzenie nie powiodło się. Sprawdź linki!",
     "buildStatusFetchError": "Błąd podczas sprawdzania statusu",
     "buildError": "Błąd tworzenia",
-    "genericError": "Błąd: {{message}}"
+    "genericError": "Błąd: {{message}}",
+    "previewInsecureStream": "{{name}} udostępnia tylko strumień http://, który przeglądarka blokuje na tej bezpiecznej stronie. NIE wpływa to na odtwarzanie w szkole: strumień pobiera serwer, przycisk Uruchom radio działa."
   }
 }

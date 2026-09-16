@@ -1998,6 +1998,15 @@ export default function SchoolRadio() {
     netPreviewAudioRef.current = null;
     if (a) {
       try {
+        /*
+         * A KEZELŐKET ELŐBB LEVÁLASZTJUK.
+         *
+         * A forrás elengedése (`removeAttribute` + `load`) maga is `error`
+         * eseményt vált ki az elemen (üres forrás), ami különben visszacsatolna
+         * az állapotba: hibaüzenetet írna ki egy szándékos leállítás után.
+         */
+        a.onerror = null;
+        a.oncanplay = null;
         a.pause();
         // A forrás elengedése nélkül a böngésző tovább töltené a streamet.
         a.removeAttribute("src");
@@ -2016,17 +2025,49 @@ export default function SchoolRadio() {
     const url = station.streams[idx]?.url;
     if (!url) return;
 
+    /*
+     * VEGYES TARTALOM (mixed content).
+     *
+     * A felület HTTPS-en fut, sok internetrádió viszont csak `http://`-n
+     * szolgál ki. Egy ilyen streamet a böngésző BIZTONSÁGI OKBÓL letilt –
+     * nem hiba a mi oldalunkon, és nem is kerülhető meg kliensből.
+     *
+     * Fontos, hogy ez NEM érinti az iskolai lejátszást: azt a szerver
+     * tölti le és keveri a snap streamre, oda nem vonatkozik a böngésző
+     * korlátozása. Ezért mondjuk ezt ki külön – enélkül a kezelő azt hinné,
+     * hogy az állomás rossz.
+     */
+    if (window.location.protocol === "https:" && url.toLowerCase().startsWith("http://")) {
+      setStreamError(t("errors.previewInsecureStream", { name: station.name }));
+      return;
+    }
+
     try {
       const a = new Audio(url);
       a.preload = "none";
       a.onerror = () => {
+        // Egy már lecserélt lejátszó hibája ne írja felül az állapotot.
+        if (netPreviewAudioRef.current !== a) return;
         setStreamError(t("errors.emptyStreamUrl", { name: station.name }));
         stopNetPreview();
       };
       netPreviewAudioRef.current = a;
       setNetPreviewId(station.id);
       void a.play().catch((e: any) => {
-        // Pl. autoplay-tiltás vagy elérhetetlen stream.
+        /*
+         * A `play()` ÍGÉRETET ad, ami megszakítható.
+         *
+         * Ha közben leállítottuk vagy másik állomásra váltottunk, a böngésző
+         * `AbortError`-ral utasítja el – ez NEM hiba, hanem épp az, amit
+         * kértünk tőle. Hibaüzenetként megjelenítve viszont pontosan úgy
+         * nézett ki, mintha a belehallgatás elromlott volna
+         * („The play() request was interrupted…").
+         *
+         * A ref-ellenőrzés ugyanezt fedi le a másik irányból: egy már
+         * lecserélt lejátszó késői elutasítása se írja felül az állapotot.
+         */
+        if (e?.name === "AbortError") return;
+        if (netPreviewAudioRef.current !== a) return;
         setStreamError(e?.message ?? t("errors.streamStartFailed"));
         stopNetPreview();
       });
