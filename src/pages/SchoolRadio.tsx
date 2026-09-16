@@ -473,21 +473,21 @@ const CSS = `
   @keyframes sr-preview-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
   /* ── YouTube fül: rögzített lejátszó + görgethető lista ───────────────
      Nagy kijelzőn két hasáb, keskenyen egymás alatt – a videó FELÜL. */
-  /* Gomb belsejébe rajzolt haladás-csík. A gombnak `position:relative` és
-     `overflow:hidden` kell, hogy a csík a lekerekített sarkokon belül
+  /* Gomb belsejébe rajzolt haladás-csík. A gombnak position:relative és
+     overflow:hidden kell, hogy a csík a lekerekített sarkokon belül
      maradjon. */
   .sr-has-progress{position:relative;overflow:hidden}
   .sr-btn-progress{position:absolute;left:0;bottom:0;height:3px;background:var(--sl-blue);transition:width 0.4s linear;pointer-events:none}
   .sr-yt-tab{padding:14px 18px;display:flex;flex-direction:column;gap:12px}
-  /* FIGYELEM: a `gap` mértékegység nélkül érvénytelen – enélkül a böngésző
+  /* FIGYELEM: a gap mértékegység nélkül érvénytelen – enélkül a böngésző
      az egész szabályt eldobja, és a hasábok összeérnek. */
   .sr-yt-head{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
   .sr-yt-split{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:18px;align-items:start}
-  .sr-yt-stage{display:flex;flex-direction:column;gap:8;min-width:0}
+  .sr-yt-stage{display:flex;flex-direction:column;gap:8px;min-width:0}
   .sr-yt-title{font-size:14px;font-weight:800;color:var(--sl-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sr-yt-side{display:flex;flex-direction:column;min-width:0}
   /* A lista görget, a lejátszó nem mozdul. */
-  .sr-yt-list{max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6;padding-right:4px}
+  .sr-yt-list{max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:4px}
   .sr-yt-list::-webkit-scrollbar{width:8px}
   .sr-yt-list::-webkit-scrollbar-thumb{background:var(--sl-border);border-radius:4px}
   .sr-yt-current{outline:2px solid var(--sl-blue);outline-offset:-2px;border-radius:10px}
