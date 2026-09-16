@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SnapWsClient } from "../lib/snapWsClient";
 import { apiFetch, getWsUrl, resolveTenantId } from "../lib/api";
-import { VU_SEGMENTS, VU_DIM, vuSegmentColor, vuLitCount, vuRmsDb } from "../lib/vuMeter";
+import { VU_GRADIENT, VU_DIM, vuPercent, vuClip, vuRmsDb } from "../lib/vuMeter";
 
 /** Egyedi, de felismerhető snap-kliens azonosító. Nem ütközik Device.id-vel. */
 function monitorClientId(): string {
@@ -59,18 +59,12 @@ export default function MonitorPill() {
   /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
      keresztül ez az egész app-shell újrarajzolása lenne másodpercenként
      hatvanszor. */
-  const segRef       = useRef<(HTMLDivElement | null)[][]>([[], []]);
-  /* Csatornánként hány LED ég – csak a VÁLTOZÓ szegmenseket írjuk át, hogy
-     ne legyen 40 stílus-módosítás minden képkockán. */
-  const litRef       = useRef<number[]>([0, 0]);
+  const fillRef      = useRef<(HTMLDivElement | null)[]>([null, null]);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     analysersRef.current = [];
-    for (let ch = 0; ch < 2; ch++) {
-      for (const el of segRef.current[ch] ?? []) if (el) el.style.opacity = VU_DIM;
-      litRef.current[ch] = 0;
-    }
+    for (const el of fillRef.current) if (el) el.style.clipPath = vuClip(0);
 
     clientRef.current?.stop();
     clientRef.current = null;
@@ -86,19 +80,6 @@ export default function MonitorPill() {
   // Lapelhagyás / kijelentkezés: ne maradjon nyitva a hang és a WS.
   useEffect(() => stop, [stop]);
 
-  function setLit(ch: number, lit: number) {
-    const prev = litRef.current[ch];
-    if (lit === prev) return;
-    // Csak a két állás közti szegmenseket bántjuk.
-    const from = Math.min(prev, lit);
-    const to   = Math.max(prev, lit);
-    for (let i = from; i < to; i++) {
-      const el = segRef.current[ch]?.[i];
-      if (el) el.style.opacity = i < lit ? "1" : VU_DIM;
-    }
-    litRef.current[ch] = lit;
-  }
-
   function meterLoop() {
     const ans = analysersRef.current;
     if (ans.length === 2) {
@@ -106,7 +87,8 @@ export default function MonitorPill() {
         const an  = ans[ch];
         const buf = new Float32Array(an.fftSize);
         an.getFloatTimeDomainData(buf);
-        setLit(ch, vuLitCount(vuRmsDb(buf)));
+        const el = fillRef.current[ch];
+        if (el) el.style.clipPath = vuClip(vuPercent(vuRmsDb(buf)));
       }
     }
     rafRef.current = requestAnimationFrame(meterLoop);
@@ -270,30 +252,29 @@ export default function MonitorPill() {
         </span>
       )}
 
-      {/* Sztereó kivezérlésjelző – LED-soros kinézet, csatornánként egy sor.
-          A szélesség felső korlát: keskeny kijelzőn a szegmensek szűkülnek,
-          nem lógnak ki. A fejléc `flex-wrap`-je miatt a jelző álló nézetben
-          magától saját sorba kerül. */}
+      {/* Sztereó kivezérlésjelző – folytonos sáv, részenként fix színnel.
+          A szélesség felső korlát: keskeny kijelzőn a sáv szűkül, nem lóg ki.
+          A fejléc `flex-wrap`-je miatt a jelző álló nézetben magától saját
+          sorba kerül. */}
       <div
         style={{ display: "flex", flexDirection: "column", gap: 3, width: 208, maxWidth: "48vw" }}
         aria-label={t("appshell:monitorMeterAria")}
       >
         {[0, 1].map((ch) => (
-          <div key={ch} style={{ display: "flex", gap: 2, height: 6 }}>
-            {Array.from({ length: VU_SEGMENTS }, (_, i) => (
-              <div
-                key={i}
-                ref={(el) => { segRef.current[ch][i] = el; }}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  borderRadius: 1,
-                  background: vuSegmentColor(i),
-                  opacity: VU_DIM,
-                  transition: "opacity 0.04s linear",
-                }}
-              />
-            ))}
+          /* A halvány alsó réteg végig mutatja a skálát; a felső, teljes
+             szélességű réteg ugyanazt festi, csak a jobb oldala van
+             levágva a szint arányában. */
+          <div key={ch} style={{ position: "relative", height: 6, borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, background: VU_GRADIENT, opacity: VU_DIM }} />
+            <div
+              ref={(el) => { fillRef.current[ch] = el; }}
+              style={{
+                position: "absolute", inset: 0,
+                background: VU_GRADIENT,
+                clipPath: vuClip(0),
+                transition: "clip-path 0.05s linear",
+              }}
+            />
           </div>
         ))}
       </div>

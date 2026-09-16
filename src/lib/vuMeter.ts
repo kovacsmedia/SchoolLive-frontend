@@ -7,41 +7,54 @@
 // (`SchoolRadio.tsx`). Azért itt vannak a konstansok, hogy a kettő ne
 // csúszhasson szét: ugyanaz a skála, ugyanazok a színhatárok.
 //
-// A megjelenés klasszikus hifi LED-sor: a színzónák FIXEK, nem a sáv színe
-// vált. Mindig ugyanaz a LED világít ugyanabban a színben, és a ki nem
-// gyulladt szegmens a saját színének sötét változata – ettől néz ki igazi
-// LED-sornak akkor is, amikor néma.
+// FOLYTONOS SÁV, RÉSZENKÉNT FIX SZÍNNEL.
+//
+// A színátmenet a sáv TELJES hosszán ül, és nem a kitöltés méretéhez
+// igazodik – a zöld/sárga/piros határ tehát mindig ugyanott van, akármekkora
+// a kivezérlés. Ezt `clip-path`-szal érjük el: a festett elem végig
+// teljes szélességű, csak a jobb oldalát vágjuk le a szint arányában.
+// (Ha a szélességét változtatnánk, az átmenet vele együtt zsugorodna, és a
+// színhatárok vándorolnának – pont azt a hibát hozná vissza, ami miatt
+// korábban az egész sáv színe váltott.)
 
-/** LED-ek száma csatornánként. A -60…0 dB skálán ez 3 dB / szegmens. */
-export const VU_SEGMENTS = 20;
-
-/** A kialudt LED áttetszősége (a saját színének sötét változata). */
-export const VU_DIM = "0.13";
+/** A skála alja dBFS-ben. Efölött 0…100% a kitöltés. */
+export const VU_MIN_DB = -60;
 
 /**
- * Egy szegmens színe az indexe alapján.
- *
- *   zöld   –60 … –18 dB   (0–13)
- *   sárga  –18 …  –6 dB   (14–17)
- *   piros   –6 …   0 dB   (18–19)
+ * A fix színzónák. A százalékok a -60…0 dB skálán:
+ *   zöld   -60 … -18 dB   (0 … 70%)
+ *   sárga  -18 …  -6 dB   (70 … 90%)
+ *   piros   -6 …   0 dB   (90 … 100%)
  */
-export function vuSegmentColor(i: number): string {
-  if (i >= 18) return "#dc2626";
-  if (i >= 14) return "#eab308";
-  return "#22c55e";
+export const VU_GRADIENT =
+  "linear-gradient(90deg," +
+  "#22c55e 0%,#22c55e 70%," +
+  "#eab308 70%,#eab308 90%," +
+  "#dc2626 90%,#dc2626 100%)";
+
+/** A ki nem vezérelt rész áttetszősége – a skála halványan végig látszik. */
+export const VU_DIM = "0.13";
+
+/** dBFS → a sáv kitöltése százalékban (0…100). */
+export function vuPercent(db: number): number {
+  const pct = ((db - VU_MIN_DB) / -VU_MIN_DB) * 100;
+  return Math.max(0, Math.min(100, pct));
 }
 
-/** dBFS → hány LED égjen (0…VU_SEGMENTS). A skála alja –60 dB. */
-export function vuLitCount(db: number): number {
-  const n = Math.round(((db + 60) / 60) * VU_SEGMENTS);
-  return Math.max(0, Math.min(VU_SEGMENTS, n));
+/**
+ * `clip-path` érték adott kitöltéshez: a jobb oldalt vágjuk le.
+ * A festett elem végig teljes szélességű marad, ezért a színhatárok
+ * a helyükön maradnak.
+ */
+export function vuClip(percent: number): string {
+  return `inset(0 ${(100 - percent).toFixed(1)}% 0 0)`;
 }
 
 /**
  * Egy hangcsomag RMS-szintje dBFS-ben.
  *
  * A `1e-9` a csend logaritmusát fogja meg: enélkül teljes némaságnál
- * `-Infinity` jönne, amiből `NaN` szegmens-index lenne.
+ * `-Infinity` jönne, amiből `NaN` százalék lenne.
  */
 export function vuRmsDb(buf: Float32Array): number {
   let sum = 0;

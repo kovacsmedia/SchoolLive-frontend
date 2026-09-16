@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { stripAccents } from "../lib/text";
 import { apiFetch, getWsUrl } from "../lib/api";
-import { VU_SEGMENTS, VU_DIM, vuSegmentColor, vuLitCount, vuRmsDb, vuPeakDb } from "../lib/vuMeter";
+import { VU_GRADIENT, VU_DIM, vuPercent, vuClip, vuRmsDb, vuPeakDb } from "../lib/vuMeter";
 import { useAuth } from "../auth/AuthContext";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────
@@ -436,10 +436,14 @@ const CSS = `
   /* Élő hangbemenet – kivezérlésjelző */
   .sr-vu-row{display:flex;align-items:center;gap:8px}
   .sr-vu-label{width:14px;font-size:11px;font-weight:800;color:var(--sl-muted);text-align:center}
-  /* LED-sor: külön szegmensek, fix színzónákkal. Ugyanaz a megjelenítés,
-     mint a fejléc monitorozásánál – a közös definíciók a lib/vuMeter.ts-ben. */
-  .sr-vu-track{display:flex;flex:1;gap:2px;height:12px}
-  .sr-vu-seg{flex:1;min-width:0;border-radius:2px;transition:opacity 0.04s linear}
+  /* Folytonos sáv, részenként fix színnel. A színátmenet a TELJES sávon ül,
+     a kitöltést `clip-path` adja – így a zöld/sárga/piros határ nem vándorol.
+     Közös definíciók: lib/vuMeter.ts (ugyanaz a fejléc monitorozásánál). */
+  .sr-vu-track{position:relative;flex:1;height:12px;border-radius:6px;overflow:hidden}
+  .sr-vu-scale-bg{position:absolute;inset:0}
+  .sr-vu-fill{position:absolute;inset:0;transition:clip-path 0.05s linear}
+  /* Csúcstartó: nem tud kilógni, mert a sáv overflow:hidden */
+  .sr-vu-peak{position:absolute;top:0;bottom:0;width:2px;left:0%;background:var(--sl-text);opacity:0.75}
   .sr-vu-scale{display:flex;justify-content:space-between;font-size:9px;color:var(--sl-muted);margin-top:2px;letter-spacing:0.3px}
   .sr-live-dot{width:10px;height:10px;border-radius:50%;background:#dc2626;animation:sr-live-blink 1.2s infinite}
   @keyframes sr-live-blink{0%,100%{opacity:1}50%{opacity:0.25}}
@@ -798,11 +802,8 @@ export default function SchoolRadio() {
   const liveRafRef      = useRef<number | null>(null);
   /* A mérőt közvetlen DOM-írással frissítjük ~60 Hz-en: React-állapoton
      keresztül ez percenként több ezer újrarajzolás lenne az egész oldalra. */
-  const liveSegRef      = useRef<(HTMLDivElement | null)[][]>([[], []]);
-  /* Csatornánként hány LED ég, és melyik a csúcstartó szegmense – csak a
-     VÁLTOZÓ elemeket írjuk át, hogy ne legyen 40 stílus-módosítás képkockánként. */
-  const liveLitRef      = useRef<number[]>([0, 0]);
-  const livePeakSegRef  = useRef<number[]>([-1, -1]);
+  const liveFillRef     = useRef<(HTMLDivElement | null)[]>([null, null]);
+  const livePeakRef     = useRef<(HTMLDivElement | null)[]>([null, null]);
   const livePeakHoldRef = useRef<{ db: number; until: number }[]>([
     { db: -90, until: 0 }, { db: -90, until: 0 },
   ]);
@@ -1340,33 +1341,6 @@ export default function SchoolRadio() {
   }
 
   /** Mérő-ciklus: RMS + csúcs csatornánként, dBFS-ben. */
-  /**
-   * Egy csatorna LED-sorának frissítése.
-   *
-   * Csak az érintett szegmenseket írjuk: a két szintállás közti tartományt,
-   * plusz a régi és az új csúcstartó-LED-et. Így képkockánként tipikusan
-   * néhány stílus-módosítás történik a 40 helyett.
-   */
-  function setLiveLit(ch: number, lit: number, peakSeg: number) {
-    const row      = liveSegRef.current[ch];
-    if (!row || row.length === 0) return;
-    const prevLit  = liveLitRef.current[ch];
-    const prevPeak = livePeakSegRef.current[ch];
-    if (lit === prevLit && peakSeg === prevPeak) return;
-
-    const paint = (i: number) => {
-      const el = row[i];
-      if (el) el.style.opacity = (i < lit || i === peakSeg) ? "1" : VU_DIM;
-    };
-
-    for (let i = Math.min(prevLit, lit); i < Math.max(prevLit, lit); i++) paint(i);
-    if (prevPeak !== peakSeg && prevPeak >= 0) paint(prevPeak);
-    if (peakSeg >= 0) paint(peakSeg);
-
-    liveLitRef.current[ch]     = lit;
-    livePeakSegRef.current[ch] = peakSeg;
-  }
-
   function liveMeterLoop() {
     const analysers = liveAnalysersRef.current;
     if (analysers.length === 2) {
@@ -1388,9 +1362,10 @@ export default function SchoolRadio() {
           hold.until = now + 1200;
         }
 
-        const lit  = vuLitCount(rmsDb);
-        const peak = Math.max(0, vuLitCount(hold.db) - 1);
-        setLiveLit(ch, lit, peak);
+        const fill = liveFillRef.current[ch];
+        if (fill) fill.style.clipPath = vuClip(vuPercent(rmsDb));
+        const pk = livePeakRef.current[ch];
+        if (pk) pk.style.left = `${vuPercent(hold.db)}%`;
       }
     }
     liveRafRef.current = requestAnimationFrame(liveMeterLoop);
@@ -1584,9 +1559,10 @@ export default function SchoolRadio() {
 
   function resetLiveMeterBars() {
     for (let ch = 0; ch < 2; ch++) {
-      for (const el of liveSegRef.current[ch] ?? []) if (el) el.style.opacity = VU_DIM;
-      liveLitRef.current[ch]      = 0;
-      livePeakSegRef.current[ch]  = -1;
+      const fill = liveFillRef.current[ch];
+      if (fill) fill.style.clipPath = vuClip(0);
+      const pk = livePeakRef.current[ch];
+      if (pk) pk.style.left = "0%";
       livePeakHoldRef.current[ch] = { db: -90, until: 0 };
     }
   }
@@ -3569,14 +3545,13 @@ export default function SchoolRadio() {
                     <div className="sr-vu-row" key={ch}>
                       <div className="sr-vu-label">{ch}</div>
                       <div className="sr-vu-track">
-                        {Array.from({ length: VU_SEGMENTS }, (_, seg) => (
-                          <div
-                            key={seg}
-                            className="sr-vu-seg"
-                            ref={(el) => { liveSegRef.current[i][seg] = el; }}
-                            style={{ background: vuSegmentColor(seg), opacity: VU_DIM }}
-                          />
-                        ))}
+                        <div className="sr-vu-scale-bg" style={{ background: VU_GRADIENT, opacity: VU_DIM }} />
+                        <div
+                          className="sr-vu-fill"
+                          ref={(el) => { liveFillRef.current[i] = el; }}
+                          style={{ background: VU_GRADIENT, clipPath: vuClip(0) }}
+                        />
+                        <div className="sr-vu-peak" ref={(el) => { livePeakRef.current[i] = el; }} />
                       </div>
                     </div>
                   ))}
