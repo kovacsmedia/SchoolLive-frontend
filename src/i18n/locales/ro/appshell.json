@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Selectați o instituție!",
   "chooseTenantBody": "În modul administrator, selectați o instituție din bara de sus pentru a accesa datele.",
   "tenantsLoadError": "Încărcare eșuată",
-  "defaultUserName": "Utilizator"
+  "defaultUserName": "Utilizator",
+  "monitorStart": "Monitorizare",
+  "monitorStop": "Oprește",
+  "monitorConnecting": "Se conectează…",
+  "monitorTooltip": "Ascultă pe acest computer ce se redă pe difuzoare",
+  "monitorMeterAria": "Indicator de nivel",
+  "monitorNoSession": "Nicio sesiune validă.",
+  "monitorError": "Monitorizarea nu a putut fi pornită.",
+  "monitorFeedbackWarning": "Folosiți căști, altfel va apărea microfonie!\n\nRulează o intrare audio live. Dacă monitorizarea se aude în difuzoarele acestui computer, microfonul va prelua din nou sunetul.\n\nPorniți monitorizarea?"
 }

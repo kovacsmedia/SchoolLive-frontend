@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Wybierz placówkę!",
   "chooseTenantBody": "W trybie administratora wybierz placówkę na górnym pasku, aby uzyskać dostęp do danych.",
   "tenantsLoadError": "Nie udało się załadować",
-  "defaultUserName": "Użytkownik"
+  "defaultUserName": "Użytkownik",
+  "monitorStart": "Odsłuch",
+  "monitorStop": "Zatrzymaj",
+  "monitorConnecting": "Łączenie…",
+  "monitorTooltip": "Posłuchaj na tym komputerze, co aktualnie gra na głośnikach",
+  "monitorMeterAria": "Wskaźnik wysterowania",
+  "monitorNoSession": "Brak ważnej sesji.",
+  "monitorError": "Nie udało się uruchomić odsłuchu.",
+  "monitorFeedbackWarning": "Użyj słuchawek, bo wystąpi sprzężenie!\n\nTrwa wejście audio na żywo. Jeśli odsłuch będzie grał z głośników tego komputera, mikrofon ponownie zbierze dźwięk.\n\nUruchomić odsłuch?"
 }

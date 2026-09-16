@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Odaberite ustanovu!",
   "chooseTenantBody": "U administratorskom načinu rada odaberite ustanovu na gornjoj traci kako biste pristupili podacima.",
   "tenantsLoadError": "Učitavanje nije uspjelo",
-  "defaultUserName": "Korisnik"
+  "defaultUserName": "Korisnik",
+  "monitorStart": "Nadzor",
+  "monitorStop": "Zaustavi",
+  "monitorConnecting": "Povezivanje…",
+  "monitorTooltip": "Slušanje na ovom računalu onoga što trenutno svira na zvučnicima",
+  "monitorMeterAria": "Pokazivač razine",
+  "monitorNoSession": "Nema valjane sesije.",
+  "monitorError": "Nadzor se nije mogao pokrenuti.",
+  "monitorFeedbackWarning": "Koristite slušalice, inače će doći do mikrofonije!\n\nTrenutno radi živi audio ulaz. Ako se nadzor čuje na zvučnicima ovog računala, mikrofon će ponovno pokupiti zvuk.\n\nPokrenuti nadzor?"
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import MonitorPill from "../components/MonitorPill";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../lib/api";
 import { applyLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../i18n";
@@ -474,6 +475,9 @@ export default function AppShell() {
             <StatusPill icon="🔔" label={t("appshell:statusBell")} value={nextBell} />
             <StatusPill icon="📢" label={t("appshell:statusMessage")} value={nextMessage} />
             <StatusPill icon="📻" label={t("appshell:statusRadio")} value={nextRadio} />
+            {/* Monitorozás: a kezelő a saját gépén hallgatja a snap streamet,
+                mellette kisméretű kivezérlésjelzővel. */}
+            <MonitorPill />
           </div>
           {isSuperAdmin && (
             <div className="asl-tenant-pill">

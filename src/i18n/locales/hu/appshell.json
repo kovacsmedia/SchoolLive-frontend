@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Válassz intézményt!",
   "chooseTenantBody": "Rendszergazda módban a felső sávban válassz ki egy intézményt, hogy hozzáférhess az adatokhoz.",
   "tenantsLoadError": "Betöltés sikertelen",
-  "defaultUserName": "Felhasználó"
+  "defaultUserName": "Felhasználó",
+  "monitorStart": "Monitorozás",
+  "monitorStop": "Leállítás",
+  "monitorConnecting": "Csatlakozás…",
+  "monitorTooltip": "A hangszórókon éppen szóló hang meghallgatása ezen a gépen",
+  "monitorMeterAria": "Kivezérlésjelző",
+  "monitorNoSession": "Nincs érvényes munkamenet.",
+  "monitorError": "A monitorozás nem indítható.",
+  "monitorFeedbackWarning": "Használjon fülhallgatót, mert gerjedés fog fellépni!\n\nÉppen élő hangbemenet megy. Ha a monitorozás a gép hangszóróján szól, a mikrofon visszaveszi a hangot.\n\nElindítja a monitorozást?"
 }

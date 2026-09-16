@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Wählen Sie eine Einrichtung aus!",
   "chooseTenantBody": "Wählen Sie im Administratormodus in der oberen Leiste eine Einrichtung aus, um auf die Daten zugreifen zu können.",
   "tenantsLoadError": "Laden fehlgeschlagen",
-  "defaultUserName": "Benutzer"
+  "defaultUserName": "Benutzer",
+  "monitorStart": "Mithören",
+  "monitorStop": "Beenden",
+  "monitorConnecting": "Verbinden…",
+  "monitorTooltip": "Auf diesem Rechner mithören, was gerade über die Lautsprecher läuft",
+  "monitorMeterAria": "Aussteuerungsanzeige",
+  "monitorNoSession": "Keine gültige Sitzung.",
+  "monitorError": "Mithören konnte nicht gestartet werden.",
+  "monitorFeedbackWarning": "Benutzen Sie Kopfhörer, sonst entsteht eine Rückkopplung!\n\nEs läuft gerade ein Live-Audioeingang. Wenn das Mithören über die Lautsprecher dieses Rechners läuft, nimmt das Mikrofon den Ton wieder auf.\n\nMithören starten?"
 }

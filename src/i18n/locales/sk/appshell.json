@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Vyberte inštitúciu!",
   "chooseTenantBody": "V režime správcu vyberte inštitúciu v hornej lište, aby ste získali prístup k údajom.",
   "tenantsLoadError": "Načítanie zlyhalo",
-  "defaultUserName": "Používateľ"
+  "defaultUserName": "Používateľ",
+  "monitorStart": "Monitorovanie",
+  "monitorStop": "Zastaviť",
+  "monitorConnecting": "Pripájanie…",
+  "monitorTooltip": "Počúvanie toho, čo práve hrá na reproduktoroch, na tomto počítači",
+  "monitorMeterAria": "Indikátor vybudenia",
+  "monitorNoSession": "Žiadna platná relácia.",
+  "monitorError": "Monitorovanie sa nepodarilo spustiť.",
+  "monitorFeedbackWarning": "Použite slúchadlá, inak vznikne spätná väzba!\n\nPráve beží živý zvukový vstup. Ak monitorovanie hrá cez reproduktory tohto počítača, mikrofón zvuk znova zachytí.\n\nSpustiť monitorovanie?"
 }

@@ -10,5 +10,13 @@
   "chooseTenantTitle": "Select an institution!",
   "chooseTenantBody": "In administrator mode, select an institution in the top bar to access its data.",
   "tenantsLoadError": "Failed to load",
-  "defaultUserName": "User"
+  "defaultUserName": "User",
+  "monitorStart": "Monitor",
+  "monitorStop": "Stop",
+  "monitorConnecting": "Connecting…",
+  "monitorTooltip": "Listen on this computer to what is playing on the speakers",
+  "monitorMeterAria": "Level meter",
+  "monitorNoSession": "No valid session.",
+  "monitorError": "Monitoring could not be started.",
+  "monitorFeedbackWarning": "Use headphones – you will get feedback!\n\nA live audio input is running. If monitoring plays through this computer's speakers, the microphone will pick the sound back up.\n\nStart monitoring?"
 }

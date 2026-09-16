@@ -48,6 +48,14 @@ interface SnapWsOptions {
   initialGain?: number;
   /** Hallás-alapú finomhangoló offset (ms). */
   initialSyncOffsetMs?: number;
+  /**
+   * Opcionális mérőpont: a hangerő-szabályzó UTÁNI jelet ide is elvezetjük.
+   *
+   * A kezelői felület monitorozás-funkciója köt ide egy `AnalyserNode`-ot a
+   * kivezérlésjelzőhöz. Az analizátor kimenetét nem kell továbbkötni – attól
+   * még dolgozik –, így a hangútvonalon ez semmit nem változtat.
+   */
+  tapNode?:   AudioNode;
   onConnected?:    () => void;
   onDisconnected?: () => void;
   onActivity?:     () => void;
@@ -114,6 +122,9 @@ export class SnapWsClient {
     this.gainNode = opts.audioCtx.createGain();
     this.gainNode.gain.value = opts.initialGain ?? 1.0;
     this.gainNode.connect(opts.audioCtx.destination);
+    if (opts.tapNode) {
+      try { this.gainNode.connect(opts.tapNode); } catch { /* a mérő nem kritikus */ }
+    }
   }
 
   start(): void {
