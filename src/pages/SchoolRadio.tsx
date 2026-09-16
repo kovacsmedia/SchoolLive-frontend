@@ -3966,13 +3966,13 @@ export default function SchoolRadio() {
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                     {!liveOn ? (
-                      <button className="sr-btn sr-btn-primary" type="button"
+                      <button className="sr-btn sr-btn-primary sr-btn-sm" type="button"
                         style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
                         onClick={() => void startLiveInput()} disabled={liveStarting}>
                         {liveStarting ? `⏳ ${t("busy.saving")}` : `🔴 ${t("live.startButton")}`}
                       </button>
                     ) : (
-                      <button className="sr-btn sr-btn-danger" type="button"
+                      <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
                         onClick={() => stopLiveInput()}>
                         ⏹ {t("live.stopButton")}
                       </button>
@@ -3982,12 +3982,12 @@ export default function SchoolRadio() {
                         közben nem megy ki semmi, és adás közben is bármikor
                         elindítható/leállítható. */}
                     {liveRecState === "recording" ? (
-                      <button className="sr-btn sr-btn-danger" type="button"
+                      <button className="sr-btn sr-btn-danger sr-btn-sm" type="button"
                         onClick={() => stopLiveRecording()}>
                         ⏹ {t("live.recordStop")} · {fmtDuration(liveRecSeconds)}
                       </button>
                     ) : (
-                      <button className="sr-btn sr-btn-ghost" type="button"
+                      <button className="sr-btn sr-btn-ghost sr-btn-sm" type="button"
                         onClick={() => void startLiveRecording()}>
                         ⏺ {t("live.recordStart")}
                       </button>
@@ -4245,7 +4245,11 @@ export default function SchoolRadio() {
                         <>
                           {/* A lejátszás-gomb SZÁNDÉKOSAN nem vált zöldre:
                               hogy épp mi szól, azt a lap teteje mondja meg. */}
+                          {/* Piros: ez az a gomb, ami az EGÉSZ iskolában
+                              megszólaltatja a rádiót – ugyanaz a jelzés,
+                              mint az élő adás indításánál. */}
                           <button type="button" className="sr-btn sr-btn-primary sr-btn-sm"
+                            style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
                             onClick={() => sel && void playStation(sel)}
                             disabled={!sel || !hasUrl || busy}
                             title={t("netradio.playTooltip.idle")}>
