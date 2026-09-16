@@ -50,7 +50,10 @@
     "scheduleTooltip": "Naplánovať prehrávanie",
     "scheduleTitle": "Naplánovať: {{name}}",
     "scheduleEndHint": "Prehrávanie sa zastaví v nastavenom čase.",
-    "scheduleNoEndHint": "Bez času ukončenia vysielanie beží až do manuálneho zastavenia."
+    "scheduleNoEndHint": "Bez času ukončenia vysielanie beží až do manuálneho zastavenia.",
+    "actionsLabel": "Akcie",
+    "selectHint": "Vyber stanicu zo zoznamu",
+    "playButton": "Prehrať"
   },
   "library": {
     "uploading": "Nahrávanie… {{pct}}%",

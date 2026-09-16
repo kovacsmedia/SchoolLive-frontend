@@ -50,7 +50,10 @@
     "scheduleTooltip": "Wiedergabe planen",
     "scheduleTitle": "{{name}} planen",
     "scheduleEndHint": "Die Wiedergabe stoppt zum eingestellten Zeitpunkt.",
-    "scheduleNoEndHint": "Ohne Endzeit läuft die Sendung bis zum manuellen Stopp."
+    "scheduleNoEndHint": "Ohne Endzeit läuft die Sendung bis zum manuellen Stopp.",
+    "actionsLabel": "Aktionen",
+    "selectHint": "Wähle einen Sender aus der Liste",
+    "playButton": "Wiedergabe"
   },
   "library": {
     "uploading": "Wird hochgeladen… {{pct}}%",

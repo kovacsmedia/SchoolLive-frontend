@@ -50,7 +50,10 @@
     "scheduleTooltip": "Programează redarea",
     "scheduleTitle": "Programare: {{name}}",
     "scheduleEndHint": "Redarea se oprește la ora stabilită.",
-    "scheduleNoEndHint": "Fără oră de final, emisia rulează până la oprirea manuală."
+    "scheduleNoEndHint": "Fără oră de final, emisia rulează până la oprirea manuală.",
+    "actionsLabel": "Acțiuni",
+    "selectHint": "Alege un post din listă",
+    "playButton": "Redare"
   },
   "library": {
     "uploading": "Se încarcă… {{pct}}%",

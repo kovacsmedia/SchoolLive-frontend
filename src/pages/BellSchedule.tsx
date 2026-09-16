@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "../lib/api";
+import { apiFetch, getBaseUrl } from "../lib/api";
 
 type BellType = "MAIN" | "SIGNAL";
 
@@ -26,6 +26,9 @@ type BellSoundFile = {
   filename: string;
   sizeBytes: number;
   isDefault: boolean;
+  /** A szerver által adott lejátszási útvonal (`/audio/bells/…`).
+   *  Régebbi backendtől hiányozhat – ld. a belehallgatás tartalék ágát. */
+  url?: string;
 };
 
 type CalendarDay = {
@@ -806,8 +809,22 @@ export default function BellSchedule() {
         {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>{t("common:actions.loading")}</div> : (
           <div style={{ display: "grid", gap: 8 }}>
             {sounds.map(s => {
-              const apiBase = ((import.meta as any)?.env?.VITE_API_BASE_URL ?? "").trim().replace(/\/$/, "");
-              const audioUrl = `${apiBase}/audio/bells/${encodeURIComponent(s.filename)}`;
+              /*
+               * Az URL-t a SZERVER adja (`s.url`), nem mi rakjuk össze.
+               *
+               * A feltöltések tenant-szeparált könyvtárba kerülnek
+               * (`/audio/bells/<tenantId>/…`), a régebbi hangok viszont még a
+               * közös, lapos helyen vannak – melyik hol, azt csak a szerver
+               * tudja. A kézzel, mindig laposan összerakott útvonal miatt egy
+               * frissen feltöltött hang belehallgatása 404-et kapott: a
+               * lejátszó 0:00-t mutatott és néma maradt.
+               *
+               * A `?? ` ág csak a köztes állapotot fedi, amíg a backend
+               * frissítése meg nem érkezik.
+               */
+              const apiBase  = getBaseUrl();
+              const soundUrl = s.url ?? `/audio/bells/${encodeURIComponent(s.filename)}`;
+              const audioUrl = `${apiBase}${soundUrl}`;
               const expanded = previewSoundId === s.id;
               return (
                 <div key={s.id} style={{ background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>

@@ -50,7 +50,10 @@
     "scheduleTooltip": "Запланувати відтворення",
     "scheduleTitle": "Запланувати: {{name}}",
     "scheduleEndHint": "Відтворення зупиниться у встановлений час.",
-    "scheduleNoEndHint": "Без часу завершення ефір триває до ручної зупинки."
+    "scheduleNoEndHint": "Без часу завершення ефір триває до ручної зупинки.",
+    "actionsLabel": "Дії",
+    "selectHint": "Вибери станцію зі списку",
+    "playButton": "Відтворити"
   },
   "library": {
     "uploading": "Завантаження… {{pct}}%",

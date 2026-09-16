@@ -456,7 +456,11 @@ const CSS = `
   .sr-radio-list-wrap{max-height:380px;overflow-y:auto;border-top:1px solid var(--sl-border);border-bottom:1px solid var(--sl-border)}
   .sr-radio-list-wrap::-webkit-scrollbar{width:8px}
   .sr-radio-list-wrap::-webkit-scrollbar-thumb{background:var(--sl-border);border-radius:4px}
-  .sr-radio-row{display:grid;grid-template-columns:32px 1.4fr 1fr auto auto;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--sl-border);font-family:'Nunito',sans-serif;font-size:13px;color:var(--sl-text);transition:background 0.12s}
+  .sr-radio-row{display:grid;grid-template-columns:32px 1.4fr 1fr;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--sl-border);font-family:'Nunito',sans-serif;font-size:13px;color:var(--sl-text);transition:background 0.12s;cursor:pointer}
+  /* Kijelölt sor: a műveletsor erre hat. */
+  .sr-radio-row-sel{background:rgba(59,130,246,0.12);box-shadow:inset 3px 0 0 var(--sl-blue)}
+  .sr-radio-row-sel:hover{background:rgba(59,130,246,0.16)}
+  .sr-radio-row-sel .sr-radio-num{color:var(--sl-blue);font-weight:900}
   .sr-radio-row:last-child{border-bottom:none}
   .sr-radio-row:hover{background:rgba(59,130,246,0.05)}
   .sr-radio-num{font-size:11px;font-weight:800;color:var(--sl-muted);font-variant-numeric:tabular-nums;letter-spacing:0.3px}
@@ -464,12 +468,9 @@ const CSS = `
   .sr-radio-genre{font-size:12px;color:var(--sl-muted);font-weight:500}
   .sr-radio-stream-pick{padding:5px 8px;border:1.5px solid var(--sl-border);border-radius:8px;background:var(--sl-surface);color:var(--sl-text);font-size:12.5px;font-family:inherit;min-width:120px;cursor:pointer}
   .sr-radio-stream-pick:disabled{opacity:0.5;cursor:default}
-  .sr-radio-actions{display:flex;gap:5px}
-  .sr-radio-actions .sr-btn-sm{padding:4px 8px;font-size:12px}
   @media(max-width:760px){
-    .sr-radio-row{grid-template-columns:28px 1fr auto;row-gap:6px}
+    .sr-radio-row{grid-template-columns:28px 1fr;row-gap:6px}
     .sr-radio-genre,.sr-radio-stream-pick{grid-column:2/-1}
-    .sr-radio-actions{grid-column:1/-1;justify-content:flex-end}
   }
   /* Új állomás / szerkesztés modal mezőlistája */
   .sr-stream-row{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center}
@@ -709,6 +710,9 @@ export default function SchoolRadio() {
   // (playStation) VÁLTOZATLANUL az élő adásba küldést végzi, ez a fül teljesen
   // additív mellé kerül.
   const [netPreviewId, setNetPreviewId] = useState<string | null>(null);
+  /* A műveleti gombok a lista FÖLÖTT vannak, és a kijelölt állomásra hatnak –
+     a soronkénti gombsor túl sok helyet foglalt. */
+  const [netSelectedId, setNetSelectedId] = useState<string | null>(null);
   // Per-állomás státusz a ▶ gomb vizualizációjához:
   //   "connecting" - épp indítjuk (zöld villogás)
   //   "playing"    - sikerült indítani, fut (folyamatos zöld)
@@ -3966,8 +3970,12 @@ export default function SchoolRadio() {
                   {t("netradio.description")}
                 </div>
 
+                {/* Cél + műveletek egymás mellett; keskeny kijelzőn a
+                    `flexWrap` miatt a műveletsor a cél ALÁ kerül. */}
+                <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"flex-start"}}>
+
                 {/* Cél választó (közös az összes állomásra) */}
-                <div>
+                <div style={{flex:"1 1 280px",minWidth:0}}>
                   <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                     {(["ALL","DEVICE","GROUP"] as const).map(opt => (
@@ -3998,6 +4006,70 @@ export default function SchoolRadio() {
                   </div>
                 </div>
 
+                {/* ── Műveletek a KIJELÖLT állomásra ───────────────────────
+                    Korábban minden sorban ott volt mind az öt gomb; egy
+                    húsz állomásos listán ez száz gomb, és a sorok nagy részét
+                    ők foglalták. */}
+                <div style={{flex:"1 1 320px",minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>
+                    🎛 {t("netradio.actionsLabel")}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                    {(() => {
+                      const sel     = netRadios.find(r => r.id === netSelectedId) ?? null;
+                      const idx     = sel ? Math.min(streamPick[sel.id] ?? 0, sel.streams.length - 1) : 0;
+                      const hasUrl  = !!sel?.streams[idx]?.url;
+                      const status  = sel ? streamStatus[sel.id] : undefined;
+                      const busy    = status === "connecting";
+                      return (
+                        <>
+                          {/* A lejátszás-gomb SZÁNDÉKOSAN nem vált zöldre:
+                              hogy épp mi szól, azt a lap teteje mondja meg. */}
+                          <button type="button" className="sr-btn sr-btn-primary sr-btn-sm"
+                            onClick={() => sel && void playStation(sel)}
+                            disabled={!sel || !hasUrl || busy}
+                            title={t("netradio.playTooltip.idle")}>
+                            {busy ? `⏳ ${t("busy.saving")}` : status === "error" ? `✕ ${t("netradio.playButton")}` : `▶ ${t("netradio.playButton")}`}
+                          </button>
+                          <button type="button"
+                            className={`sr-btn sr-btn-sm ${sel && netPreviewId === sel.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
+                            onClick={() => sel && setNetPreviewId(netPreviewId === sel.id ? null : sel.id)}
+                            disabled={!sel || !hasUrl}
+                            title={t("netradio.previewTooltip")}>
+                            🎧
+                          </button>
+                          <button type="button"
+                            className={`sr-btn sr-btn-sm ${sel && stationSchedId === sel.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
+                            onClick={() => sel && toggleStationSchedule(sel)}
+                            disabled={!sel || !hasUrl}
+                            title={t("netradio.scheduleTooltip")}>
+                            ⏰
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                            onClick={() => sel && openEditStation(sel)}
+                            disabled={!sel}
+                            title={t("netradio.editTooltip")}>
+                            ✏️
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
+                            onClick={() => sel && void removeStation(sel.id)}
+                            disabled={!sel}
+                            title={t("common:actions.delete")}>
+                            🗑
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:6}}>
+                    {netSelectedId
+                      ? `📻 ${netRadios.find(r => r.id === netSelectedId)?.name ?? ""}`
+                      : `💡 ${t("netradio.selectHint")}`}
+                  </div>
+                </div>
+
+                </div>
+
                 {streamError && (
                   <div className="sr-alert sr-alert-error"><span>⚠️</span><span>{streamError}</span></div>
                 )}
@@ -4012,24 +4084,34 @@ export default function SchoolRadio() {
                   ) : netRadios.map((r, i) => {
                     const pickIdx = streamPick[r.id] ?? 0;
                     const safeIdx = Math.min(pickIdx, r.streams.length - 1);
-                    const status  = streamStatus[r.id];
-                    const stateClass =
-                      status === "connecting" ? " sr-play-connecting" :
-                      status === "playing"    ? " sr-play-playing" :
-                      status === "error"      ? " sr-play-error" : "";
-                    const stateLabel =
-                      status === "connecting" ? "⏳" :
-                      status === "error"      ? "✕" : "▶";
+                    const selected = netSelectedId === r.id;
                     return (
-                      <div className="sr-radio-row" key={r.id}>
-                        <div className="sr-radio-num">{String(i+1).padStart(2,"0")}.</div>
+                      /* A sor maga a kijelölés – a műveletek a lista fölött
+                         vannak, és a kijelöltre hatnak. */
+                      <div
+                        className={`sr-radio-row${selected ? " sr-radio-row-sel" : ""}`}
+                        key={r.id}
+                        onClick={() => setNetSelectedId(selected ? null : r.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setNetSelectedId(selected ? null : r.id);
+                          }
+                        }}
+                      >
+                        <div className="sr-radio-num">{selected ? "●" : String(i+1).padStart(2,"0") + "."}</div>
                         <div>
                           <div className="sr-radio-name">📻 {r.name}</div>
                           <div className="sr-radio-genre">{r.genre || "—"}</div>
                         </div>
+                        {/* Az alstream-választó adat, nem művelet – a rá
+                            kattintás ne billentse a kijelölést. */}
                         <select
                           className="sr-radio-stream-pick"
                           value={safeIdx}
+                          onClick={e => e.stopPropagation()}
                           disabled={r.streams.length <= 1 && !r.streams[0]?.url}
                           onChange={e => setStreamPick(prev => ({ ...prev, [r.id]: Number(e.target.value) }))}>
                           {r.streams.map((s, idx) => (
@@ -4038,48 +4120,10 @@ export default function SchoolRadio() {
                             </option>
                           ))}
                         </select>
-                        <button
-                          type="button"
-                          className={`sr-btn sr-btn-primary sr-btn-sm${stateClass}`}
-                          onClick={() => void playStation(r)}
-                          disabled={status === "connecting" || !r.streams[safeIdx]?.url}
-                          title={
-                            status === "connecting" ? t("netradio.playTooltip.connecting") :
-                            status === "playing"    ? t("netradio.playTooltip.playing") :
-                            status === "error"      ? t("netradio.playTooltip.error") :
-                            t("netradio.playTooltip.idle")
-                          }>
-                          {stateLabel}
-                        </button>
-                        <div className="sr-radio-actions">
-                          <button type="button"
-                            className={`sr-btn sr-btn-sm ${netPreviewId === r.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
-                            onClick={() => setNetPreviewId(netPreviewId === r.id ? null : r.id)}
-                            disabled={!r.streams[safeIdx]?.url}
-                            title={t("netradio.previewTooltip")}>
-                            🎧
-                          </button>
-                          <button type="button"
-                            className={`sr-btn sr-btn-sm ${stationSchedId === r.id ? "sr-btn-primary" : "sr-btn-ghost"}`}
-                            onClick={() => toggleStationSchedule(r)}
-                            disabled={!r.streams[safeIdx]?.url}
-                            title={t("netradio.scheduleTooltip")}>
-                            ⏰
-                          </button>
-                          <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
-                            onClick={() => openEditStation(r)}
-                            title={t("netradio.editTooltip")}>
-                            ✏️
-                          </button>
-                          <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
-                            onClick={() => removeStation(r.id)}
-                            title={t("common:actions.delete")}>
-                            🗑
-                          </button>
-                        </div>
 
                         {stationSchedId === r.id && (
-                          <div className="sr-panel" style={{gridColumn:"1/-1",padding:14,display:"flex",flexDirection:"column",gap:10}}>
+                          <div className="sr-panel" onClick={e => e.stopPropagation()}
+                            style={{gridColumn:"1/-1",padding:14,display:"flex",flexDirection:"column",gap:10}}>
                             <div style={{fontSize:12,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase"}}>
                               ⏰ {t("netradio.scheduleTitle", { name: r.name })}
                             </div>
@@ -4127,7 +4171,7 @@ export default function SchoolRadio() {
                         )}
 
                         {netPreviewId === r.id && r.streams[safeIdx]?.url && (
-                          <div className="sr-player" style={{gridColumn:"1/-1"}}>
+                          <div className="sr-player" onClick={e => e.stopPropagation()} style={{gridColumn:"1/-1"}}>
                             <div className="sr-player-name">🎧 {r.name}{r.streams[safeIdx].label && r.streams[safeIdx].label !== "Főadás" ? " · " + r.streams[safeIdx].label : ""}</div>
                             <audio controls autoPlay src={r.streams[safeIdx].url} preload="none" style={{ width: "100%", height: 32 }} />
                           </div>

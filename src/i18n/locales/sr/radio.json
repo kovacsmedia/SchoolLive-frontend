@@ -50,7 +50,10 @@
     "scheduleTooltip": "Закажи репродукцију",
     "scheduleTitle": "Закажи: {{name}}",
     "scheduleEndHint": "Репродукција се зауставља у подешено време.",
-    "scheduleNoEndHint": "Без времена завршетка емисија траје до ручног заустављања."
+    "scheduleNoEndHint": "Без времена завршетка емисија траје до ручног заустављања.",
+    "actionsLabel": "Радње",
+    "selectHint": "Изабери станицу са листе",
+    "playButton": "Репродукција"
   },
   "library": {
     "uploading": "Отпремање… {{pct}}%",

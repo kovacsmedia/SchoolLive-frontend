@@ -50,7 +50,10 @@
     "scheduleTooltip": "Időzített lejátszás",
     "scheduleTitle": "{{name}} időzítése",
     "scheduleEndHint": "A megadott időpontban a lejátszás leáll.",
-    "scheduleNoEndHint": "Vége-időpont nélkül az adás kézi leállításig szól."
+    "scheduleNoEndHint": "Vége-időpont nélkül az adás kézi leállításig szól.",
+    "actionsLabel": "Műveletek",
+    "selectHint": "Válassz állomást a listából",
+    "playButton": "Lejátszás"
   },
   "library": {
     "uploading": "Feltöltés… {{pct}}%",

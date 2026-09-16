@@ -50,7 +50,10 @@
     "scheduleTooltip": "Zaplanuj odtwarzanie",
     "scheduleTitle": "Zaplanuj: {{name}}",
     "scheduleEndHint": "Odtwarzanie zatrzyma się o ustawionej godzinie.",
-    "scheduleNoEndHint": "Bez godziny zakończenia audycja trwa do ręcznego zatrzymania."
+    "scheduleNoEndHint": "Bez godziny zakończenia audycja trwa do ręcznego zatrzymania.",
+    "actionsLabel": "Akcje",
+    "selectHint": "Wybierz stację z listy",
+    "playButton": "Odtwórz"
   },
   "library": {
     "uploading": "Przesyłanie… {{pct}}%",
