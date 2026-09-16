@@ -2018,6 +2018,9 @@ export default function SchoolRadio() {
 
   /** Belehallgatás ki/be a megadott állomásra (csak ezen a gépen szól). */
   function toggleNetPreview(station: NetRadio) {
+    // Új próbálkozás: az előző hibaüzenet azonnal tűnjön el, ne kelljen
+    // kitalálni, hogy a mostanihoz tartozik-e még.
+    setStreamError(null);
     if (netPreviewId === station.id) { stopNetPreview(); return; }
     stopNetPreview();                       // egyszerre egy szóljon
 
@@ -2080,6 +2083,20 @@ export default function SchoolRadio() {
   // Lapelhagyás: a belehallgatás ne szóljon tovább a háttérben.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => stopNetPreview, []);
+
+  /*
+   * A stream-hibaüzenet magától eltűnik 10 másodperc után.
+   *
+   * Ezek a hibák egy KONKRÉT művelethez tartoznak (belehallgatás, indítás);
+   * ha ottragadnak, a következő állomásnál is úgy néz ki, mintha az rontott
+   * volna el valamit. Új hiba érkezésekor a határidő újraindul, mert az
+   * effektus a `streamError` változására fut le.
+   */
+  useEffect(() => {
+    if (!streamError) return;
+    const timer = setTimeout(() => setStreamError(null), 10_000);
+    return () => clearTimeout(timer);
+  }, [streamError]);
 
   /*
    * Fülváltáskor is leállítjuk.
@@ -4207,12 +4224,15 @@ export default function SchoolRadio() {
                       <div
                         className={`sr-radio-row${selected ? " sr-radio-row-sel" : ""}`}
                         key={r.id}
-                        onClick={() => setNetSelectedId(selected ? null : r.id)}
+                        /* A kijelölés váltása egyben új művelet kezdete –
+                           az előző állomás hibaüzenete ne kísértsen tovább. */
+                        onClick={() => { setStreamError(null); setNetSelectedId(selected ? null : r.id); }}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
+                            setStreamError(null);
                             setNetSelectedId(selected ? null : r.id);
                           }
                         }}
