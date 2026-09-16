@@ -950,7 +950,23 @@ export default function SchoolRadio() {
   // van kiválasztott videó. Effektus-alapú (nem a click-handlerben hozzuk
   // létre), mert a konténer <div> ref-je csak a commit UTÁN érhető el.
   useEffect(() => {
-    if (sourceTab !== "youtube" || !ytLiveVideoId) return;
+    /*
+     * A FÜL ELHAGYÁSAKOR EL KELL DOBNI A LEJÁTSZÓT.
+     *
+     * A befogadó `<div>`-et a React eltávolítja (a fül tartalma feltételes),
+     * a YT.Player objektum viszont megmaradna – egy leszakadt iframe-re
+     * mutatva. Visszatérve az alábbi ág azt látta, hogy „van már lejátszó",
+     * és arra hívott `loadVideoById`-t: a hang elindult a láthatatlan
+     * iframe-ből, az új, üres div pedig fekete maradt.
+     */
+    if (sourceTab !== "youtube") {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy?.(); } catch { /* ignore */ }
+        ytPlayerRef.current = null;
+      }
+      return;
+    }
+    if (!ytLiveVideoId) return;
     let cancelled = false;
     void loadYoutubeIframeApi().then(() => {
       if (cancelled) return;
@@ -1026,6 +1042,14 @@ export default function SchoolRadio() {
     if (!ytLiveIsLive) return;
     ytLastPosRef.current = ytCurrentTime();
     const timer = setInterval(() => {
+      /*
+       * Lejátszó nélkül NEM tekerünk.
+       *
+       * Másik fülre lépve a lejátszót eldobjuk, és a `ytCurrentTime()` 0-t
+       * adna – enélkül a snapet a felvétel elejére ugrasztanánk, miközben az
+       * adás a szerveren zavartalanul megy tovább.
+       */
+      if (!ytPlayerRef.current) return;
       const now = ytCurrentTime();
       const prev = ytLastPosRef.current;
       ytLastPosRef.current = now;
