@@ -127,7 +127,8 @@
     "recordDiscard": "Odbaci",
     "recordDiscardConfirm": "Sigurno odbaciti snimku? To se ne može poništiti.",
     "recordNoSignal": "Nema živog signala za snimanje.",
-    "recordHint": "Snimka bilježi zvuk NAKON ulaznog pojačanja i regulacije tona – točno ono što ide u eter. Snimka spremljena u knjižnicu pojavljuje se na kartici Knjižnica zvuka."
+    "recordHint": "Snimka bilježi zvuk NAKON ulaznog pojačanja i regulacije tona – točno ono što ide u eter. Snimka spremljena u knjižnicu pojavljuje se na kartici Knjižnica zvuka.",
+    "stoppedRemotely": "Emitiranje je zaustavljeno (Radio stop)."
   },
   "schedule": {
     "tooltip": "Zakaži",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ Ovaj radijski program preklapa se s nastavom!\n\nJeste li sigurni da ga želite tako zakazati?",
     "trimToFitBreak": "⚠️ Zvučna datoteka ({{fileDur}}) ne stane u odmor ({{breakDur}})!\n\nOdrezati kraj da stane (s 5s fade-outom)? Izvorna datoteka bit će sačuvana.\n\nDa → zakaži skraćenu verziju\nNe → zakaži izvornu, dužu datoteku",
     "stopAll": "Zaustaviti sve reprodukcije?",
-    "title": "Potvrda"
+    "title": "Potvrda",
+    "noticeTitle": "Obavijest"
   },
   "errors": {
     "loadFailed": "Učitavanje nije uspjelo",

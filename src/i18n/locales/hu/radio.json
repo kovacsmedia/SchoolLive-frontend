@@ -127,7 +127,8 @@
     "recordDiscard": "Eldobás",
     "recordDiscardConfirm": "Biztosan eldobod a felvételt? Ez nem vonható vissza.",
     "recordNoSignal": "Nincs élő jel a rögzítéshez.",
-    "recordHint": "A felvétel a bemeneti erősítés és a hangszín UTÁNI hangot rögzíti – pontosan azt, ami adásba megy. A könyvtárba mentett felvétel a Hangfájl könyvtár fülön jelenik meg."
+    "recordHint": "A felvétel a bemeneti erősítés és a hangszín UTÁNI hangot rögzíti – pontosan azt, ami adásba megy. A könyvtárba mentett felvétel a Hangfájl könyvtár fülön jelenik meg.",
+    "stoppedRemotely": "Az adást leállították (Rádió stop)."
   },
   "schedule": {
     "tooltip": "Ütemezés",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ A rádióműsor tanítási órát érint!\n\nBiztosan így szeretnéd ütemezni?",
     "trimToFitBreak": "⚠️ A hangfájl ({{fileDur}}) nem fér bele a szünetbe ({{breakDur}})!\n\nLevágjuk a végét, hogy beleférjen (5mp fade-out átmenettel)? Az eredeti fájl megmarad.\n\nIgen → levágott verzió ütemezése\nNem → az eredeti hosszú fájl ütemezése",
     "stopAll": "Leállítod az összes lejátszót?",
-    "title": "Megerősítés"
+    "title": "Megerősítés",
+    "noticeTitle": "Értesítés"
   },
   "errors": {
     "loadFailed": "Betöltés sikertelen",

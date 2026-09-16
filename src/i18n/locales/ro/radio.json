@@ -127,7 +127,8 @@
     "recordDiscard": "Renunță",
     "recordDiscardConfirm": "Sigur renunți la înregistrare? Nu se poate anula.",
     "recordNoSignal": "Nu există semnal live pentru înregistrare.",
-    "recordHint": "Înregistrarea captează sunetul DUPĂ amplificare și corecția de ton – exact ce intră în emisie. Înregistrarea salvată apare în fila Bibliotecă audio."
+    "recordHint": "Înregistrarea captează sunetul DUPĂ amplificare și corecția de ton – exact ce intră în emisie. Înregistrarea salvată apare în fila Bibliotecă audio.",
+    "stoppedRemotely": "Emisia a fost oprită (Stop radio)."
   },
   "schedule": {
     "tooltip": "Programează",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ Acest program radio se suprapune cu ora de curs!\n\nSigur doriți să programați astfel?",
     "trimToFitBreak": "⚠️ Fișierul audio ({{fileDur}}) nu încape în pauză ({{breakDur}})!\n\nTăiem finalul pentru a încăpea (cu fade-out de 5s)? Fișierul original va fi păstrat.\n\nDa → programează versiunea tăiată\nNu → programează fișierul original, mai lung",
     "stopAll": "Opriți toate redările?",
-    "title": "Confirmare"
+    "title": "Confirmare",
+    "noticeTitle": "Notificare"
   },
   "errors": {
     "loadFailed": "Încărcarea a eșuat",

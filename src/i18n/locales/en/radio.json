@@ -127,7 +127,8 @@
     "recordDiscard": "Discard",
     "recordDiscardConfirm": "Discard the recording? This cannot be undone.",
     "recordNoSignal": "No live signal to record.",
-    "recordHint": "The recording captures the audio after input gain and tone control – exactly what goes on air. A recording saved to the library appears on the Audio library tab."
+    "recordHint": "The recording captures the audio after input gain and tone control – exactly what goes on air. A recording saved to the library appears on the Audio library tab.",
+    "stoppedRemotely": "The broadcast was stopped (Radio stop)."
   },
   "schedule": {
     "tooltip": "Schedule",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ This radio program overlaps with class time!\n\nAre you sure you want to schedule it anyway?",
     "trimToFitBreak": "⚠️ The sound file ({{fileDur}}) doesn't fit into the break ({{breakDur}})!\n\nTrim the end so it fits (with a 5s fade-out)? The original file will be kept.\n\nYes → schedule the trimmed version\nNo → schedule the original, longer file",
     "stopAll": "Stop all playback?",
-    "title": "Confirm"
+    "title": "Confirm",
+    "noticeTitle": "Notice"
   },
   "errors": {
     "loadFailed": "Failed to load",

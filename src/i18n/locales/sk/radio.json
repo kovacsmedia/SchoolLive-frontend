@@ -127,7 +127,8 @@
     "recordDiscard": "Zahodiť",
     "recordDiscardConfirm": "Naozaj zahodiť nahrávku? Nedá sa to vrátiť.",
     "recordNoSignal": "Žiadny živý signál na nahrávanie.",
-    "recordHint": "Nahrávka zachytáva zvuk PO vstupnom zosilnení a ekvalizácii – presne to, čo ide do vysielania. Nahrávka uložená do knižnice sa objaví na karte Knižnica zvukov."
+    "recordHint": "Nahrávka zachytáva zvuk PO vstupnom zosilnení a ekvalizácii – presne to, čo ide do vysielania. Nahrávka uložená do knižnice sa objaví na karte Knižnica zvukov.",
+    "stoppedRemotely": "Vysielanie bolo zastavené (Rádio stop)."
   },
   "schedule": {
     "tooltip": "Naplánovať",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ Toto rádiové vysielanie sa prekrýva s vyučovaním!\n\nNaozaj ho chcete takto naplánovať?",
     "trimToFitBreak": "⚠️ Zvukový súbor ({{fileDur}}) sa nezmestí do prestávky ({{breakDur}})!\n\nOrezať koniec, aby sa zmestil (s 5s fade-out)? Pôvodný súbor zostane zachovaný.\n\nÁno → naplánovať skrátenú verziu\nNie → naplánovať pôvodný, dlhší súbor",
     "stopAll": "Zastaviť všetky prehrávania?",
-    "title": "Potvrdenie"
+    "title": "Potvrdenie",
+    "noticeTitle": "Oznámenie"
   },
   "errors": {
     "loadFailed": "Načítanie zlyhalo",

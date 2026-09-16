@@ -127,7 +127,8 @@
     "recordDiscard": "Verwerfen",
     "recordDiscardConfirm": "Aufnahme verwerfen? Das lässt sich nicht rückgängig machen.",
     "recordNoSignal": "Kein Live-Signal zum Aufnehmen.",
-    "recordHint": "Die Aufnahme erfasst den Ton NACH Eingangsverstärkung und Klangregelung – genau das, was gesendet wird. Eine in der Bibliothek gespeicherte Aufnahme erscheint im Tab „Audiothek“."
+    "recordHint": "Die Aufnahme erfasst den Ton NACH Eingangsverstärkung und Klangregelung – genau das, was gesendet wird. Eine in der Bibliothek gespeicherte Aufnahme erscheint im Tab „Audiothek“.",
+    "stoppedRemotely": "Die Sendung wurde beendet (Radio-Stopp)."
   },
   "schedule": {
     "tooltip": "Planen",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ Diese Radiosendung überschneidet sich mit dem Unterricht!\n\nMöchten Sie wirklich so planen?",
     "trimToFitBreak": "⚠️ Die Tondatei ({{fileDur}}) passt nicht in die Pause ({{breakDur}})!\n\nEnde abschneiden, damit sie passt (mit 5s Fade-out)? Die Originaldatei bleibt erhalten.\n\nJa → gekürzte Version planen\nNein → die längere Originaldatei planen",
     "stopAll": "Alle Wiedergaben stoppen?",
-    "title": "Bestätigung"
+    "title": "Bestätigung",
+    "noticeTitle": "Hinweis"
   },
   "errors": {
     "loadFailed": "Laden fehlgeschlagen",

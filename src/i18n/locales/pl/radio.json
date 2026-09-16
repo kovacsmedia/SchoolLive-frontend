@@ -127,7 +127,8 @@
     "recordDiscard": "Odrzuć",
     "recordDiscardConfirm": "Na pewno odrzucić nagranie? Tego nie można cofnąć.",
     "recordNoSignal": "Brak sygnału na żywo do nagrania.",
-    "recordHint": "Nagranie rejestruje dźwięk PO wzmocnieniu wejścia i korekcji barwy – dokładnie to, co idzie na antenę. Nagranie zapisane w bibliotece pojawia się w zakładce Biblioteka dźwięków."
+    "recordHint": "Nagranie rejestruje dźwięk PO wzmocnieniu wejścia i korekcji barwy – dokładnie to, co idzie na antenę. Nagranie zapisane w bibliotece pojawia się w zakładce Biblioteka dźwięków.",
+    "stoppedRemotely": "Emisja została zatrzymana (Stop radia)."
   },
   "schedule": {
     "tooltip": "Zaplanuj",
@@ -239,7 +240,8 @@
     "teachingHourOverlap": "⚠️ Ten program radiowy pokrywa się z lekcją!\n\nCzy na pewno chcesz go tak zaplanować?",
     "trimToFitBreak": "⚠️ Plik dźwiękowy ({{fileDur}}) nie mieści się w przerwie ({{breakDur}})!\n\nPrzyciąć koniec, aby się zmieścił (z 5s wyciszeniem)? Oryginalny plik pozostanie zachowany.\n\nTak → zaplanuj przyciętą wersję\nNie → zaplanuj oryginalny, dłuższy plik",
     "stopAll": "Zatrzymać wszystkie odtworzenia?",
-    "title": "Potwierdzenie"
+    "title": "Potwierdzenie",
+    "noticeTitle": "Powiadomienie"
   },
   "errors": {
     "loadFailed": "Ładowanie nie powiodło się",

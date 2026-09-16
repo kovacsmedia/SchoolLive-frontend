@@ -1779,6 +1779,9 @@ export default function SchoolRadio() {
         const wasOurs = liveWsRef.current === ws;
         if (ev.code === 4006) setLiveError(t("live.snapOffline"));
         else if (ev.code === 4008) setLiveError(t("live.replaced"));
+        /* 4010: valaki a „Rádió stop"-pal állította le – akár másik eszközről.
+           Nem hiba, ezért nem hibaüzenetként közöljük. */
+        else if (ev.code === 4010) setLiveError(t("live.stoppedRemotely"));
         else if (wasOurs && ev.code !== 1000) setLiveError(t("live.disconnected"));
         stopLiveInput(true);
       };
@@ -1869,10 +1872,23 @@ export default function SchoolRadio() {
    * ugyanúgy `if (!(await askConfirm(...))) return;` alakban használja, de a
    * főszál közben szabadon fut, és a hang megy tovább.
    */
-  const [confirmBox, setConfirmBox] = useState<{ message: string; resolve: (ok: boolean) => void } | null>(null);
+  const [confirmBox, setConfirmBox] = useState<
+    { message: string; notice?: boolean; resolve: (ok: boolean) => void } | null
+  >(null);
 
   function askConfirm(message: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => setConfirmBox({ message, resolve }));
+  }
+
+  /**
+   * Értesítés – a natív `alert` helyett.
+   *
+   * Ugyanaz az indok, mint a megerősítésnél: az `alert` is megállítja a
+   * főszálat, tehát a monitorozás hangját is elvágná. Ez nem vár válaszra,
+   * ezért nem kell `await`-elni – használható szinkron `catch` ágban is.
+   */
+  function showNotice(message: string): void {
+    setConfirmBox({ message, notice: true, resolve: () => { /* nincs válasz */ } });
   }
 
   function closeConfirm(ok: boolean) {
@@ -2075,7 +2091,7 @@ export default function SchoolRadio() {
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (e:any) {
-      alert(t("errors.exportFailed", { message: e?.message ?? t("errors.unknown") }));
+      showNotice(t("errors.exportFailed", { message: e?.message ?? t("errors.unknown") }));
     }
   }
 
@@ -2083,15 +2099,16 @@ export default function SchoolRadio() {
   const importInputRef = useRef<HTMLInputElement|null>(null);
   function importNetRadios(file: File) {
     const reader = new FileReader();
-    reader.onload = () => {
+    // A megerősítés ígéret-alapú (nem blokkoló), ezért a visszahívás aszinkron.
+    reader.onload = async () => {
       try {
         const parsed = JSON.parse(String(reader.result || "[]"));
         const list = normalizeNetRadios(parsed);
-        if (list.length === 0) { alert(t("errors.importEmptyOrInvalid")); return; }
+        if (list.length === 0) { showNotice(t("errors.importEmptyOrInvalid")); return; }
         if (!(await askConfirm(t("confirm.importReplace", { current: netRadios.length, next: list.length })))) return;
         setNetRadios(list); setStreamPick({});
       } catch (e:any) {
-        alert(t("errors.readError", { message: e?.message ?? t("errors.unknown") }));
+        showNotice(t("errors.readError", { message: e?.message ?? t("errors.unknown") }));
       } finally {
         if (importInputRef.current) importInputRef.current.value = "";
       }
@@ -2112,9 +2129,9 @@ export default function SchoolRadio() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ presets: netRadios }),
       });
-      alert(t("info.tenantDefaultSaved"));
+      showNotice(t("info.tenantDefaultSaved"));
     } catch (e:any) {
-      alert(t("errors.saveFailed", { message: e?.message ?? t("errors.unknown") }));
+      showNotice(t("errors.saveFailed", { message: e?.message ?? t("errors.unknown") }));
     } finally {
       setDefaultBusy(false);
     }
@@ -2841,7 +2858,7 @@ export default function SchoolRadio() {
                 await apiFetch("/radio/stop-all", { method: "POST" });
                 await loadAll();
               } catch (e: any) {
-                alert(t("errors.genericError", { message: e?.message ?? t("errors.unknown") }));
+                showNotice(t("errors.genericError", { message: e?.message ?? t("errors.unknown") }));
               } finally {
                 setStopBusy(false);
               }
@@ -4369,21 +4386,32 @@ export default function SchoolRadio() {
         <div className="sr-overlay" onClick={() => closeConfirm(false)}>
           <div className="sr-overlay-modal" style={{maxWidth:460}} onClick={e => e.stopPropagation()}>
             <div className="sr-overlay-hdr">
-              <div className="sr-overlay-title">❓ {t("confirm.title")}</div>
+              <div className="sr-overlay-title">
+                {confirmBox.notice ? `ℹ️ ${t("confirm.noticeTitle")}` : `❓ ${t("confirm.title")}`}
+              </div>
               <button className="sr-overlay-close" type="button" onClick={() => closeConfirm(false)}>✕</button>
             </div>
             <div className="sr-overlay-body">
               {/* A `confirm.*` szövegek több bekezdésesek is lehetnek. */}
               <div style={{fontSize:14,lineHeight:1.5,whiteSpace:"pre-line"}}>{confirmBox.message}</div>
               <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-                <button className="sr-btn sr-btn-ghost" type="button" autoFocus
-                  onClick={() => closeConfirm(false)}>
-                  {t("common:actions.cancel")}
-                </button>
-                <button className="sr-btn sr-btn-primary" type="button"
-                  onClick={() => closeConfirm(true)}>
-                  {t("common:actions.confirm")}
-                </button>
+                {confirmBox.notice ? (
+                  <button className="sr-btn sr-btn-primary" type="button" autoFocus
+                    onClick={() => closeConfirm(true)}>
+                    {t("common:actions.close")}
+                  </button>
+                ) : (
+                  <>
+                    <button className="sr-btn sr-btn-ghost" type="button" autoFocus
+                      onClick={() => closeConfirm(false)}>
+                      {t("common:actions.cancel")}
+                    </button>
+                    <button className="sr-btn sr-btn-primary" type="button"
+                      onClick={() => closeConfirm(true)}>
+                      {t("common:actions.confirm")}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
