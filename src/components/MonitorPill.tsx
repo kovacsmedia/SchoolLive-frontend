@@ -244,7 +244,7 @@ export default function MonitorPill() {
 
       {/* Kisméretű sztereó kivezérlésjelző – két vékony sáv egymás alatt. */}
       <div
-        style={{ display: "flex", flexDirection: "column", gap: 2, width: 52 }}
+        style={{ display: "flex", flexDirection: "column", gap: 2, width: 104 }}
         aria-label={t("appshell:monitorMeterAria")}
       >
         {[0, 1].map((ch) => (
