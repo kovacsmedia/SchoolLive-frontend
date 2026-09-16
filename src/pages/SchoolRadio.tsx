@@ -3821,8 +3821,13 @@ export default function SchoolRadio() {
                   )}
                 </div>
 
+                {/* Cél + műveletek egymás mellett; keskeny kijelzőn a
+                    `flexWrap` miatt a gombsor a cél ALÁ kerül. Ugyanaz a
+                    minta, mint az Internetrádió fülön. */}
+                <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"flex-start"}}>
+
                 {/* Cél választó */}
-                <div>
+                <div style={{flex:"1 1 280px",minWidth:0}}>
                   <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>🎯 {t("target.label")}</div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                     {(["ALL","DEVICE","GROUP"] as const).map(opt => (
@@ -3852,6 +3857,53 @@ export default function SchoolRadio() {
                       </select>
                     )}
                   </div>
+                </div>
+
+                {/* ── Adás és felvétel ─────────────────────────────────────
+                    A cél mellett a helyük: együtt alkotnak egy döntést –
+                    kinek megy ki, és rögzítsük-e. Korábban a panel alján
+                    voltak, a hangszín-beállítások után. */}
+                <div style={{flex:"1 1 320px",minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>
+                    🎛 {t("netradio.actionsLabel")}
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                    {!liveOn ? (
+                      <button className="sr-btn sr-btn-primary" type="button"
+                        style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
+                        onClick={() => void startLiveInput()} disabled={liveStarting}>
+                        {liveStarting ? `⏳ ${t("busy.saving")}` : `🔴 ${t("live.startButton")}`}
+                      </button>
+                    ) : (
+                      <button className="sr-btn sr-btn-danger" type="button"
+                        onClick={() => stopLiveInput()}>
+                        ⏹ {t("live.stopButton")}
+                      </button>
+                    )}
+
+                    {/* Felvétel – az adástól FÜGGETLEN. Rögzíthetsz úgy is, hogy
+                        közben nem megy ki semmi, és adás közben is bármikor
+                        elindítható/leállítható. */}
+                    {liveRecState === "recording" ? (
+                      <button className="sr-btn sr-btn-danger" type="button"
+                        onClick={() => stopLiveRecording()}>
+                        ⏹ {t("live.recordStop")} · {fmtDuration(liveRecSeconds)}
+                      </button>
+                    ) : (
+                      <button className="sr-btn sr-btn-ghost" type="button"
+                        onClick={() => void startLiveRecording()}>
+                        ⏺ {t("live.recordStart")}
+                      </button>
+                    )}
+
+                    {liveRecState === "recording" && (
+                      <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#dc2626"}}>
+                        <span className="sr-live-dot" /> {t("live.recording")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 </div>
 
                 {/* ── Kivezérlésjelző (sztereó) ────────────────────────────
@@ -3993,66 +4045,6 @@ export default function SchoolRadio() {
                   <div style={{fontSize:11,color:"var(--sl-muted)"}}>
                     💡 {t("live.eqHint")}
                   </div>
-                </div>
-
-                {/* ── Kimeneti hangerő ─────────────────────────────────────
-                    Ugyanaz a tenant-szintű élő rádió-gain, amit a fejléc
-                    csúszkája is állít – szándékosan közös állapot, hogy a
-                    kettő ne mondjon ellent egymásnak. */}
-                <div>
-                  <label className="sr-label">
-                    🔊 {t("live.outputVolumeLabel")}
-                    <span style={{fontWeight:800,color:"var(--sl-text)",marginLeft:8}}>{streamVolume}</span>
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={10}
-                    step={1}
-                    value={streamVolume}
-                    onChange={(e) => setStreamVolume(Number(e.target.value))}
-                    style={{width:"100%"}}
-                  />
-                  <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:4}}>
-                    💡 {t("live.outputVolumeHint")}
-                  </div>
-                </div>
-
-                {/* Indítás / leállítás */}
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                  {!liveOn ? (
-                    <button className="sr-btn sr-btn-primary" type="button"
-                      style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
-                      onClick={() => void startLiveInput()} disabled={liveStarting}>
-                      {liveStarting ? `⏳ ${t("busy.saving")}` : `🔴 ${t("live.startButton")}`}
-                    </button>
-                  ) : (
-                    <button className="sr-btn sr-btn-danger" type="button"
-                      onClick={() => stopLiveInput()}>
-                      ⏹ {t("live.stopButton")}
-                    </button>
-                  )}
-
-                  {/* Felvétel – az adástól FÜGGETLEN. Rögzíthetsz úgy is, hogy
-                      közben nem megy ki semmi, és adás közben is bármikor
-                      elindítható/leállítható. */}
-                  {liveRecState === "recording" ? (
-                    <button className="sr-btn sr-btn-danger" type="button"
-                      onClick={() => stopLiveRecording()}>
-                      ⏹ {t("live.recordStop")} · {fmtDuration(liveRecSeconds)}
-                    </button>
-                  ) : (
-                    <button className="sr-btn sr-btn-ghost" type="button"
-                      onClick={() => void startLiveRecording()}>
-                      ⏺ {t("live.recordStart")}
-                    </button>
-                  )}
-
-                  {liveRecState === "recording" && (
-                    <span style={{display:"flex",alignItems:"center",gap:6,fontSize:12,fontWeight:800,color:"#dc2626"}}>
-                      <span className="sr-live-dot" /> {t("live.recording")}
-                    </span>
-                  )}
                 </div>
 
                 {/* Elkészült felvétel: meghallgatás, mentés, letöltés. */}
