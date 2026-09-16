@@ -116,6 +116,23 @@ export class SnapWsClient {
 
   private streamStartedNotified = false;
 
+  /*
+   * Egyszeri diagnosztika.
+   *
+   * A `scheduleChunk` két ága NÉMÁN dob el minden hangcsomagot (nincs
+   * idő-szinkron; felfüggesztett AudioContext). Ez a normál működéshez jó –
+   * másodpercenként ötvenszer logolni értelmetlen –, de hibakereséskor a
+   * tünet megkülönböztethetetlen attól, mintha meg sem érkezne a hang.
+   * Okonként EGYSZER írunk ki egy sort, utána csendben maradunk.
+   */
+  private diagSeen = new Set<string>();
+
+  private diagOnce(key: string, msg: string): void {
+    if (this.diagSeen.has(key)) return;
+    this.diagSeen.add(key);
+    console.log(`[SnapWS] ${msg}`);
+  }
+
   constructor(opts: SnapWsOptions) {
     this.opts = opts;
     this.syncOffsetMs = opts.initialSyncOffsetMs ?? 0;
@@ -191,6 +208,7 @@ export class SnapWsClient {
       this.streamStartedNotified = false;
       this.anchored = false;
       this.nextPlayCtxTime = 0;
+      this.diagSeen.clear();
       this.sendHello();
       // Egy gyors TIME-csomag a kezdeti offset-becsléshez.
       setTimeout(() => this.sendTimeRequest(), 200);
@@ -477,11 +495,19 @@ export class SnapWsClient {
   // ── Belső: lejátszás ütemezés ─────────────────────────────────────────────
 
   private scheduleChunk(chunk: AudioChunk): void {
-    if (!this.serverOffsetKnown) return; // még kalibrálunk; eldobható kezdő chunk
+    this.diagOnce("chunk", "első hangcsomag megérkezett és dekódolva");
+
+    if (!this.serverOffsetKnown) {
+      // Még kalibrálunk; eldobható kezdő chunk. Ha ez az ág RAGAD BENT, a
+      // snapserver TIME-válasza nem érkezik meg → sosem szólal meg a hang.
+      this.diagOnce("no-timesync", "⏳ eldobva: még nincs idő-szinkron (TIME válasz)");
+      return;
+    }
 
     const ctx = this.opts.audioCtx;
     if (ctx.state === "suspended") {
       // A user még nem unlock-olt; eldobjuk, mert a scheduling úgyis hibás lenne
+      this.diagOnce("suspended", `⏸ eldobva: az AudioContext '${ctx.state}' – hiányzik a felhasználói feloldás`);
       return;
     }
 
@@ -534,6 +560,8 @@ export class SnapWsClient {
         return;
       }
     }
+
+    this.diagOnce("scheduled", "▶ első hangcsomag ütemezve – innentől szólnia kell");
 
     const src = ctx.createBufferSource();
     src.buffer = chunk.buffer;

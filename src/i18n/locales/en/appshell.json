@@ -18,5 +18,6 @@
   "monitorMeterAria": "Level meter",
   "monitorNoSession": "No valid session.",
   "monitorError": "Monitoring could not be started.",
-  "monitorFeedbackWarning": "Use headphones – you will get feedback!\n\nA live audio input is running. If monitoring plays through this computer's speakers, the microphone will pick the sound back up.\n\nStart monitoring?"
+  "monitorFeedbackWarning": "Use headphones – you will get feedback!\n\nA live audio input is running. If monitoring plays through this computer's speakers, the microphone will pick the sound back up.\n\nStart monitoring?",
+  "monitorNoAudio": "no audio yet"
 }

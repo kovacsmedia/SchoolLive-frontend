@@ -18,5 +18,6 @@
   "monitorMeterAria": "Kivezérlésjelző",
   "monitorNoSession": "Nincs érvényes munkamenet.",
   "monitorError": "A monitorozás nem indítható.",
-  "monitorFeedbackWarning": "Használjon fülhallgatót, mert gerjedés fog fellépni!\n\nÉppen élő hangbemenet megy. Ha a monitorozás a gép hangszóróján szól, a mikrofon visszaveszi a hangot.\n\nElindítja a monitorozást?"
+  "monitorFeedbackWarning": "Használjon fülhallgatót, mert gerjedés fog fellépni!\n\nÉppen élő hangbemenet megy. Ha a monitorozás a gép hangszóróján szól, a mikrofon visszaveszi a hangot.\n\nElindítja a monitorozást?",
+  "monitorNoAudio": "csend a vonalon"
 }

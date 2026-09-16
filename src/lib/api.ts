@@ -129,7 +129,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
  * - SUPER_ADMIN: AppShell manuálisan választja ki → sessionStorage "activeTenantId"
  * - TENANT_ADMIN / ORG_ADMIN: a saját JWT payloadjában van → tenantId mező
  */
-function resolveTenantId(token: string): string | null {
+export function resolveTenantId(token: string): string | null {
   // 1) SUPER_ADMIN: manuálisan kiválasztott tenant
   const active =
     sessionStorage.getItem("activeTenantId") ??

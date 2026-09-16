@@ -18,5 +18,6 @@
   "monitorMeterAria": "Aussteuerungsanzeige",
   "monitorNoSession": "Keine gültige Sitzung.",
   "monitorError": "Mithören konnte nicht gestartet werden.",
-  "monitorFeedbackWarning": "Benutzen Sie Kopfhörer, sonst entsteht eine Rückkopplung!\n\nEs läuft gerade ein Live-Audioeingang. Wenn das Mithören über die Lautsprecher dieses Rechners läuft, nimmt das Mikrofon den Ton wieder auf.\n\nMithören starten?"
+  "monitorFeedbackWarning": "Benutzen Sie Kopfhörer, sonst entsteht eine Rückkopplung!\n\nEs läuft gerade ein Live-Audioeingang. Wenn das Mithören über die Lautsprecher dieses Rechners läuft, nimmt das Mikrofon den Ton wieder auf.\n\nMithören starten?",
+  "monitorNoAudio": "noch kein Ton"
 }

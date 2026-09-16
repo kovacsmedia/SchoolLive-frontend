@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SnapWsClient } from "../lib/snapWsClient";
-import { apiFetch, getWsUrl } from "../lib/api";
+import { apiFetch, getWsUrl, resolveTenantId } from "../lib/api";
 
 /** Egyedi, de felismerhető snap-kliens azonosító. Nem ütközik Device.id-vel. */
 function monitorClientId(): string {
@@ -38,6 +38,18 @@ export default function MonitorPill() {
   const [on,       setOn]       = useState(false);
   const [starting, setStarting] = useState(false);
   const [error,    setError]    = useState<string | null>(null);
+  /*
+   * A kapcsolat TÉNYLEGES fázisa.
+   *
+   * Korábban a gomb közvetlenül a `client.start()` után váltott aktívra – az
+   * viszont szinkron hívás, ami csak elindítja a csatlakozást. Egy sikertelen
+   * WS-kapcsolat így pontosan úgy nézett ki, mint egy működő monitorozás.
+   *
+   *   "connecting" – WS nyitás alatt
+   *   "connected"  – a snap-szerver fogad, de hang még nem jött
+   *   "playing"    – megjött az első hangcsomag
+   */
+  const [phase, setPhase] = useState<"off"|"connecting"|"connected"|"playing">("off");
 
   const clientRef    = useRef<SnapWsClient | null>(null);
   const ctxRef       = useRef<AudioContext | null>(null);
@@ -61,6 +73,7 @@ export default function MonitorPill() {
     if (ctx && ctx.state !== "closed") void ctx.close().catch(() => { /* ignore */ });
 
     setOn(false);
+    setPhase("off");
   }, []);
 
   // Lapelhagyás / kijelentkezés: ne maradjon nyitva a hang és a WS.
@@ -100,6 +113,29 @@ export default function MonitorPill() {
     setStarting(true);
     try {
       /*
+       * AZ AUDIOCONTEXT A KATTINTÁS UTÁN AZONNAL JÖN LÉTRE.
+       *
+       * A böngésző autoplay-szabálya szerint a `resume()` csak friss
+       * felhasználói interakció után sikerül. Ha előbb megvárnánk a
+       * szerver-lekérdezést és a megerősítő ablakot, a kontextus
+       * `suspended` maradhat – a snap-kliens pedig ilyenkor NÉMÁN eldob
+       * minden hangcsomagot (ld. `scheduleChunk`), tehát a monitorozás
+       * hiba nélkül, de hangtalanul futna.
+       *
+       * UGYANAZ A BEÁLLÍTÁS, MINT A WEBPLAYERÉ: a snap stream fixen 48 kHz-es;
+       * a gép alapértelmezett (gyakran 44,1 kHz-es) frekvenciáján a böngészőnek
+       * minden csomagot újra kellene mintavételeznie. A `latencyHint:
+       * "playback"` nagyobb kimeneti puffert kér – folyamatos streamnél ez a
+       * jó kompromisszum, nem az alacsony késleltetés.
+       */
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({
+        latencyHint: "playback",
+        sampleRate:  48000,
+      }) as AudioContext;
+      ctxRef.current = ctx;
+      if (ctx.state === "suspended") await ctx.resume();
+
+      /*
        * GERJEDÉS-FIGYELMEZTETÉS.
        *
        * Ha épp élő hangbemenet megy, a mikrofon és a most megszólaló monitor
@@ -117,13 +153,14 @@ export default function MonitorPill() {
       } catch { /* nem kritikus */ }
 
       if (liveInput && !window.confirm(t("appshell:monitorFeedbackWarning"))) {
+        stop();   // a már megnyitott AudioContext ne maradjon a nyakunkon
         return;
       }
 
-      // Az AudioContext felhasználói kattintásból jön létre – enélkül az
-      // autoplay-szabály felfüggesztett állapotban tartaná.
-      const ctx = new AudioContext();
-      ctxRef.current = ctx;
+      /*
+       * A megerősítő ablak alatt a böngésző felfüggeszthette a kontextust –
+       * és egy `suspended` kontextus némán nyeli el az egész streamet.
+       */
       if (ctx.state === "suspended") await ctx.resume();
 
       const split = ctx.createChannelSplitter(2);
@@ -133,12 +170,29 @@ export default function MonitorPill() {
       split.connect(anR, 1);
       analysersRef.current = [anL, anR];
 
+      /*
+       * A tenantot a query-ben is elküldjük.
+       *
+       * WebSocketre nem tehetünk `x-tenant-id` fejlécet, amit az `apiFetch`
+       * használ. A SUPER_ADMIN tokenjében nincs tenantId (az aktív intézményt
+       * a felületen választja ki), így nélküle a proxy 4003-mal bontana.
+       * Más szerepköröknél a szerver a tokenben lévő tenantot használja, és
+       * ezt a paramétert figyelmen kívül hagyja.
+       */
+      const tenantId = resolveTenantId(token) ?? "";
+      const qs = new URLSearchParams({ token, ...(tenantId ? { tenantId } : {}) });
+
+      setPhase("connecting");
       const client = new SnapWsClient({
-        url:      `${getWsUrl("/snap-stream")}?token=${encodeURIComponent(token)}`,
+        url:      `${getWsUrl("/snap-stream")}?${qs.toString()}`,
         deviceId: monitorClientId(),
         audioCtx: ctx,
         tapNode:  split,
-        onDisconnected: () => { /* a kliens magától újracsatlakozik */ },
+        onConnected:     () => { setPhase("connected"); setError(null); },
+        onStreamStarted: () => setPhase("playing"),
+        // A kliens magától újracsatlakozik; a fázist visszavesszük, hogy a
+        // felületen látszódjon, ha a kapcsolat elszállt.
+        onDisconnected:  () => setPhase(p => (p === "off" ? p : "connecting")),
       });
       client.start();
       clientRef.current = client;
@@ -175,10 +229,18 @@ export default function MonitorPill() {
         }}
       >
         <span style={{ fontSize: 13 }}>🎧</span>
-        {starting
+        {starting || phase === "connecting"
           ? t("appshell:monitorConnecting")
           : on ? t("appshell:monitorStop") : t("appshell:monitorStart")}
       </button>
+
+      {/* Csatlakozott, de hang még nem jött: ezt ki kell mondani, különben a
+          néma monitorozás megkülönböztethetetlen a hibától. */}
+      {on && phase === "connected" && (
+        <span style={{ fontSize: 11, color: "var(--sl-muted)" }}>
+          {t("appshell:monitorNoAudio")}
+        </span>
+      )}
 
       {/* Kisméretű sztereó kivezérlésjelző – két vékony sáv egymás alatt. */}
       <div

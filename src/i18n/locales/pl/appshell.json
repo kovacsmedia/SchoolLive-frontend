@@ -18,5 +18,6 @@
   "monitorMeterAria": "Wskaźnik wysterowania",
   "monitorNoSession": "Brak ważnej sesji.",
   "monitorError": "Nie udało się uruchomić odsłuchu.",
-  "monitorFeedbackWarning": "Użyj słuchawek, bo wystąpi sprzężenie!\n\nTrwa wejście audio na żywo. Jeśli odsłuch będzie grał z głośników tego komputera, mikrofon ponownie zbierze dźwięk.\n\nUruchomić odsłuch?"
+  "monitorFeedbackWarning": "Użyj słuchawek, bo wystąpi sprzężenie!\n\nTrwa wejście audio na żywo. Jeśli odsłuch będzie grał z głośników tego komputera, mikrofon ponownie zbierze dźwięk.\n\nUruchomić odsłuch?",
+  "monitorNoAudio": "brak dźwięku"
 }

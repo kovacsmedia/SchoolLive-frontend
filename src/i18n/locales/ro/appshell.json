@@ -18,5 +18,6 @@
   "monitorMeterAria": "Indicator de nivel",
   "monitorNoSession": "Nicio sesiune validă.",
   "monitorError": "Monitorizarea nu a putut fi pornită.",
-  "monitorFeedbackWarning": "Folosiți căști, altfel va apărea microfonie!\n\nRulează o intrare audio live. Dacă monitorizarea se aude în difuzoarele acestui computer, microfonul va prelua din nou sunetul.\n\nPorniți monitorizarea?"
+  "monitorFeedbackWarning": "Folosiți căști, altfel va apărea microfonie!\n\nRulează o intrare audio live. Dacă monitorizarea se aude în difuzoarele acestui computer, microfonul va prelua din nou sunetul.\n\nPorniți monitorizarea?",
+  "monitorNoAudio": "încă fără sunet"
 }

@@ -18,5 +18,6 @@
   "monitorMeterAria": "Indikátor vybudenia",
   "monitorNoSession": "Žiadna platná relácia.",
   "monitorError": "Monitorovanie sa nepodarilo spustiť.",
-  "monitorFeedbackWarning": "Použite slúchadlá, inak vznikne spätná väzba!\n\nPráve beží živý zvukový vstup. Ak monitorovanie hrá cez reproduktory tohto počítača, mikrofón zvuk znova zachytí.\n\nSpustiť monitorovanie?"
+  "monitorFeedbackWarning": "Použite slúchadlá, inak vznikne spätná väzba!\n\nPráve beží živý zvukový vstup. Ak monitorovanie hrá cez reproduktory tohto počítača, mikrofón zvuk znova zachytí.\n\nSpustiť monitorovanie?",
+  "monitorNoAudio": "zatiaľ žiadny zvuk"
 }

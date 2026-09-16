@@ -18,5 +18,6 @@
   "monitorMeterAria": "Pokazivač razine",
   "monitorNoSession": "Nema valjane sesije.",
   "monitorError": "Nadzor se nije mogao pokrenuti.",
-  "monitorFeedbackWarning": "Koristite slušalice, inače će doći do mikrofonije!\n\nTrenutno radi živi audio ulaz. Ako se nadzor čuje na zvučnicima ovog računala, mikrofon će ponovno pokupiti zvuk.\n\nPokrenuti nadzor?"
+  "monitorFeedbackWarning": "Koristite slušalice, inače će doći do mikrofonije!\n\nTrenutno radi živi audio ulaz. Ako se nadzor čuje na zvučnicima ovog računala, mikrofon će ponovno pokupiti zvuk.\n\nPokrenuti nadzor?",
+  "monitorNoAudio": "još nema zvuka"
 }
