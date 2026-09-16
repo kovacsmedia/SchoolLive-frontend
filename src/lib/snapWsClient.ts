@@ -614,10 +614,30 @@ export class SnapWsClient {
       const jsonLen = dv.getInt32(0, true);
       if (jsonLen <= 0 || jsonLen > payload.byteLength - 4) return;
       const json = JSON.parse(new TextDecoder().decode(payload.subarray(4, 4 + jsonLen)));
-      // Csak a bufferMs-t alkalmazzuk – a server-side mute/volume-ot
-      // szándékosan ignoráljuk (lásd Android applyEffectiveVolume).
+      // A server-side mute/volume-ot szándékosan ignoráljuk (lásd Android
+      // applyEffectiveVolume); a bufferMs és a latency viszont kell.
       const buf = typeof json.bufferMs === "number" ? json.bufferMs : 1000;
       this.serverBufferMs = Math.max(200, Math.min(5000, buf));
+
+      /*
+       * SZINKRON-KIIGAZÍTÁS – a snapcast saját, kliensenkénti `latency` mezője.
+       *
+       * Eddig eldobtuk, pedig ez a szabványos mechanizmus az eltérő hardverek
+       * összehangolására: a szerver kliens-azonosító szerint tárolja, és
+       * ebben az üzenetben küldi ki. Pozitív = később szólal meg.
+       *
+       * A változás AZONNAL hasson: a lejátszás horgonyzott, vagyis a chunkok
+       * az előzőhöz láncolva mennek – az új érték magától csak a következő
+       * újra-horgonyzáskor érvényesülne, azt pedig csak 200 ms fölötti
+       * elcsúszás váltja ki. Emiatt tűntek hatástalannak a 10 ms-es lépések.
+       * Ezért itt kézzel kérünk újra-horgonyzást.
+       */
+      const lat = typeof json.latency === "number" ? Math.round(json.latency) : 0;
+      if (lat !== this.syncOffsetMs) {
+        console.log(`[SnapWS] szinkron-kiigazítás: ${this.syncOffsetMs} → ${lat} ms`);
+        this.syncOffsetMs = lat;
+        this.anchored = false;
+      }
     } catch (e) {
       console.warn("[SnapWS] ServerSettings parse hiba:", e);
     }

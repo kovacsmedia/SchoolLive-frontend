@@ -1067,15 +1067,64 @@ export default function SchoolRadio() {
   // Debounce-olt live push a backendre. Kerüli, hogy minden 1-egységnyi
   // slider-mozdulatra hívás menjen ki (chrome 1 egységenként emit-el).
   // 150ms ablak: kényelmes vonszolásnak, mégis prompt érzet.
+  /*
+   * A SZERVER ÁLLAPOTA A MÉRVADÓ, NEM A BÖNGÉSZŐÉ.
+   *
+   * A `streamVolume` kezdőértéke a localStorage-ból jön, hogy a csúszka ne
+   * ugráljon betöltéskor. Ezt viszont SOHA nem szabad kiküldeni: eddig a
+   * lenti effekt a beállításkor is lefutott, így minden új bejelentkezés
+   * ráírta a saját régi értékét a rendszerre. Ha a laptopon 7-re állították
+   * a rádiót, a telefonról belépve azonnal felment 10-re.
+   *
+   * A `serverVolumeRef` tartja, mit tudunk a szerverről:
+   *   • null      – még nem tudjuk, addig NEM küldünk semmit,
+   *   • egy szám  – ez van a szerveren; ezt visszaküldeni fölösleges
+   *                 (és pont ez okozná a visszhangot az átvételkor).
+   */
+  const serverVolumeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ ok: boolean; value: number }>("/radio/stream-volume")
+      .then((r) => {
+        if (cancelled) return;
+        if (typeof r?.value === "number") {
+          serverVolumeRef.current = r.value;
+          setStreamVolume(r.value);
+        }
+      })
+      .catch(() => {
+        /*
+         * Nem sikerült lekérdezni (hálózat, régi backend). Ilyenkor a helyi
+         * értéket vesszük alapnak, hogy a csúszka használható maradjon –
+         * de a beállítás pillanatában továbbra sem küldünk ki semmit.
+         */
+        if (!cancelled) serverVolumeRef.current = streamVolume;
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounce-olt live push a backendre. Kerüli, hogy minden 1-egységnyi
+  // slider-mozdulatra hívás menjen ki (chrome 1 egységenként emit-el).
+  // 150ms ablak: kényelmes vonszolásnak, mégis prompt érzet.
   const liveVolumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    // Amíg nem tudjuk a szerver állapotát, nem írunk rá semmit.
+    if (serverVolumeRef.current === null) return;
+    // Az imént ÁTVETT értéket ne küldjük vissza.
+    if (serverVolumeRef.current === streamVolume) return;
+
     if (liveVolumeTimer.current) clearTimeout(liveVolumeTimer.current);
     liveVolumeTimer.current = setTimeout(() => {
+      const value = streamVolume;
       apiFetch("/radio/stream-volume", {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ value: streamVolume }),
-      }).catch(() => { /* lehet, hogy nem szól rádió – nem fatal */ });
+        body:    JSON.stringify({ value }),
+      })
+        .then(() => { serverVolumeRef.current = value; })
+        .catch(() => { /* lehet, hogy nem szól rádió – nem fatal */ });
     }, 150);
     return () => {
       if (liveVolumeTimer.current) clearTimeout(liveVolumeTimer.current);

@@ -31,6 +31,13 @@ type DeviceItem = {
 // addigi per-device volume értékeket, és kikapcsoláskor visszaállítja őket.
 // Page reload után is fent kell maradnia, hogy a user ne veszítse el az
 // "alapérték" tudást, miközben a globális override aktív.
+/**
+ * A szinkron-kiigazítás felső korlátja (ms) – egyeznie kell a backendbeli
+ * `MAX_SYNC_OFFSET_MS`-szel. A késleltetést a kliensek pufferelik, ezért
+ * emelés előtt hardveren kell kimérni, hol kezd akadozni.
+ */
+const MAX_SYNC_OFFSET_MS = 1000;
+
 const LS_KEY_SAVED_VOLS  = "sl-devices-saved-volumes";
 const LS_KEY_GLOBAL_MUTE = "sl-devices-global-mute";
 const LS_KEY_GLOBAL_MAX  = "sl-devices-global-maxvol";
@@ -442,10 +449,20 @@ export default function Devices() {
   );
 
   // ── Sync-eltolás ─────────────────────────────────────────────────────────
-  // PATCH a backend-re, ami WS-en SET_SYNC_OFFSET-tel push-olja az adott
-  // kliensnek. Optimistic UI a táblában, hogy a köv. tick-ig is friss legyen.
+  /*
+   * PATCH a backendre, ami a snapcast kliens-késleltetéseként küldi ki
+   * (`Client.SetLatency`). Azonnal hat, a stream nem szakad meg – így fülre
+   * lehet vele hangolni.
+   *
+   * CSAK POZITÍV: a hang előrehozása nem lehetséges (nem lehet olyat
+   * lejátszani, ami még meg sem érkezett), és nem is kell. Az összehangolás a
+   * LEGLASSABB eszközhöz történik: az marad 0-n, a gyorsabbakat ehhez
+   * késleltetjük.
+   *
+   * Optimistic UI a táblában, hogy a köv. tick-ig is friss legyen.
+   */
   async function sendSyncOffset(deviceId: string, ms: number): Promise<void> {
-    const clamped = Math.max(-2000, Math.min(2000, Math.round(ms / 10) * 10));
+    const clamped = Math.max(0, Math.min(MAX_SYNC_OFFSET_MS, Math.round(ms / 10) * 10));
     try {
       await apiFetch(`/admin/devices/${deviceId}`, {
         method:  "PATCH",
@@ -1343,7 +1360,7 @@ export default function Devices() {
                 <div style={{ display:"flex", alignItems:"center", gap:10, justifyContent:"center" }}>
                   <button className="dv-btn dv-btn-ghost" type="button"
                     onClick={() => void sendSyncOffset(d.deviceId, offset - 10)}
-                    disabled={!canWrite || offset <= -2000}
+                    disabled={!canWrite || offset <= 0}
                     title={t("sync.earlierTooltip")}>
                     ◀ −10 ms
                   </button>
@@ -1360,7 +1377,7 @@ export default function Devices() {
                   </div>
                   <button className="dv-btn dv-btn-ghost" type="button"
                     onClick={() => void sendSyncOffset(d.deviceId, offset + 10)}
-                    disabled={!canWrite || offset >= 2000}
+                    disabled={!canWrite || offset >= MAX_SYNC_OFFSET_MS}
                     title={t("sync.laterTooltip")}>
                     +10 ms ▶
                   </button>
