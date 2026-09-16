@@ -92,7 +92,8 @@
     "backToHistory": "Back to history",
     "noVideoSelected": "Pick a video from the list on the right",
     "followHint": "Radio playback follows the video's timeline: if you seek, the speakers jump there too.",
-    "scheduleFromHere": "The scheduled playback starts where the video is now."
+    "scheduleFromHere": "The scheduled playback starts where the video is now.",
+    "downloadInProgress": "The download runs on the server – a long video can take several minutes. You can keep working meanwhile."
   },
   "live": {
     "play": "Resume",

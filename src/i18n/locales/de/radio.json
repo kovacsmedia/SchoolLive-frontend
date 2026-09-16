@@ -92,7 +92,8 @@
     "backToHistory": "Zurück zum Verlauf",
     "noVideoSelected": "Wähle rechts ein Video aus der Liste",
     "followHint": "Die Radiowiedergabe folgt der Videozeit: beim Spulen springen auch die Lautsprecher mit.",
-    "scheduleFromHere": "Die geplante Wiedergabe startet dort, wo das Video gerade steht."
+    "scheduleFromHere": "Die geplante Wiedergabe startet dort, wo das Video gerade steht.",
+    "downloadInProgress": "Der Download läuft auf dem Server – bei langen Videos kann das mehrere Minuten dauern. Du kannst weiterarbeiten."
   },
   "live": {
     "play": "Fortsetzen",

@@ -92,7 +92,8 @@
     "backToHistory": "Natrag na povijest",
     "noVideoSelected": "Odaberi videozapis s popisa desno",
     "followHint": "Radijska reprodukcija prati vrijeme videozapisa: pri premotavanju skaču i zvučnici.",
-    "scheduleFromHere": "Zakazana reprodukcija kreće odande gdje je videozapis sada."
+    "scheduleFromHere": "Zakazana reprodukcija kreće odande gdje je videozapis sada.",
+    "downloadInProgress": "Preuzimanje se odvija na poslužitelju – kod duljeg videozapisa može potrajati nekoliko minuta. Možeš nastaviti raditi."
   },
   "live": {
     "play": "Nastavi",

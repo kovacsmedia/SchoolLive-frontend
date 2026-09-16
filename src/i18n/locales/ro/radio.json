@@ -92,7 +92,8 @@
     "backToHistory": "Înapoi la istoric",
     "noVideoSelected": "Alege un videoclip din lista din dreapta",
     "followHint": "Redarea radio urmează timpul videoclipului: dacă derulezi, sar și difuzoarele.",
-    "scheduleFromHere": "Redarea programată pornește de unde este acum videoclipul."
+    "scheduleFromHere": "Redarea programată pornește de unde este acum videoclipul.",
+    "downloadInProgress": "Descărcarea rulează pe server – la un videoclip lung poate dura câteva minute. Poți lucra mai departe."
   },
   "live": {
     "play": "Continuă",

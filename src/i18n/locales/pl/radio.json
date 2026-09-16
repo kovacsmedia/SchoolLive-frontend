@@ -92,7 +92,8 @@
     "backToHistory": "Powrót do historii",
     "noVideoSelected": "Wybierz film z listy po prawej",
     "followHint": "Odtwarzanie radia podąża za czasem filmu: przy przewijaniu głośniki też przeskakują.",
-    "scheduleFromHere": "Zaplanowane odtwarzanie zacznie się tam, gdzie film jest teraz."
+    "scheduleFromHere": "Zaplanowane odtwarzanie zacznie się tam, gdzie film jest teraz.",
+    "downloadInProgress": "Pobieranie działa na serwerze – przy dłuższym filmie może potrwać kilka minut. Możesz pracować dalej."
   },
   "live": {
     "play": "Wznów",

@@ -175,7 +175,21 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = f
   const url = joinUrl(baseUrl, path);
 
   const controller = new AbortController();
-  const timeoutMs = 15000;
+  /*
+   * Kérésenként állítható időkorlát.
+   *
+   * Az alapértelmezett 15 másodperc a szokásos API-hívásokra jó, de van pár
+   * művelet, ami a szerveren PERCEKIG dolgozik – ilyen a YouTube-videó
+   * hangjának letöltése (yt-dlp + átkódolás egy több órás videónál). Ott a
+   * rövid korlát megszakította a kérést, és a felhasználó egy félrevezető
+   * „hálózati hiba" üzenetet kapott, pedig a letöltés a szerveren futott.
+   *
+   * A hívó egy `x-sl-timeout-ms` fejlécben kérhet többet; a fejléc NEM megy
+   * ki a hálózatra, csak jelzés nekünk.
+   */
+  const TIMEOUT_HEADER = "x-sl-timeout-ms";
+  const wanted = Number(new Headers(init?.headers ?? {}).get(TIMEOUT_HEADER) ?? "");
+  const timeoutMs = Number.isFinite(wanted) && wanted > 0 ? wanted : 15000;
   const t = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
@@ -187,6 +201,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit, _isRetry = f
     const tenantId = token ? resolveTenantId(token) : null;
 
     const headers = new Headers(init?.headers ?? {});
+    headers.delete(TIMEOUT_HEADER);   // belső jelzés, nem megy ki a hálózatra
     if (!headers.has("Content-Type") && init?.body) {
       headers.set("Content-Type", "application/json");
     }

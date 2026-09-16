@@ -92,7 +92,8 @@
     "backToHistory": "Vissza az előzményekhez",
     "noVideoSelected": "Válassz videót a jobb oldali listából",
     "followHint": "A rádiólejátszás a videóablak idejét követi: ha beletekersz, a hangszórókon is odaugrik.",
-    "scheduleFromHere": "Az ütemezett lejátszás onnan indul, ahol a videó most áll."
+    "scheduleFromHere": "Az ütemezett lejátszás onnan indul, ahol a videó most áll.",
+    "downloadInProgress": "A letöltés a szerveren fut – hosszabb videónál több percig is tarthat. Addig nyugodtan dolgozhatsz tovább."
   },
   "live": {
     "play": "Folytatás",

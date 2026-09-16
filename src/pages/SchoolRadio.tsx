@@ -473,9 +473,16 @@ const CSS = `
   @keyframes sr-preview-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
   /* ── YouTube fül: rögzített lejátszó + görgethető lista ───────────────
      Nagy kijelzőn két hasáb, keskenyen egymás alatt – a videó FELÜL. */
-  .sr-yt-tab{padding:14px 18px;display:flex;flex-direction:column;gap:12}
-  .sr-yt-head{display:flex;gap:14;flex-wrap:wrap;align-items:flex-start}
-  .sr-yt-split{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:14;align-items:start}
+  /* Gomb belsejébe rajzolt haladás-csík. A gombnak `position:relative` és
+     `overflow:hidden` kell, hogy a csík a lekerekített sarkokon belül
+     maradjon. */
+  .sr-has-progress{position:relative;overflow:hidden}
+  .sr-btn-progress{position:absolute;left:0;bottom:0;height:3px;background:var(--sl-blue);transition:width 0.4s linear;pointer-events:none}
+  .sr-yt-tab{padding:14px 18px;display:flex;flex-direction:column;gap:12px}
+  /* FIGYELEM: a `gap` mértékegység nélkül érvénytelen – enélkül a böngésző
+     az egész szabályt eldobja, és a hasábok összeérnek. */
+  .sr-yt-head{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+  .sr-yt-split{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(280px,1fr);gap:18px;align-items:start}
   .sr-yt-stage{display:flex;flex-direction:column;gap:8;min-width:0}
   .sr-yt-title{font-size:14px;font-weight:800;color:var(--sl-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sr-yt-side{display:flex;flex-direction:column;min-width:0}
@@ -795,6 +802,7 @@ export default function SchoolRadio() {
   const [ytLiveScheduleError, setYtLiveScheduleError] = useState<string | null>(null);
   const [ytLiveScheduleEnd,   setYtLiveScheduleEnd]   = useState("");
   const [ytDownloading,       setYtDownloading]       = useState(false);
+  const [ytDownloadPct,       setYtDownloadPct]       = useState(0);
   /*
    * Legutóbb megnézett videók – a jobb oldali lista alapállapota.
    *
@@ -1057,14 +1065,22 @@ export default function SchoolRadio() {
     setManualNowPlaying(null);
   }
 
-  /** A betöltött videó hangja a hangfájl könyvtárba. */
+  /**
+   * A betöltött videó hangja a hangfájl könyvtárba.
+   *
+   * A szerver háttérfeladatként dolgozik: a POST azonnal visszaad egy
+   * azonosítót, a haladást másodpercenként kérdezzük le. Így egy több órás
+   * videó letöltése sem fut bele kliens- vagy proxy-időkorlátba, és a gomb
+   * csíkja valódi százalékot mutat, nem csak animációt.
+   */
   async function downloadYtToLibrary() {
     if (!ytLiveVideoId || ytDownloading) return;
     setYtDownloading(true);
+    setYtDownloadPct(0);
     setYtLiveError(null);
     try {
       const startSec = ytCurrentTime();
-      await apiFetch("/radio/youtube/download", {
+      const started = await apiFetch<{ ok: boolean; jobId: string }>("/radio/youtube/download", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
@@ -1075,11 +1091,32 @@ export default function SchoolRadio() {
           ...(startSec > 0 ? { startSec } : {}),
         }),
       });
+      const jobId = started?.jobId;
+      if (!jobId) throw new Error(t("errors.uploadFailed"));
+
+      // Lekérdezés amíg be nem fejeződik. A hálózati hibát nem vesszük
+      // végzetesnek: a következő kör újrapróbálja.
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1000));
+        try {
+          const st = await apiFetch<{ status: string; percent: number; error?: string }>(
+            `/radio/youtube/download-status/${encodeURIComponent(jobId)}`
+          );
+          setYtDownloadPct(Math.max(0, Math.min(100, st.percent ?? 0)));
+          if (st.status === "DONE")  break;
+          if (st.status === "ERROR") throw new Error(st.error ?? t("errors.uploadFailed"));
+        } catch (e: any) {
+          if (e?.status === 404) throw new Error(t("errors.uploadFailed"));
+          // egyéb (átmeneti) hiba → következő kör
+        }
+      }
+
       await loadAll();          // az új fájl jelenjen meg a könyvtárban
     } catch (e: any) {
       setYtLiveError(e?.message ?? t("errors.uploadFailed"));
     } finally {
       setYtDownloading(false);
+      setYtDownloadPct(0);
     }
   }
 
@@ -3732,10 +3769,19 @@ export default function SchoolRadio() {
                             : `🔴 ${t("youtube.goLiveButton")}`}
                       </button>
 
-                      <button className="sr-btn sr-btn-ghost" type="button"
+                      {/* Letöltés közben a gomb pulzál, az alján pedig egy
+                          csík mutatja a tényleges haladást. */}
+                      <button
+                        className={`sr-btn sr-btn-ghost${ytDownloading ? " sr-preview-on sr-has-progress" : ""}`}
+                        type="button"
                         disabled={!ytLiveVideoId || ytDownloading}
                         onClick={() => void downloadYtToLibrary()}>
-                        {ytDownloading ? `⏳ ${t("busy.saving")}` : `⬇ ${t("youtube.downloadButton")}`}
+                        {ytDownloading
+                          ? `⬇ ${t("youtube.downloadButton")} · ${ytDownloadPct}%`
+                          : `⬇ ${t("youtube.downloadButton")}`}
+                        {ytDownloading && (
+                          <span className="sr-btn-progress" style={{width:`${ytDownloadPct}%`}} />
+                        )}
                       </button>
 
                       <button className="sr-btn sr-btn-ghost" type="button"
@@ -3744,6 +3790,13 @@ export default function SchoolRadio() {
                         📅 {t("youtube.scheduleButton")}
                       </button>
                     </div>
+                    {/* Több órás videónál a letöltés percekig tart – mondjuk
+                        meg, hogy nem fagyott le. */}
+                    {ytDownloading && (
+                      <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:6}}>
+                        ⏳ {t("youtube.downloadInProgress")}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3867,7 +3920,10 @@ export default function SchoolRadio() {
                               pickYtLiveResult(r.id, r.title);
                               rememberYtVideo(r);
                             }}>
-                            <img src={r.thumbnail || `https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`} alt=""
+                            {/* A bélyegképet MINDIG az azonosítóból képezzük:
+                                a keresés `thumbnail` mezője nem mindig ad
+                                betölthető URL-t, és üres kép maradt a helyén. */}
+                            <img src={`https://i.ytimg.com/vi/${r.id}/mqdefault.jpg`} alt=""
                               className="sr-search-thumb" referrerPolicy="no-referrer" />
                             <div style={{minWidth:0}}>
                               <div className="sr-search-title">{r.title}</div>

@@ -92,7 +92,8 @@
     "backToHistory": "Späť na históriu",
     "noVideoSelected": "Vyber video zo zoznamu vpravo",
     "followHint": "Prehrávanie rádia sleduje čas videa: pri pretáčaní skočia aj reproduktory.",
-    "scheduleFromHere": "Naplánované prehrávanie začne tam, kde video práve stojí."
+    "scheduleFromHere": "Naplánované prehrávanie začne tam, kde video práve stojí.",
+    "downloadInProgress": "Sťahovanie beží na serveri – pri dlhšom videu to môže trvať aj niekoľko minút. Medzitým môžeš pokojne pracovať."
   },
   "live": {
     "play": "Pokračovať",
