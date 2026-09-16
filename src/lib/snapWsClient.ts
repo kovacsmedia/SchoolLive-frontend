@@ -28,6 +28,11 @@
 
 import { OpusDecoder } from "opus-decoder";
 
+/** Minden snapcast keret 26 bájtos fejléccel kezdődik (típus + időbélyegek + méret). */
+const FRAME_HEADER_BYTES  = 26;
+/** Épeszű felső korlát a hasznos teherre – efölött deszinkronizációt feltételezünk. */
+const MAX_FRAME_PAYLOAD   = 1024 * 1024;
+
 const TYPE_CODEC_HEADER   = 1;
 const TYPE_WIRE_CHUNK     = 2;
 const TYPE_SERVER_SETTINGS = 3;
@@ -127,6 +132,24 @@ export class SnapWsClient {
    */
   private diagSeen = new Set<string>();
 
+  /*
+   * VÉTELI PUFFER – keret-összeillesztés.
+   *
+   * A `/snap-stream` egy TCP↔WebSocket híd: a proxy azt továbbítja, ami a
+   * TCP-n érkezik. A TCP viszont BÁJTFOLYAM, nincsenek üzenethatárai – egy
+   * WS-üzenet tartalmazhat több snapcast keretet, vagy egy keret felét.
+   *
+   * Korábban minden WS-üzenetet EGY teljes keretnek vettünk. Ha a szerver a
+   * kezdeti ServerSettings + CodecHeader + első hangcsomagot egy szegmensbe
+   * írta, csak az elsőt dolgoztuk fel, a többit némán eldobtuk; egy félbevágott
+   * keret után pedig a hangadat közepéből olvastuk a "típus" mezőt, ami
+   * akármi lehetett. Innen jött a lehetetlen sorrend: WireChunk a
+   * CodecHeader ELŐTT, majd végleges csend.
+   *
+   * Most bájtokat gyűjtünk, és csak TELJES kereteket dolgozunk fel.
+   */
+  private rxBuf = new Uint8Array(0);
+
   private diagOnce(key: string, msg: string): void {
     if (this.diagSeen.has(key)) return;
     this.diagSeen.add(key);
@@ -209,6 +232,7 @@ export class SnapWsClient {
       this.anchored = false;
       this.nextPlayCtxTime = 0;
       this.diagSeen.clear();
+      this.rxBuf = new Uint8Array(0);
       this.sendHello();
       // Egy gyors TIME-csomag a kezdeti offset-becsléshez.
       setTimeout(() => this.sendTimeRequest(), 200);
@@ -223,7 +247,7 @@ export class SnapWsClient {
       try {
         const data = evt.data;
         if (!(data instanceof ArrayBuffer)) return;
-        this.handleFrame(new DataView(data));
+        this.ingest(new Uint8Array(data));
         this.opts.onActivity?.();
       } catch (e) {
         console.warn("[SnapWS] frame parse hiba:", e);
@@ -320,6 +344,42 @@ export class SnapWsClient {
   }
 
   // ── Belső: snap-frame fogadás ─────────────────────────────────────────────
+
+  /**
+   * Beérkező bájtok hozzáfűzése a vételi pufferhez, majd MINDEN teljes keret
+   * feldolgozása. A maradék (fél keret) a pufferben marad a következő
+   * üzenetig. Ld. az `rxBuf` mező kommentjét.
+   */
+  private ingest(incoming: Uint8Array): void {
+    if (this.rxBuf.length === 0) {
+      this.rxBuf = incoming;
+    } else {
+      const merged = new Uint8Array(this.rxBuf.length + incoming.length);
+      merged.set(this.rxBuf, 0);
+      merged.set(incoming, this.rxBuf.length);
+      this.rxBuf = merged;
+    }
+
+    while (this.rxBuf.length >= FRAME_HEADER_BYTES) {
+      const dv = new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset, this.rxBuf.length);
+      const size = dv.getInt32(22, true);
+
+      if (size < 0 || size > MAX_FRAME_PAYLOAD) {
+        // Deszinkronizálódtunk (sérült vagy elcsúszott folyam). Eldobjuk a
+        // puffert – a következő kereteket már tisztán olvassuk. Némán tenni
+        // ezt pont az a hiba volt, amit itt javítunk.
+        console.warn(`[SnapWS] érvénytelen keretméret (${size}) – vételi puffer ürítve`);
+        this.rxBuf = new Uint8Array(0);
+        return;
+      }
+
+      const total = FRAME_HEADER_BYTES + size;
+      if (this.rxBuf.length < total) return;   // fél keret – várunk a folytatásra
+
+      this.handleFrame(new DataView(this.rxBuf.buffer, this.rxBuf.byteOffset, total));
+      this.rxBuf = this.rxBuf.subarray(total);
+    }
+  }
 
   private handleFrame(dv: DataView): void {
     if (dv.byteLength < 26) return;
