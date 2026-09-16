@@ -437,7 +437,7 @@ const CSS = `
   .sr-vu-row{display:flex;align-items:center;gap:8px}
   .sr-vu-label{width:14px;font-size:11px;font-weight:800;color:var(--sl-muted);text-align:center}
   /* Folytonos sáv, részenként fix színnel. A színátmenet a TELJES sávon ül,
-     a kitöltést `clip-path` adja – így a zöld/sárga/piros határ nem vándorol.
+     a kitöltést a clip-path adja – így a zöld/sárga/piros határ nem vándorol.
      Közös definíciók: lib/vuMeter.ts (ugyanaz a fejléc monitorozásánál). */
   .sr-vu-track{position:relative;flex:1;height:12px;border-radius:6px;overflow:hidden}
   .sr-vu-scale-bg{position:absolute;inset:0}
