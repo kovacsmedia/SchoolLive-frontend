@@ -59,7 +59,16 @@
     "deleteFailed": "Löschen fehlgeschlagen",
     "maxSizeError": "Die Datei darf maximal 200 KB groß sein (ausreichend für 7s MP3).",
     "uploadFailed": "Hochladen fehlgeschlagen",
-    "hint": "Maximal 7 Sekunden. Bleibt es leer, ertönt der Standard-„Dingdong“."
+    "hint": "Maximal 7 Sekunden. Bleibt es leer, ertönt der Standard-„Dingdong“.",
+    "previewButton": "Anhören",
+    "previewStopButton": "Stopp",
+    "previewTitle": "Vorschau",
+    "renameButton": "Umbenennen",
+    "renameLabel": "Neuer Name:",
+    "renameTitle": "Umbenennen",
+    "defaultBadge": "Standard",
+    "renameFailed": "Umbenennen fehlgeschlagen.",
+    "previewFailed": "Der Ton konnte nicht abgespielt werden."
   },
   "target": {
     "label": "Wiedergabegeräte",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, apiPost } from "../lib/api";
 import { displayName, stripAccents } from "../lib/text";
@@ -11,7 +11,7 @@ type ScheduleType = "immediate"|"next_bell"|"custom";
 type BellEntry    = { hour: number; minute: number; type: string };
 type ComposerMode = "tts" | "record";
 type RecordState  = "idle" | "recording" | "recorded";
-type IntroSound   = { id:string; filename:string; sizeBytes:number; durationMs:number|null; createdAt:string };
+type IntroSound   = { id:string; filename:string; sizeBytes:number; durationMs:number|null; createdAt:string; url?:string };
 
 function getNextBreakTime(bells: BellEntry[]): Date | null {
   const sorted = [...bells].sort((a,b) => a.hour*60+a.minute - (b.hour*60+b.minute));
@@ -139,6 +139,10 @@ const CSS = `
   .ms-mic-icon{font-size:56px;line-height:1}
   @keyframes msPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.18);opacity:0.7}}
   .ms-mic-pulse{animation:msPulse 1s ease-in-out infinite}
+  /* Belehallgatás jelzése – ugyanaz az 1 mp-es pulzálás, mint a
+     csengetési rendnél (.bs-preview-on) és a rádiónál (.sr-preview-on). */
+  @keyframes msPreviewPulse{0%,100%{opacity:1}50%{opacity:0.45}}
+  .ms-preview-on{animation:msPreviewPulse 1s ease-in-out infinite}
   .ms-rec-time{font-size:32px;font-weight:900;font-family:monospace;color:var(--sl-text);letter-spacing:2px}
   .ms-rec-hint{font-size:13px;color:var(--sl-muted);text-align:center}
   @keyframes msFade{from{opacity:0}to{opacity:1}}
@@ -208,6 +212,19 @@ export default function Messages() {
   const [introUploadBusy, setIntroUploadBusy] = useState(false);
   const [introUploadError, setIntroUploadError] = useState<string|null>(null);
   const introFileRef = useRef<HTMLInputElement|null>(null);
+  /*
+   * A gyári dingdong URL-je. Származtatott fájl, ezért a SZERVER mondja meg,
+   * hogy elérhető-e – ha nem (nincs ffmpeg vagy forrás), a belehallgatás
+   * letiltva marad, de a választó működik tovább.
+   */
+  const [introDefaultUrl, setIntroDefaultUrl] = useState<string|null>(null);
+  // A default dingdongnak nincs id-ja; a belehallgatás állapotához kell egy
+  // jelölő, ami nem ütközhet egyetlen valódi BellSoundFile id-val sem.
+  const INTRO_DEFAULT_KEY = "__default__";
+  const [introPreviewId, setIntroPreviewId] = useState<string|null>(null);
+  const introPreviewRef = useRef<HTMLAudioElement|null>(null);
+  const [introRenaming, setIntroRenaming] = useState<{id:string;value:string}|null>(null);
+  const [introRenameBusy, setIntroRenameBusy] = useState(false);
 
   // Replay state (loading per-id, hogy ne lehessen duplán nyomni)
   // (a régi `replayingId` state törölve – az új replay modal a `replayBusy`
@@ -243,9 +260,70 @@ export default function Messages() {
   // ── Intro sounds (üzenet-előtti rövid bell hangok) ────────────────────────
   async function loadIntroSounds() {
     try {
-      const r = await apiFetch<{ok:boolean;sounds:IntroSound[]}>("/bells/intro-sounds");
+      const r = await apiFetch<{ok:boolean;sounds:IntroSound[];defaultSound?:{url:string|null}}>("/bells/intro-sounds");
       setIntroSounds(r.sounds ?? []);
-    } catch { setIntroSounds([]); }
+      setIntroDefaultUrl(r.defaultSound?.url ?? null);
+    } catch { setIntroSounds([]); setIntroDefaultUrl(null); }
+  }
+
+  // ── Belehallgatás ────────────────────────────────────────────────────────
+  //
+  // Egyszerre EGY hang szólhat: minden indítás előtt leállítjuk az előzőt.
+  // A már lecserélt lejátszó eseménye nem írhatja felül az állapotot (a
+  // referencia-ellenőrzés emiatt van), különben egy gyorsan kattintgató
+  // felhasználónál a gomb pulzálva ragadna egy néma hangon.
+  const stopIntroPreview = useCallback(() => {
+    const a = introPreviewRef.current;
+    introPreviewRef.current = null;
+    if (a) { try { a.pause(); a.src = ""; } catch { /* ignore */ } }
+    setIntroPreviewId(null);
+  }, []);
+
+  // Lapelhagyáskor ne maradjon szóló hang a háttérben.
+  useEffect(() => stopIntroPreview, [stopIntroPreview]);
+
+  function toggleIntroPreview(key: string, url: string | null) {
+    if (introPreviewId === key) { stopIntroPreview(); return; }
+    stopIntroPreview();
+    if (!url) { setIntroUploadError(t("messages:introSound.previewFailed")); return; }
+
+    const a = new Audio(`${API_BASE}${url}`);
+    a.preload = "none";
+    a.onended = () => { if (introPreviewRef.current === a) stopIntroPreview(); };
+    a.onerror = () => {
+      if (introPreviewRef.current !== a) return;
+      setIntroUploadError(t("messages:introSound.previewFailed"));
+      stopIntroPreview();
+    };
+    introPreviewRef.current = a;
+    setIntroPreviewId(key);
+    setIntroUploadError(null);
+    void a.play().catch((e:any) => {
+      // Megszakított play() – ezt épp mi kértük, nem hiba.
+      if (e?.name === "AbortError") return;
+      if (introPreviewRef.current !== a) return;
+      setIntroUploadError(e?.message ?? t("messages:introSound.previewFailed"));
+      stopIntroPreview();
+    });
+  }
+
+  async function submitIntroRename() {
+    if (!introRenaming) return;
+    const name = stripAccents(introRenaming.value).trim();
+    if (!name) return;
+    setIntroRenameBusy(true);
+    try {
+      await apiFetch(`/bells/intro-sounds/${introRenaming.id}/rename`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      setIntroRenaming(null);
+      await loadIntroSounds();
+    } catch (e:any) {
+      setIntroUploadError(e?.message ?? t("messages:introSound.renameFailed"));
+    } finally {
+      setIntroRenameBusy(false);
+    }
   }
   async function uploadIntroSound(file: File) {
     if (file.size > 200 * 1024) {
@@ -281,8 +359,12 @@ export default function Messages() {
   async function deleteIntroSound(id: string) {
     if (!window.confirm(t("messages:introSound.deleteConfirm"))) return;
     try {
+      // A törölt fájlra mutató lejátszó némán tovább pörögne, a gomb pedig
+      // pulzálva ragadna – előbb állítsuk le.
+      if (introPreviewId === id) stopIntroPreview();
       await apiFetch(`/bells/intro-sounds/${id}`, { method: "DELETE" });
       if (preBellSoundId === id) setPreBellSoundId("");
+      if (introRenaming?.id === id) setIntroRenaming(null);
       await loadIntroSounds();
     } catch (e:any) {
       setIntroUploadError(e?.message ?? t("messages:introSound.deleteFailed"));
@@ -582,50 +664,127 @@ export default function Messages() {
   }
 
   // ── Intro hang választó (composer-ben TTS és Record módban közös) ─────────
+  //
+  // A választó LENYÍLÓ marad, a műveletek viszont a felirat sorába kerültek,
+  // jobbra rendezve – ugyanaz az elrendezés és viselkedés, mint a csengetési
+  // rend hangkönyvtáránál (BellSchedule): a gombok mindig a ÉPPEN KIVÁLASZTOTT
+  // elemre hatnak, nem soronként ismétlődnek.
   function IntroSoundPicker() {
+    const selected   = introSounds.find(x => x.id === preBellSoundId) ?? null;
+    // Üres érték = a gyári dingdong. Ennek nincs BellSoundFile sora, ezért
+    // se nem törölhető, se nem nevezhető át – a szerver a nevére hivatkozik
+    // (tts.service DINGDONG_SOURCES), és ez az utolsó védvonal, ha egy
+    // feltöltött intro hiányzik.
+    const isDefault  = !preBellSoundId;
+    const previewKey = isDefault ? INTRO_DEFAULT_KEY : preBellSoundId;
+    const previewUrl = isDefault ? introDefaultUrl : (selected?.url ?? null);
+    const playing    = introPreviewId === previewKey;
+    const canPreview = !!previewUrl;
+    const canModify  = !!selected;
+
     return (
       <div>
-        <label className="ms-label">🔔 {t("messages:introSound.label")}</label>
-        <div className="ms-row" style={{alignItems:"center"}}>
-          <select
-            className="ms-select"
-            style={{flex:1, minWidth:180}}
-            value={preBellSoundId}
-            onChange={e => setPreBellSoundId(e.target.value)}>
-            <option value="">🔔 {t("messages:introSound.defaultOption")}</option>
-            {introSounds.map(s => (
-              <option key={s.id} value={s.id}>
-                🎵 {displayName(s.filename)}{s.durationMs ? ` (${(s.durationMs/1000).toFixed(1)}s)` : ""}
-              </option>
-            ))}
-          </select>
-          <input
-            ref={introFileRef}
-            type="file"
-            accept="audio/*"
-            style={{display:"none"}}
-            onChange={e => {
-              const f = e.target.files?.[0];
-              if (f) void uploadIntroSound(f);
-            }} />
-          <button
-            type="button"
-            className="ms-btn ms-btn-ghost ms-btn-sm"
-            onClick={() => introFileRef.current?.click()}
-            disabled={introUploadBusy}
-            title={t("messages:introSound.uploadTitle")}>
-            {introUploadBusy ? `⏳ ${t("messages:introSound.uploading")}` : `＋ ${t("messages:introSound.uploadButton")}`}
-          </button>
-          {preBellSoundId && (
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:6}}>
+          <label className="ms-label" style={{margin:0}}>🔔 {t("messages:introSound.label")}</label>
+          {isDefault && (
+            <span style={{fontSize:11,background:"#2a3a6a",color:"#3b82f6",borderRadius:4,padding:"2px 6px"}}>
+              {t("messages:introSound.defaultBadge")}
+            </span>
+          )}
+
+          <div style={{flex:1}} />
+
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <input
+              ref={introFileRef}
+              type="file"
+              accept="audio/*"
+              style={{display:"none"}}
+              onChange={e => {
+                const f = e.target.files?.[0];
+                if (f) void uploadIntroSound(f);
+              }} />
+            <button
+              type="button"
+              className="ms-btn ms-btn-ghost ms-btn-sm"
+              onClick={() => introFileRef.current?.click()}
+              disabled={introUploadBusy}
+              title={t("messages:introSound.uploadTitle")}>
+              {introUploadBusy
+                ? `⏳ ${t("messages:introSound.uploading")}`
+                : `📤 ${t("messages:introSound.uploadButton")}`}
+            </button>
+            <button
+              type="button"
+              className={`ms-btn ms-btn-ghost ms-btn-sm${playing ? " ms-preview-on" : ""}`}
+              onClick={() => toggleIntroPreview(previewKey, previewUrl)}
+              disabled={!canPreview}
+              title={t("messages:introSound.previewTitle")}>
+              {playing
+                ? `■ ${t("messages:introSound.previewStopButton")}`
+                : `▶ ${t("messages:introSound.previewButton")}`}
+            </button>
+            <button
+              type="button"
+              className="ms-btn ms-btn-ghost ms-btn-sm"
+              onClick={() => setIntroRenaming({ id: selected!.id, value: displayName(selected!.filename) })}
+              disabled={!canModify}
+              title={t("messages:introSound.renameTitle")}>
+              ✏️ {t("messages:introSound.renameButton")}
+            </button>
             <button
               type="button"
               className="ms-btn ms-btn-danger ms-btn-sm"
-              onClick={() => void deleteIntroSound(preBellSoundId)}
+              onClick={() => void deleteIntroSound(selected!.id)}
+              disabled={!canModify}
               title={t("messages:introSound.deleteTitle")}>
-              🗑
+              🗑 {t("common:actions.delete")}
             </button>
-          )}
+          </div>
         </div>
+
+        <select
+          className="ms-select"
+          style={{width:"100%"}}
+          value={preBellSoundId}
+          onChange={e => {
+            // Váltásnál ne szóljon tovább az előző hang.
+            stopIntroPreview();
+            setIntroRenaming(null);
+            setPreBellSoundId(e.target.value);
+          }}>
+          <option value="">🔔 {t("messages:introSound.defaultOption")}</option>
+          {introSounds.map(s => (
+            <option key={s.id} value={s.id}>
+              🎵 {displayName(s.filename)}{s.durationMs ? ` (${(s.durationMs/1000).toFixed(1)}s)` : ""}
+            </option>
+          ))}
+        </select>
+
+        {introRenaming && (
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginTop:8,
+                       background:"var(--sl-surface)",border:"1px solid var(--sl-border)",
+                       borderRadius:8,padding:10}}>
+            <span style={{fontSize:13,color:"var(--sl-muted)"}}>{t("messages:introSound.renameLabel")}</span>
+            <input autoFocus className="ms-input" style={{flex:1,minWidth:160}}
+              value={introRenaming.value} disabled={introRenameBusy}
+              onChange={e => setIntroRenaming(r => r ? { ...r, value: stripAccents(e.target.value) } : r)}
+              onKeyDown={e => {
+                if (e.key === "Enter")  void submitIntroRename();
+                if (e.key === "Escape") setIntroRenaming(null);
+              }} />
+            <button type="button" className="ms-btn ms-btn-primary ms-btn-sm"
+              disabled={introRenameBusy || !introRenaming.value.trim()}
+              onClick={() => void submitIntroRename()}>
+              {introRenameBusy ? t("common:actions.loading") : t("common:actions.save")}
+            </button>
+            <button type="button" className="ms-btn ms-btn-ghost ms-btn-sm"
+              disabled={introRenameBusy} onClick={() => setIntroRenaming(null)}>
+              {t("common:actions.cancel")}
+            </button>
+          </div>
+        )}
+
         {introUploadError && (
           <div style={{fontSize:12,marginTop:5,color:"#dc2626"}}>{introUploadError}</div>
         )}

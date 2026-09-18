@@ -59,7 +59,16 @@
     "deleteFailed": "Brisanje nije uspjelo",
     "maxSizeError": "Datoteka može imati najviše 200 KB (dovoljno za 7s mp3).",
     "uploadFailed": "Prijenos nije uspio",
-    "hint": "Najviše 7 sekundi. Ako ostavite prazno, oglasit će se zadani „dingdong”."
+    "hint": "Najviše 7 sekundi. Ako ostavite prazno, oglasit će se zadani „dingdong”.",
+    "previewButton": "Poslušaj",
+    "previewStopButton": "Zaustavi",
+    "previewTitle": "Pregled",
+    "renameButton": "Preimenuj",
+    "renameLabel": "Novo ime:",
+    "renameTitle": "Preimenuj",
+    "defaultBadge": "Zadano",
+    "renameFailed": "Preimenovanje nije uspjelo.",
+    "previewFailed": "Zvuk se nije mogao reproducirati."
   },
   "target": {
     "label": "Uređaji za reprodukciju",

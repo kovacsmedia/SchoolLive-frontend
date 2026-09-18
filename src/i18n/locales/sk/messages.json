@@ -59,7 +59,16 @@
     "deleteFailed": "Vymazanie zlyhalo",
     "maxSizeError": "Súbor môže mať maximálne 200 KB (postačuje na 7s mp3).",
     "uploadFailed": "Nahrávanie na server zlyhalo",
-    "hint": "Maximálne 7 sekúnd. Ak ponecháte prázdne, zaznie predvolený „dingdong“."
+    "hint": "Maximálne 7 sekúnd. Ak ponecháte prázdne, zaznie predvolený „dingdong“.",
+    "previewButton": "Vypočuť si",
+    "previewStopButton": "Zastaviť",
+    "previewTitle": "Ukážka",
+    "renameButton": "Premenovať",
+    "renameLabel": "Nový názov:",
+    "renameTitle": "Premenovať",
+    "defaultBadge": "Predvolené",
+    "renameFailed": "Premenovanie zlyhalo.",
+    "previewFailed": "Zvuk sa nepodarilo prehrať."
   },
   "target": {
     "label": "Prehrávacie zariadenia",

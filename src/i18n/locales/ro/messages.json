@@ -59,7 +59,16 @@
     "deleteFailed": "Ștergerea a eșuat",
     "maxSizeError": "Fișierul poate avea maximum 200 KB (suficient pentru un mp3 de 7s).",
     "uploadFailed": "Încărcarea a eșuat",
-    "hint": "Maximum 7 secunde. Dacă lăsați gol, va suna implicit „dingdong”."
+    "hint": "Maximum 7 secunde. Dacă lăsați gol, va suna implicit „dingdong”.",
+    "previewButton": "Ascultă",
+    "previewStopButton": "Oprire",
+    "previewTitle": "Previzualizare",
+    "renameButton": "Redenumire",
+    "renameLabel": "Nume nou:",
+    "renameTitle": "Redenumire",
+    "defaultBadge": "Implicit",
+    "renameFailed": "Redenumirea a eșuat.",
+    "previewFailed": "Sunetul nu a putut fi redat."
   },
   "target": {
     "label": "Dispozitive de redare",

@@ -59,7 +59,16 @@
     "deleteFailed": "Delete failed",
     "maxSizeError": "The file must be max 200 KB (enough for a 7s mp3).",
     "uploadFailed": "Upload failed",
-    "hint": "Max 7 seconds. If left empty, the default \"ding-dong\" will play."
+    "hint": "Max 7 seconds. If left empty, the default \"ding-dong\" will play.",
+    "previewButton": "Preview",
+    "previewStopButton": "Stop",
+    "previewTitle": "Preview",
+    "renameButton": "Rename",
+    "renameLabel": "New name:",
+    "renameTitle": "Rename",
+    "defaultBadge": "Default",
+    "renameFailed": "Rename failed.",
+    "previewFailed": "Could not play the sound."
   },
   "target": {
     "label": "Playback devices",

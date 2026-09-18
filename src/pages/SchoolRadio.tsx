@@ -3423,10 +3423,26 @@ export default function SchoolRadio() {
                         <span className="sr-pl-num">{idx + 1}</span>
 
                         <div className="sr-pl-info">
-                          <div className="sr-pl-title" title={item.title}>
-                            {item.status === "fetching" ? "⏳ " : item.status === "error" ? "❌ " : ""}
-                            {item.title}
-                          </div>
+                          {/*
+                            * A YouTube-címet SOHA nem csonkoljuk: az egy
+                            * ember által írt videócím, aminek a végén egy
+                            * pont utáni rövid szó (pl. "…feat.Abc") nem
+                            * kiterjesztés. A többi forrásnál viszont a cím
+                            * fájlnévből származik (RadioFile.originalName,
+                            * illetve feltöltésnél a File.name), és ott a
+                            * ".mp3"/".opus" végződés csak zaj.
+                            */}
+                          {(() => {
+                            const shown = item.source === "youtube"
+                              ? item.title
+                              : displayName(item.title);
+                            return (
+                              <div className="sr-pl-title" title={shown}>
+                                {item.status === "fetching" ? "⏳ " : item.status === "error" ? "❌ " : ""}
+                                {shown}
+                              </div>
+                            );
+                          })()}
 
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
                             <span

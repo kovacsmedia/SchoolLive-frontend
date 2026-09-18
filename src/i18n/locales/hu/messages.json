@@ -59,7 +59,16 @@
     "deleteFailed": "Törlés sikertelen",
     "maxSizeError": "A fájl max 200 KB lehet (7s mp3-hoz elég).",
     "uploadFailed": "Feltöltés sikertelen",
-    "hint": "Max 7 másodperc. Ha üresen hagyod, a default „dingdong” szól."
+    "hint": "Max 7 másodperc. Ha üresen hagyod, a default „dingdong” szól.",
+    "previewButton": "Belehallgat",
+    "previewStopButton": "Leállítás",
+    "previewTitle": "Belehallgatás",
+    "renameButton": "Átnevezés",
+    "renameLabel": "Új név:",
+    "renameTitle": "Átnevezés",
+    "defaultBadge": "Alapértelmezett",
+    "renameFailed": "Az átnevezés nem sikerült.",
+    "previewFailed": "A hang lejátszása nem sikerült."
   },
   "target": {
     "label": "Lejátszó eszközök",

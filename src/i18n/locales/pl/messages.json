@@ -59,7 +59,16 @@
     "deleteFailed": "Usuwanie nie powiodło się",
     "maxSizeError": "Plik może mieć maksymalnie 200 KB (wystarcza na 7s mp3).",
     "uploadFailed": "Przesyłanie nie powiodło się",
-    "hint": "Maksymalnie 7 sekund. Jeśli pozostawisz puste, zabrzmi domyślny „dingdong”."
+    "hint": "Maksymalnie 7 sekund. Jeśli pozostawisz puste, zabrzmi domyślny „dingdong”.",
+    "previewButton": "Odsłuchaj",
+    "previewStopButton": "Zatrzymaj",
+    "previewTitle": "Podgląd",
+    "renameButton": "Zmień nazwę",
+    "renameLabel": "Nowa nazwa:",
+    "renameTitle": "Zmień nazwę",
+    "defaultBadge": "Domyślny",
+    "renameFailed": "Zmiana nazwy nie powiodła się.",
+    "previewFailed": "Nie udało się odtworzyć dźwięku."
   },
   "target": {
     "label": "Urządzenia odtwarzające",
