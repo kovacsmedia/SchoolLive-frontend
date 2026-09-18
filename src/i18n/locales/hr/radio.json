@@ -68,7 +68,8 @@
       "playing": "Trenutno svira – pritisnite ponovno za ponovno pokretanje",
       "error": "Reprodukcija nije uspjela",
       "idle": "Trenutna reprodukcija (na trenutno odabranom cilju)"
-    }
+    },
+    "renameLabel": "Novo ime:"
   },
   "youtube": {
     "description": "Pretraži YouTube video ili zalijepi link. U ugrađenom playeru možeš ga lokalno gledati/premotavati, nečujno za ostale — gumb „Pošalji uživo” ga stvarno pokreće na školskim zvučnicima.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Zakaži",
     "endTimeLabel": "Kraj reprodukcije",
     "endTimeOptional": "(nije obavezno)",
-    "endTimeHint": "Ako je zvuk dulji, ovdje ga stišavamo i zaustavljamo. Kod kraćeg zvuka nema učinka."
+    "endTimeHint": "Ako je zvuk dulji, ovdje ga stišavamo i zaustavljamo. Kod kraćeg zvuka nema učinka.",
+    "startFromLabel": "Početak",
+    "startFromBeginning": "Od početka",
+    "startFromPosition": "Od {{time}}"
   },
   "playlist": {
     "title": "Izrada playliste",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Pogreška pri provjeri statusa",
     "buildError": "Pogreška izrade",
     "genericError": "Pogreška: {{message}}",
-    "previewInsecureStream": "{{name}} nudi samo http:// stream, koji preglednik blokira na ovoj sigurnoj stranici. Reprodukciju u školi to NE dira: stream preuzima poslužitelj, gumb Pokreni radio radi."
+    "previewInsecureStream": "{{name}} nudi samo http:// stream, koji preglednik blokira na ovoj sigurnoj stranici. Reprodukciju u školi to NE dira: stream preuzima poslužitelj, gumb Pokreni radio radi.",
+    "previewFileFailed": "Reprodukcija nije uspjela.",
+    "renameFileFailed": "Preimenovanje nije uspjelo."
   }
 }

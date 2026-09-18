@@ -98,7 +98,10 @@
     "defaultBadge": "Predvolené",
     "previewButton": "Vypočuť si",
     "previewTitle": "Ukážka",
-    "closePlayerTitle": "Zavrieť prehrávač"
+    "closePlayerTitle": "Zavrieť prehrávač",
+    "renameButton": "Premenovať",
+    "renameLabel": "Nový názov:",
+    "previewStopButton": "Zastaviť"
   },
   "confirm": {
     "loadHolidays": "Načítať sviatky pre rok {{year}}?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Vymazanie sa nepodarilo.",
     "setDefaultFailed": "Nepodarilo sa nastaviť ako predvolenú.",
     "notEnoughSpace": "Nedostatok miesta! Dostupné: {{available}}, potrebné: {{needed}}",
-    "uploadFailed": "Chyba nahrávania"
+    "uploadFailed": "Chyba nahrávania",
+    "renameSoundFailed": "Premenovanie zlyhalo.",
+    "previewSoundFailed": "Zvuk sa nepodarilo prehrať."
   },
   "shared": {
     "saveButton": "Uložiť",

@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Zostavenie novej správy. Predchádzajúce sú dostupné v samostatnom okne.",
-    "historyButton": "Predchádzajúce správy"
+    "subtitle": "Zostavenie novej správy. Predchádzajúce sú dostupné v samostatnom okne."
   },
   "success": {
     "sent": "Správa bola úspešne odoslaná!",
@@ -95,37 +94,5 @@
     "button": "Vygenerovať a vypočuť",
     "generating": "Generovanie…",
     "downloadButton": "Stiahnuť"
-  },
-  "history": {
-    "loadFailed": "Načítanie zlyhalo",
-    "deleteConfirmSingle": "Vymazať túto správu?",
-    "deleteConfirmBulk": "Vymazať {{count}} vybraných správ?",
-    "deleteSelected": "Vymazať vybrané ({{count}})",
-    "empty": "Zatiaľ nebola odoslaná žiadna správa",
-    "replayTooltip": "Znova prehrať (cieľ + čas je možné zvoliť)",
-    "noFileTooltip": "Žiadny uložený súbor",
-    "replayAction": "Znova",
-    "detailsAction": "Podrobnosti",
-    "prevPage": "Predchádzajúca",
-    "nextPage": "Ďalšia",
-    "voiceMessage": "Hlasová správa"
-  },
-  "detail": {
-    "title": "Podrobnosti správy",
-    "from": "Odosielateľ",
-    "created": "Vytvorené",
-    "scheduled": "Naplánované",
-    "played": "Prehrané",
-    "target": "Cieľ",
-    "textLabel": "Text"
-  },
-  "replay": {
-    "title": "Znova prehrať správu",
-    "storedFileNote": "Odošle sa uložený zvukový súbor – dingdong sa už nepridá znova.",
-    "noFileError": "K tejto správe nie je uložený žiadny súbor.",
-    "replayFailed": "Opätovné prehratie zlyhalo",
-    "sending": "Odosielanie…",
-    "sendImmediate": "Okamžite",
-    "schedule": "Naplánovať"
   }
 }

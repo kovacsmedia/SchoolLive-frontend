@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, getBaseUrl } from "../lib/api";
+import { displayName, stripAccents } from "../lib/text";
 
 type BellType = "MAIN" | "SIGNAL";
 
@@ -26,6 +27,9 @@ type BellSoundFile = {
   filename: string;
   sizeBytes: number;
   isDefault: boolean;
+  /** ffprobe-val mért hossz. Régi soroknál null lehet, amíg az
+   *  `audit-audio-format.mjs --apply` be nem pótolja. */
+  durationMs?: number | null;
   /** A szerver által adott lejátszási útvonal (`/audio/bells/…`).
    *  Régebbi backendtől hiányozhat – ld. a belehallgatás tartalék ágát. */
   url?: string;
@@ -62,6 +66,14 @@ function fmtBytes(b: number) {
   if (b < 1024) return `${b} B`;
   if (b < 1024 * 1024) return `${Math.round(b / 1024)} KB`;
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+}
+/** Hang hossza ember-olvashatóan: 8.2s, illetve 1:05 egy perc fölött. */
+function fmtDuration(ms: number) {
+  const sec = ms / 1000;
+  if (sec < 60) return `${sec.toFixed(1)}s`;
+  const m = Math.floor(sec / 60);
+  const rest = Math.round(sec % 60);
+  return `${m}:${String(rest).padStart(2, "0")}`;
 }
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -105,6 +117,18 @@ export default function BellSchedule() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Új: belehallgatás – melyik hang sora van kibontva audio player-rel.
   const [previewSoundId, setPreviewSoundId] = useState<string|null>(null);
+  /* A rádió-fülön bevált minta: a sor KIJELÖLHETŐ, a műveletek pedig fixen a
+     lista fölött vannak – így mobilon nem kell soronként három gomb. */
+  const [selectedSoundId, setSelectedSoundId] = useState<string|null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  /*
+   * Belehallgatás: EGY Audio objektum, lejátszósáv nélkül – ugyanaz a minta,
+   * mint az internetrádióknál. A gomb pulzál, amíg szól; újrakattintásra áll.
+   * A refre azért van szükség, hogy a leállítás ne a React-állapot
+   * frissülésére várjon, és hogy fül-váltáskor is biztosan elhallgasson.
+   */
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [hasLock, setHasLock] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
@@ -273,7 +297,16 @@ export default function BellSchedule() {
   // Új sor hozzáadása: pending módba kerül, a tetején jelenik meg
   function addBellEntry() {
     if (!editTemplate || pendingBell) return;
-    const defaultSound = sounds.find(s => s.filename === "kibecsengo.mp3")?.filename ?? sounds[0]?.filename ?? "kibecsengo.mp3";
+    /*
+     * A kiterjesztést NEM rögzítjük: a rendszer Opusra állt, de az átállás
+     * alatt a szerver a régi firmware-ű eszközöknek még .mp3 nevet küld.
+     * Alapnévre keresünk, így mindkét esetben a helyes hang jön.
+     */
+    const base = (n: string) => n.replace(/\.[^.]+$/, "").toLowerCase();
+    const defaultSound =
+      sounds.find(s => base(s.filename) === "kibecsengo")?.filename
+      ?? sounds[0]?.filename
+      ?? "kibecsengo.opus";
     setPendingBell({ hour: 8, minute: 0, type: "MAIN", soundFile: defaultSound });
   }
 
@@ -421,7 +454,7 @@ export default function BellSchedule() {
         {!!current && !known && (
           <option value={current}>⚠ {current} — {t("templates.soundMissing")}</option>
         )}
-        {sounds.map(s => <option key={s.id} value={s.filename}>{s.filename}</option>)}
+        {sounds.map(s => <option key={s.id} value={s.filename}>{displayName(s.filename)}</option>)}
       </>
     );
   };
@@ -471,6 +504,60 @@ export default function BellSchedule() {
       .filter(u => u.times.length > 0);
   }
 
+  const stopSoundPreview = useCallback(() => {
+    const a = previewAudioRef.current;
+    previewAudioRef.current = null;
+    if (a) { try { a.pause(); a.src = ""; } catch { /* ignore */ } }
+    setPreviewSoundId(null);
+  }, []);
+
+  // Lapelhagyáskor ne maradjon szóló hang a háttérben.
+  useEffect(() => stopSoundPreview, [stopSoundPreview]);
+
+  function toggleSoundPreview(s: BellSoundFile) {
+    if (previewSoundId === s.id) { stopSoundPreview(); return; }
+    stopSoundPreview();
+
+    const url = `${getBaseUrl()}${s.url ?? `/audio/bells/${encodeURIComponent(s.filename)}`}`;
+    const a = new Audio(url);
+    a.preload = "none";
+    // Egy már lecserélt lejátszó eseménye ne írja felül az állapotot.
+    a.onended = () => { if (previewAudioRef.current === a) stopSoundPreview(); };
+    a.onerror = () => {
+      if (previewAudioRef.current !== a) return;
+      setError(t("errors.previewSoundFailed"));
+      stopSoundPreview();
+    };
+    previewAudioRef.current = a;
+    setPreviewSoundId(s.id);
+    void a.play().catch((e: any) => {
+      // Megszakított play() – ez nem hiba, épp ezt kértük tőle.
+      if (e?.name === "AbortError") return;
+      if (previewAudioRef.current !== a) return;
+      setError(e?.message ?? t("errors.previewSoundFailed"));
+      stopSoundPreview();
+    });
+  }
+
+  async function submitRename() {
+    if (!renaming) return;
+    const name = stripAccents(renaming.value).trim();
+    if (!name) return;
+    setRenameBusy(true);
+    try {
+      await apiFetch(`/bells/sounds/${renaming.id}/rename`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      setRenaming(null);
+      await loadSounds();
+    } catch (e: any) {
+      setError(e?.message ?? t("errors.renameSoundFailed"));
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
   async function deleteSound(s: BellSoundFile) {
     /*
      * HASZNÁLATBAN LÉVŐ HANG TÖRLÉSE.
@@ -492,7 +579,7 @@ export default function BellSchedule() {
         count,
         details,
       }))) return;
-    } else if (!confirm(t("confirm.deleteSound", { filename: s.filename }))) {
+    } else if (!confirm(t("confirm.deleteSound", { filename: displayName(s.filename) }))) {
       return;
     }
     try {
@@ -798,56 +885,100 @@ export default function BellSchedule() {
           </div>
           <div style={{ fontSize: 12, color: "var(--sl-muted)", marginTop: 4 }}>{t("sounds.available", { available: fmtBytes(available) })}</div>
         </div>
-        <div style={{ marginBottom: 16 }}>
+        {/* ── Gombsor: feltöltés balra, műveletek jobbra ──────────────────
+             A rádió-fülön bevált minta. Mobilon soronként három gomb
+             használhatatlanul szűkre nyomta a nevet; itt a sor kijelölhető,
+             a művelet pedig mindig ugyanott van. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           <input ref={fileInputRef} type="file" accept="audio/*,.mp3,.opus,.wav,.ogg,.m4a,.aac,.flac" style={{ display: "none" }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadSound(f); e.target.value = ""; }} />
           <button className="sl-btn sl-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={uploading || available <= 0}>
             {uploading ? t("sounds.uploadingButton") : `📤 ${t("sounds.uploadButton")}`}
           </button>
-          {available <= 0 && <span style={{ marginLeft: 8, color: "#ef4444", fontSize: 13 }}>{t("sounds.noFreeSpace")}</span>}
+          {available <= 0 && <span style={{ color: "#ef4444", fontSize: 13 }}>{t("sounds.noFreeSpace")}</span>}
+
+          <div style={{ flex: 1 }} />
+
+          {(() => {
+            const sel = sounds.find(x => x.id === selectedSoundId) ?? null;
+            const canAct = !!sel;
+            // A gyári hangokra a backend konstansai NÉV SZERINT hivatkoznak,
+            // ezért azok se nem törölhetők, se nem nevezhetők át.
+            const canModify = canAct && !sel!.isDefault;
+            return (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  className={`sl-btn sl-btn-secondary${previewSoundId === selectedSoundId && previewSoundId ? " bs-preview-on" : ""}`}
+                  disabled={!canAct}
+                  onClick={() => toggleSoundPreview(sel!)}
+                  title={t("sounds.previewTitle")}>
+                  {previewSoundId === selectedSoundId && previewSoundId
+                    ? `■ ${t("sounds.previewStopButton")}`
+                    : `▶ ${t("sounds.previewButton")}`}
+                </button>
+                <button className="sl-btn sl-btn-secondary" disabled={!canModify}
+                  onClick={() => setRenaming({ id: sel!.id, value: displayName(sel!.filename) })}>
+                  ✏️ {t("sounds.renameButton")}
+                </button>
+                <button className="sl-btn sl-btn-danger" disabled={!canModify}
+                  onClick={() => deleteSound(sel!)}>
+                  🗑 {t("common:actions.delete")}
+                </button>
+              </div>
+            );
+          })()}
         </div>
+
+        {renaming && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 16,
+                        background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--sl-muted)" }}>{t("sounds.renameLabel")}</span>
+            <input autoFocus className="sl-input" style={{ flex: 1, minWidth: 180 }}
+              value={renaming.value} disabled={renameBusy}
+              onChange={e => setRenaming(r => r ? { ...r, value: stripAccents(e.target.value) } : r)}
+              onKeyDown={e => { if (e.key === "Enter") void submitRename(); if (e.key === "Escape") setRenaming(null); }} />
+            <button className="sl-btn sl-btn-primary" disabled={renameBusy || !renaming.value.trim()}
+              onClick={() => void submitRename()}>
+              {renameBusy ? t("common:actions.loading") : t("common:actions.save")}
+            </button>
+            <button className="sl-btn sl-btn-ghost" disabled={renameBusy} onClick={() => setRenaming(null)}>
+              {t("common:actions.cancel")}
+            </button>
+          </div>
+        )}
+
         {soundsLoading ? <div style={{ color: "var(--sl-muted)" }}>{t("common:actions.loading")}</div> : (
           <div style={{ display: "grid", gap: 8 }}>
             {sounds.map(s => {
               /*
-               * Az URL-t a SZERVER adja (`s.url`), nem mi rakjuk össze.
-               *
-               * A feltöltések tenant-szeparált könyvtárba kerülnek
-               * (`/audio/bells/<tenantId>/…`), a régebbi hangok viszont még a
-               * közös, lapos helyen vannak – melyik hol, azt csak a szerver
-               * tudja. A kézzel, mindig laposan összerakott útvonal miatt egy
-               * frissen feltöltött hang belehallgatása 404-et kapott: a
-               * lejátszó 0:00-t mutatott és néma maradt.
-               *
-               * A `?? ` ág csak a köztes állapotot fedi, amíg a backend
-               * frissítése meg nem érkezik.
+               * Az URL-t a SZERVER adja (`s.url`), nem mi rakjuk össze: a
+               * feltöltések tenant-szeparált könyvtárba kerülnek, a régebbi
+               * hangok viszont még a közös, lapos helyen vannak.
                */
-              const apiBase  = getBaseUrl();
-              const soundUrl = s.url ?? `/audio/bells/${encodeURIComponent(s.filename)}`;
-              const audioUrl = `${apiBase}${soundUrl}`;
-              const expanded = previewSoundId === s.id;
+              const selected = selectedSoundId === s.id;
+              const playing  = previewSoundId === s.id;
               return (
-                <div key={s.id} style={{ background: "var(--sl-surface)", border: "1px solid var(--sl-border)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div key={s.id}
+                  onClick={() => setSelectedSoundId(prev => prev === s.id ? null : s.id)}
+                  style={{
+                    background: selected ? "var(--sl-surface-hover, #2a3350)" : "var(--sl-surface)",
+                    border: `1px solid ${selected ? "#3b82f6" : "var(--sl-border)"}`,
+                    borderRadius: 8, padding: 12, cursor: "pointer",
+                    display: "flex", flexDirection: "column", gap: 8,
+                  }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ fontSize: 20 }}>🔔</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{s.filename}
+                    <div style={{ fontSize: 20 }}>{selected ? "🔘" : "🔔"}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {displayName(s.filename)}
                         {s.isDefault && <span style={{ marginLeft: 8, fontSize: 11, background: "#2a3a6a", color: "#3b82f6", borderRadius: 4, padding: "2px 6px" }}>{t("sounds.defaultBadge")}</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>{fmtBytes(s.sizeBytes)}</div>
+                      <div style={{ fontSize: 12, color: "var(--sl-muted)" }}>
+                        {s.durationMs ? `${fmtDuration(s.durationMs)} · ` : ""}{fmtBytes(s.sizeBytes)}
+                      </div>
                     </div>
-                    {/* ▶ Belehallgatás – toggle a preview-audio player-re */}
-                    <button
-                      className="sl-btn sl-btn-secondary"
-                      onClick={() => setPreviewSoundId(prev => prev === s.id ? null : s.id)}
-                      title={expanded ? t("sounds.closePlayerTitle") : t("sounds.previewTitle")}>
-                      {expanded ? `▾ ${t("common:actions.close")}` : `▶ ${t("sounds.previewButton")}`}
-                    </button>
-                    {!s.isDefault && <button className="sl-btn sl-btn-danger" onClick={() => deleteSound(s)}>{t("common:actions.delete")}</button>}
+                    {playing && <span className="bs-preview-on" style={{ fontSize: 16 }} title={t("sounds.previewTitle")}>🔊</span>}
                   </div>
-                  {expanded && (
-                    <audio controls autoPlay src={audioUrl} style={{ width: "100%", height: 36 }} />
-                  )}
                 </div>
               );
             })}
@@ -860,6 +991,10 @@ export default function BellSchedule() {
   return (
     <div style={{ maxWidth: 900, fontFamily: "'Nunito','Segoe UI',sans-serif" }}>
       <style>{`
+        /* Belehallgatás jelzése: 1 mp-es pulzálás – ugyanaz, mint az
+           internetrádióknál (SchoolRadio .sr-preview-on). */
+        .bs-preview-on{animation:bs-preview-pulse 1s ease-in-out infinite}
+        @keyframes bs-preview-pulse{0%,100%{opacity:1}50%{opacity:0.45}}
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
         :root{
           --sl-font:'Nunito','Segoe UI',sans-serif;

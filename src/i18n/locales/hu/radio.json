@@ -68,7 +68,8 @@
       "playing": "Most szól – újraindításhoz nyomd meg",
       "error": "A lejátszás nem sikerült",
       "idle": "Azonnali lejátszás (az aktuálisan kiválasztott célon)"
-    }
+    },
+    "renameLabel": "Új név:"
   },
   "youtube": {
     "description": "Keress rá egy YouTube videóra, vagy illessz be egy linket. A beágyazott lejátszóban helyben, a többiek felé némán nézheted/tekerheted meg – az „Élő adásba küldés\" gombbal indul csak el az iskolai hangszórókon.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Ütemezés",
     "endTimeLabel": "Lejátszás vége",
     "endTimeOptional": "(nem kötelező)",
-    "endTimeHint": "Ha a hang ennél hosszabb, itt lekeverjük és leállítjuk. Rövidebb hangnál nincs hatása."
+    "endTimeHint": "Ha a hang ennél hosszabb, itt lekeverjük és leállítjuk. Rövidebb hangnál nincs hatása.",
+    "startFromLabel": "Kezdőpont",
+    "startFromBeginning": "Az elejétől",
+    "startFromPosition": "Innentől: {{time}}"
   },
   "playlist": {
     "title": "Lejátszási lista készítő",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Hiba az állapotlekérdezéskor",
     "buildError": "Build hiba",
     "genericError": "Hiba: {{message}}",
-    "previewInsecureStream": "A(z) {{name}} csak http:// streamet ad, amit a böngésző biztonsági okból nem játszik le ezen az oldalon. Az iskolai lejátszást ez NEM érinti: azt a szerver tölti le, a Rádió indítása gomb működik."
+    "previewInsecureStream": "A(z) {{name}} csak http:// streamet ad, amit a böngésző biztonsági okból nem játszik le ezen az oldalon. Az iskolai lejátszást ez NEM érinti: azt a szerver tölti le, a Rádió indítása gomb működik.",
+    "previewFileFailed": "A lejátszás nem sikerült.",
+    "renameFileFailed": "Az átnevezés nem sikerült."
   }
 }

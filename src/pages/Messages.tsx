@@ -1,15 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { apiFetch, apiPost } from "../lib/api";
-import { stripAccents } from "../lib/text";
-import { useAuth } from "../auth/AuthContext";
+import { displayName, stripAccents } from "../lib/text";
 import { SUPPORTED_LOCALES, LOCALE_NATIVE_NAMES, type SupportedLocale } from "../i18n";
 
-type MessageItem = {
-  id:string; title:string|null; text:string|null; type:string; voice:string|null; fileUrl:string|null;
-  targetType:string; targetId:string|null; scheduledAt:string|null; playedAt:string|null; createdAt:string;
-  createdBy:{ id:string; displayName:string|null; email:string };
-};
 type Template     = { id:string; name:string; text:string; voice:string; createdAt:string };
 type Device       = { id:string; name:string; online:boolean; deviceClass:string };
 type DeviceGroup  = { id:string; name:string };
@@ -47,19 +41,6 @@ function checkLessonOverlap(scheduledAt: Date, bells: BellEntry[]): boolean {
     }
   }
   return false;
-}
-function formatDate(iso:string|null) {
-  if (!iso) return "–";
-  return new Date(iso).toLocaleString("hu-HU",{ year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit" });
-}
-function excerpt(text:string|null,n=60) {
-  if (!text) return "–";
-  return text.length > n ? text.slice(0,n)+"…" : text;
-}
-function messageExcerpt(t: (k:string)=>string, m: MessageItem): string {
-  if (!m.text && m.fileUrl && m.fileUrl.includes("/rec_")) return `🎙️ ${t("messages:history.voiceMessage")}`;
-  if (!m.text) return "–";
-  return excerpt(m.text);
 }
 const API_BASE = (import.meta as any).env?.VITE_API_BASE ?? "https://api.schoollive.hu";
 
@@ -174,19 +155,6 @@ function fmtRecTime(sec: number): string {
 
 export default function Messages() {
   const { t, i18n } = useTranslation(["messages", "common"]);
-  const { state } = useAuth();
-  const role = state.status === "authed" ? (state.user as any)?.role || "" : "";
-  const canDelete = role === "SUPER_ADMIN" || role === "TENANT_ADMIN";
-
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage]   = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [listError, setListError] = useState<string|null>(null);
-  const [detailMsg, setDetailMsg] = useState<MessageItem|null>(null);
-  // Új: a "Korábbi üzenetek" overlay nyitva van-e. (A composer a fő view).
-  const [listOpen, setListOpen] = useState(false);
 
   // TTS state
   const [composerMode, setComposerMode] = useState<ComposerMode>("tts");
@@ -259,16 +227,6 @@ export default function Messages() {
   const recChunksRef     = useRef<BlobPart[]>([]);
   const recTimerRef      = useRef<ReturnType<typeof setInterval>|null>(null);
 
-  const LIMIT = 20;
-
-  async function loadMessages(p=1) {
-    setLoading(true); setListError(null);
-    try {
-      const res = await apiFetch<{ok:boolean;messages:MessageItem[];total:number}>(`/messages?page=${p}&limit=${LIMIT}`);
-      setMessages(res.messages); setTotal(res.total); setPage(p);
-    } catch (e:any) { setListError(e?.message??t("messages:history.loadFailed")); }
-    finally { setLoading(false); }
-  }
   async function loadTemplates() {
     try { const r = await apiFetch<{ok:boolean;templates:Template[]}>("/messages/templates"); setTemplates(r.templates); } catch {}
   }
@@ -280,20 +238,6 @@ export default function Messages() {
   }
   async function loadGroups() {
     try { const r = await apiFetch<{groups:DeviceGroup[]}>("/admin/devices/groups"); setGroups(r.groups??[]); } catch {}
-  }
-
-  async function deleteMessage(id:string) { try { await apiFetch(`/messages/${id}`,{method:"DELETE"}); } catch {} }
-  async function doDeleteOne(id:string) {
-    if (!window.confirm(t("messages:history.deleteConfirmSingle"))) return;
-    await deleteMessage(id); await loadMessages(page);
-  }
-  async function doBulkDelete() {
-    if (!window.confirm(t("messages:history.deleteConfirmBulk", { count: selectedIds.size }))) return;
-    await Promise.all(Array.from(selectedIds).map(id => deleteMessage(id)));
-    setSelectedIds(new Set()); await loadMessages(page);
-  }
-  function toggleSelect(id:string) {
-    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
 
   // ── Intro sounds (üzenet-előtti rövid bell hangok) ────────────────────────
@@ -345,75 +289,10 @@ export default function Messages() {
     }
   }
 
-  // ── Replay (újra-bemondatás) ──────────────────────────────────────────────
-  // Két "üzemmód":
-  //  1) replayQuick(id): a régi viselkedés – ALL target, azonnal
-  //  2) Replay modal: célzás + ütemezés (next_bell / custom / immediate)
-  type ReplayForm = {
-    messageId:   string;
-    messageName: string;
-    targetType:  "ALL" | "DEVICE" | "GROUP";
-    targetId:    string;
-    schedule:    "immediate" | "next_bell" | "custom";
-    customTime:  string;
-  };
-  const [replayForm, setReplayForm] = useState<ReplayForm | null>(null);
-  const [replayBusy, setReplayBusy] = useState(false);
-
-  function openReplayModal(m: MessageItem) {
-    if (!m.fileUrl) { setSendError(t("messages:replay.noFileError")); return; }
-    setReplayForm({
-      messageId:   m.id,
-      messageName: messageExcerpt(t, m),
-      targetType:  (m.targetType as any) ?? "ALL",
-      targetId:    m.targetId ?? "",
-      schedule:    "immediate",
-      customTime:  "",
-    });
-  }
-
-  async function submitReplay() {
-    if (!replayForm) return;
-    if (replayForm.targetType !== "ALL" && !replayForm.targetId) {
-      setSendError(t("messages:errors.chooseTarget")); return;
-    }
-    // Időpont számítása (mint a TTS composer-ben)
-    let scheduledAt: string | null = null;
-    if (replayForm.schedule === "next_bell") {
-      const nb = getNextBreakTime(bells);
-      if (!nb) { setSendError(t("messages:errors.noMoreBreaksToday")); return; }
-      scheduledAt = nb.toISOString();
-    } else if (replayForm.schedule === "custom") {
-      if (!replayForm.customTime) { setSendError(t("messages:errors.enterTime")); return; }
-      const today = new Date().toISOString().slice(0, 10);
-      const dt = new Date(`${today}T${replayForm.customTime}:00`);
-      if (dt <= new Date()) { setSendError(t("messages:errors.timePassed")); return; }
-      scheduledAt = dt.toISOString();
-    }
-    setReplayBusy(true);
-    setSendError(null); setSendSuccess(false);
-    try {
-      const body: any = { targetType: replayForm.targetType };
-      if (replayForm.targetType !== "ALL") body.targetId = replayForm.targetId;
-      if (scheduledAt) body.scheduledAt = scheduledAt;
-      await apiPost(`/messages/${replayForm.messageId}/replay`, body);
-      setSendSuccess(true);
-      setReplayForm(null);
-      await loadMessages(page);
-    } catch (e:any) {
-      setSendError(e?.message ?? t("messages:replay.replayFailed"));
-    } finally {
-      setReplayBusy(false);
-    }
-  }
-
-  // (régi gyors-replayMessage(id) függvény törölve – mostantól minden
-  // 🔁 Újra kattintás a `openReplayModal(m)`-on át megy, ami cél +
-  // időzítés választást is felajánl.)
-
   useEffect(() => {
     // A composer most a fő view → minden kezdő adat azonnal betöltődik.
-    loadMessages(1);
+    // (Az üzenet-előzmény betöltése megszűnt: a régi üzeneteket a rendszer
+    //  nem tárolja, a hangjuk a bemondás után törlődik.)
     loadTemplates();
     loadDevices();
     loadGroups();
@@ -569,7 +448,7 @@ export default function Messages() {
         scheduledAt:    getScheduledAt(),
         preBellSoundId: preBellSoundId || undefined,
       });
-      setSendSuccess(true); await loadMessages(1);
+      setSendSuccess(true);
     } catch (e:any) { setSendError(e?.message ?? t("messages:errors.sendFailed")); }
     finally { setSending(false); }
   }
@@ -601,7 +480,7 @@ export default function Messages() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || t("messages:record.uploadFailed"));
-      setSendSuccess(true); await loadMessages(1);
+      setSendSuccess(true);
     } catch (e:any) { setSendError(e?.message ?? t("messages:errors.sendFailed")); }
     finally { setSending(false); }
   }
@@ -639,8 +518,6 @@ export default function Messages() {
       setTranslating(null);
     }
   }
-
-  const totalPages = Math.ceil(total/LIMIT);
 
   // ── Cél + ütemezés UI (közös TTS és Recording esetén) ─────────────────────
   function TargetAndSchedule() {
@@ -718,7 +595,7 @@ export default function Messages() {
             <option value="">🔔 {t("messages:introSound.defaultOption")}</option>
             {introSounds.map(s => (
               <option key={s.id} value={s.id}>
-                🎵 {s.filename}{s.durationMs ? ` (${(s.durationMs/1000).toFixed(1)}s)` : ""}
+                🎵 {displayName(s.filename)}{s.durationMs ? ` (${(s.durationMs/1000).toFixed(1)}s)` : ""}
               </option>
             ))}
           </select>
@@ -767,14 +644,6 @@ export default function Messages() {
         <div>
           <div className="ms-title">📢 {t("common:nav.messages")}</div>
           <div className="ms-subtitle">{t("messages:header.subtitle")}</div>
-        </div>
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-          <button
-            className="ms-btn ms-btn-ghost"
-            onClick={() => { setListOpen(true); void loadMessages(1); }}
-            type="button">
-            📥 {t("messages:header.historyButton")}{total > 0 ? ` (${total})` : ""}
-          </button>
         </div>
       </div>
 
@@ -935,193 +804,6 @@ export default function Messages() {
           </div>
         </div>
       </div>
-
-      {/* ── Korábbi üzenetek overlay ──────────────────────────────────────── */}
-      {listOpen && (
-        <div className="ms-overlay" onClick={() => setListOpen(false)}>
-          <div className="ms-modal" style={{maxWidth:780}} onClick={e => e.stopPropagation()}>
-            <div className="ms-modal-hdr">
-              <div className="ms-modal-title">📥 {t("messages:header.historyButton")}{total>0 ? ` (${total})` : ""}</div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                {canDelete && selectedIds.size > 0 && (
-                  <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={doBulkDelete} type="button">
-                    🗑 {t("messages:history.deleteSelected", { count: selectedIds.size })}
-                  </button>
-                )}
-                <button className="ms-close" onClick={() => setListOpen(false)}>✕</button>
-              </div>
-            </div>
-            <div style={{padding:"14px 18px",maxHeight:"70vh",overflowY:"auto"}}>
-              {listError && <div className="ms-alert ms-alert-error" style={{marginBottom:10}}><span>⚠️</span>{listError}</div>}
-              {loading ? (
-                <div className="ms-empty"><div className="ms-empty-icon">⏳</div><div className="ms-empty-txt">{t("common:actions.loading")}</div></div>
-              ) : messages.length === 0 ? (
-                <div className="ms-empty">
-                  <div className="ms-empty-icon">📭</div>
-                  <div className="ms-empty-txt">{t("messages:history.empty")}</div>
-                </div>
-              ) : (
-                <div>
-                  {messages.map(m => (
-                    <div className="ms-msg-row" key={m.id}>
-                      {canDelete ? (
-                        <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelect(m.id)} style={{width:15,height:15,cursor:"pointer",flexShrink:0}} />
-                      ) : <span />}
-                      <div className="ms-msg-excerpt">{messageExcerpt(t, m)}</div>
-                      <div className="ms-msg-meta">{m.createdBy.displayName||m.createdBy.email}</div>
-                      <div className="ms-msg-time">
-                        {m.playedAt ? formatDate(m.playedAt) : m.scheduledAt ? `⏰ ${formatDate(m.scheduledAt)}` : formatDate(m.createdAt)}
-                      </div>
-                      <button
-                        className="ms-btn ms-btn-primary ms-btn-sm"
-                        onClick={() => openReplayModal(m)}
-                        disabled={!m.fileUrl}
-                        title={m.fileUrl ? t("messages:history.replayTooltip") : t("messages:history.noFileTooltip")}>
-                        🔁 {t("messages:history.replayAction")}
-                      </button>
-                      <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => setDetailMsg(m)}>{t("messages:history.detailsAction")}</button>
-                      {canDelete && (
-                        <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={() => void doDeleteOne(m.id)} title={t("common:actions.delete")}>🗑</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {totalPages > 1 && (
-                <div className="ms-pagination">
-                  <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page<=1} onClick={() => loadMessages(page-1)}>← {t("messages:history.prevPage")}</button>
-                  <span>{page} / {totalPages}</span>
-                  <button className="ms-btn ms-btn-ghost ms-btn-sm" disabled={page>=totalPages} onClick={() => loadMessages(page+1)}>{t("messages:history.nextPage")} →</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Detail modal */}
-      {detailMsg && (
-        <div className="ms-overlay" onClick={() => setDetailMsg(null)}>
-          <div className="ms-modal" onClick={e => e.stopPropagation()}>
-            <div className="ms-modal-hdr">
-              <div className="ms-modal-title">📄 {t("messages:detail.title")}</div>
-              <button className="ms-close" onClick={() => setDetailMsg(null)}>✕</button>
-            </div>
-            <div className="ms-modal-body">
-              <div className="ms-detail-grid">
-                <div className="ms-detail-key">{t("messages:detail.from")}</div><div>{detailMsg.createdBy.displayName||detailMsg.createdBy.email}</div>
-                <div className="ms-detail-key">{t("messages:detail.created")}</div><div>{formatDate(detailMsg.createdAt)}</div>
-                {detailMsg.scheduledAt && <><div className="ms-detail-key">{t("messages:detail.scheduled")}</div><div>{formatDate(detailMsg.scheduledAt)}</div></>}
-                {detailMsg.playedAt    && <><div className="ms-detail-key">{t("messages:detail.played")}</div><div>{formatDate(detailMsg.playedAt)}</div></>}
-                {detailMsg.voice && <><div className="ms-detail-key">{t("messages:composer.voiceLabel")}</div><div>{voiceLabel(t, detailMsg.voice)}</div></>}
-                <div className="ms-detail-key">{t("messages:detail.target")}</div><div>{detailMsg.targetType}{detailMsg.targetId?` (${detailMsg.targetId.slice(0,8)}…)`:""}</div>
-              </div>
-              {detailMsg.fileUrl && <audio controls src={detailMsg.fileUrl} style={{width:"100%"}} />}
-              {detailMsg.text && (
-                <div><div className="ms-label">{t("messages:detail.textLabel")}</div><div className="ms-detail-body">{detailMsg.text}</div></div>
-              )}
-            </div>
-            <div className="ms-modal-footer">
-              <button className="ms-btn ms-btn-ghost" onClick={() => setDetailMsg(null)}>{t("common:actions.close")}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Replay modal ─ újra-bemondás célzással és időzítéssel ─────────── */}
-      {replayForm && (
-        <div className="ms-overlay" onClick={() => !replayBusy && setReplayForm(null)}>
-          <div className="ms-modal" onClick={e => e.stopPropagation()}>
-            <div className="ms-modal-hdr">
-              <div className="ms-modal-title">🔁 {t("messages:replay.title")}</div>
-              <button className="ms-close" onClick={() => !replayBusy && setReplayForm(null)}>✕</button>
-            </div>
-            <div className="ms-modal-body">
-              <div style={{fontSize:13,color:"var(--sl-muted)",background:"var(--sl-bg)",border:"1px solid var(--sl-border)",borderRadius:9,padding:"8px 12px"}}>
-                <strong style={{color:"var(--sl-text)"}}>{replayForm.messageName}</strong>
-                <div style={{fontSize:11,marginTop:3}}>{t("messages:replay.storedFileNote")}</div>
-              </div>
-
-              {/* Cél */}
-              <div>
-                <div className="ms-label">🎯 {t("messages:target.label")}</div>
-                <div className="ms-row" style={{marginBottom:10}}>
-                  {(["ALL","DEVICE","GROUP"] as const).map(tt => (
-                    <div key={tt}
-                      className={"ms-chip"+(replayForm.targetType===tt?" active":"")}
-                      onClick={() => setReplayForm(s => s ? { ...s, targetType: tt, targetId: "" } : s)}>
-                      {tt==="ALL"?`📡 ${t("messages:target.all")}`:tt==="DEVICE"?`🔊 ${t("messages:target.device")}`:`👥 ${t("messages:target.group")}`}
-                    </div>
-                  ))}
-                </div>
-                {replayForm.targetType==="DEVICE" && (
-                  <div className="ms-device-list">
-                    {devices.length===0 && <div style={{fontSize:13,color:"var(--sl-muted)",padding:8}}>{t("messages:target.noDevices")}</div>}
-                    {devices.map(d => (
-                      <div key={d.id||d.name}
-                        className={"ms-device-item"+(replayForm.targetId===d.id&&d.id!==""?" selected":"")}
-                        onClick={() => setReplayForm(s => s ? { ...s, targetId: s.targetId===d.id?"":d.id } : s)}>
-                        <span className={d.online?"ms-dot-on":"ms-dot-off"} />
-                        <span style={{fontSize:13.5,fontWeight:600}}>{d.name}</span>
-                        <span style={{fontSize:11,color:"var(--sl-muted)",marginLeft:"auto"}}>{d.deviceClass}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {replayForm.targetType==="GROUP" && (
-                  <select className="ms-select"
-                    value={replayForm.targetId}
-                    onChange={e => setReplayForm(s => s ? { ...s, targetId: e.target.value } : s)}>
-                    <option value="">{t("messages:target.chooseGroupPlaceholder")}</option>
-                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                  </select>
-                )}
-              </div>
-
-              {/* Ütemezés */}
-              <div>
-                <div className="ms-label">⏰ {t("messages:schedule.label")}</div>
-                <div className="ms-row">
-                  {(["immediate","next_bell","custom"] as const).map(s => (
-                    <div key={s}
-                      className={"ms-chip"+(replayForm.schedule===s?" active":"")}
-                      onClick={() => setReplayForm(p => p ? { ...p, schedule: s } : p)}>
-                      {s==="immediate"?`⚡ ${t("messages:schedule.immediate")}`:s==="next_bell"?`🔔 ${t("messages:schedule.nextBell")}`:`🕐 ${t("messages:schedule.customTime")}`}
-                    </div>
-                  ))}
-                </div>
-                {replayForm.schedule==="next_bell" && (() => {
-                  const nb = getNextBreakTime(bells);
-                  return (
-                    <div style={{fontSize:12,marginTop:8,padding:"7px 11px",borderRadius:9,background:nb?"#f0fdf4":"#fef2f2",color:nb?"#15803d":"#dc2626",border:"1px solid",borderColor:nb?"#bbf7d0":"#fecaca"}}>
-                      {nb ? `⏱ ${t("messages:schedule.nextBreakAt", { time: nb.toLocaleTimeString("hu-HU",{hour:"2-digit",minute:"2-digit"}) })}` : `⚠️ ${t("messages:schedule.noMoreBreaksToday")}`}
-                    </div>
-                  );
-                })()}
-                {replayForm.schedule==="custom" && (
-                  <div style={{marginTop:10}}>
-                    <input type="time" className="ms-input" style={{width:"auto"}}
-                      value={replayForm.customTime}
-                      onChange={e => setReplayForm(s => s ? { ...s, customTime: e.target.value } : s)} />
-                  </div>
-                )}
-              </div>
-
-              {sendError && <div className="ms-alert ms-alert-error"><span>⚠️</span>{sendError}</div>}
-            </div>
-            <div className="ms-modal-footer">
-              <button className="ms-btn ms-btn-ghost"
-                onClick={() => setReplayForm(null)}
-                disabled={replayBusy}>{t("common:actions.cancel")}</button>
-              <button className="ms-btn ms-btn-primary"
-                onClick={() => void submitReplay()}
-                disabled={replayBusy}>
-                {replayBusy ? `⏳ ${t("messages:replay.sending")}` : replayForm.schedule === "immediate" ? `▶ ${t("messages:replay.sendImmediate")}` : `📅 ${t("messages:replay.schedule")}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Fordítás popover ─ görgethető nyelvlista, ld. lokalizációs terv F. szakasz */}
       {translateOpen && (

@@ -68,7 +68,8 @@
       "playing": "Läuft gerade – zum Neustart erneut drücken",
       "error": "Wiedergabe fehlgeschlagen",
       "idle": "Sofortwiedergabe (auf dem aktuell gewählten Ziel)"
-    }
+    },
+    "renameLabel": "Neuer Name:"
   },
   "youtube": {
     "description": "Suche nach einem YouTube-Video oder füge einen Link ein. Im eingebetteten Player kannst du es lokal ansehen/spulen, lautlos für alle anderen — der Button „Live senden“ startet es tatsächlich auf den Schullautsprechern.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Planen",
     "endTimeLabel": "Ende der Wiedergabe",
     "endTimeOptional": "(optional)",
-    "endTimeHint": "Ist der Ton länger, wird hier ausgeblendet und gestoppt. Bei kürzeren Tönen ohne Wirkung."
+    "endTimeHint": "Ist der Ton länger, wird hier ausgeblendet und gestoppt. Bei kürzeren Tönen ohne Wirkung.",
+    "startFromLabel": "Startpunkt",
+    "startFromBeginning": "Von Anfang an",
+    "startFromPosition": "Ab {{time}}"
   },
   "playlist": {
     "title": "Wiedergabelisten-Ersteller",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Fehler beim Abrufen des Status",
     "buildError": "Build-Fehler",
     "genericError": "Fehler: {{message}}",
-    "previewInsecureStream": "{{name}} liefert nur einen http://-Stream, den der Browser auf dieser sicheren Seite blockiert. Die Wiedergabe in der Schule ist NICHT betroffen: den Stream holt der Server, „Radio starten“ funktioniert."
+    "previewInsecureStream": "{{name}} liefert nur einen http://-Stream, den der Browser auf dieser sicheren Seite blockiert. Die Wiedergabe in der Schule ist NICHT betroffen: den Stream holt der Server, „Radio starten“ funktioniert.",
+    "previewFileFailed": "Wiedergabe fehlgeschlagen.",
+    "renameFileFailed": "Umbenennen fehlgeschlagen."
   }
 }

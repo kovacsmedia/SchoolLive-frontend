@@ -98,7 +98,10 @@
     "defaultBadge": "Standard",
     "previewButton": "Anhören",
     "previewTitle": "Vorschau",
-    "closePlayerTitle": "Player schließen"
+    "closePlayerTitle": "Player schließen",
+    "renameButton": "Umbenennen",
+    "renameLabel": "Neuer Name:",
+    "previewStopButton": "Stopp"
   },
   "confirm": {
     "loadHolidays": "Die Feiertage für {{year}} laden?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Löschen nicht möglich.",
     "setDefaultFailed": "Konnte nicht als Standard festgelegt werden.",
     "notEnoughSpace": "Nicht genug Speicherplatz! Verfügbar: {{available}}, benötigt: {{needed}}",
-    "uploadFailed": "Upload-Fehler"
+    "uploadFailed": "Upload-Fehler",
+    "renameSoundFailed": "Umbenennen fehlgeschlagen.",
+    "previewSoundFailed": "Der Ton konnte nicht abgespielt werden."
   },
   "shared": {
     "saveButton": "Speichern",

@@ -68,7 +68,8 @@
       "playing": "Se redă acum – apăsați din nou pentru repornire",
       "error": "Redarea a eșuat",
       "idle": "Redare imediată (pe ținta selectată curent)"
-    }
+    },
+    "renameLabel": "Nume nou:"
   },
   "youtube": {
     "description": "Caută un videoclip YouTube sau lipește un link. În playerul încorporat îl poți viziona/derula local, în tăcere pentru ceilalți — butonul „Trimite live” îl pornește efectiv pe difuzoarele școlii.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Programează",
     "endTimeLabel": "Sfârșitul redării",
     "endTimeOptional": "(opțional)",
-    "endTimeHint": "Dacă sunetul este mai lung, aici se estompează și se oprește. Fără efect la sunete mai scurte."
+    "endTimeHint": "Dacă sunetul este mai lung, aici se estompează și se oprește. Fără efect la sunete mai scurte.",
+    "startFromLabel": "Punct de pornire",
+    "startFromBeginning": "De la început",
+    "startFromPosition": "De la {{time}}"
   },
   "playlist": {
     "title": "Creator de playlist",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Eroare la verificarea statusului",
     "buildError": "Eroare de creare",
     "genericError": "Eroare: {{message}}",
-    "previewInsecureStream": "{{name}} oferă doar un flux http://, pe care browserul îl blochează pe această pagină securizată. NU afectează redarea în școală: fluxul este preluat de server, butonul Pornește radioul funcționează."
+    "previewInsecureStream": "{{name}} oferă doar un flux http://, pe care browserul îl blochează pe această pagină securizată. NU afectează redarea în școală: fluxul este preluat de server, butonul Pornește radioul funcționează.",
+    "previewFileFailed": "Redarea a eșuat.",
+    "renameFileFailed": "Redenumirea a eșuat."
   }
 }

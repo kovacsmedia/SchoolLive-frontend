@@ -68,7 +68,8 @@
       "playing": "Now playing – press again to restart",
       "error": "Playback failed",
       "idle": "Play now (on the currently selected target)"
-    }
+    },
+    "renameLabel": "New name:"
   },
   "youtube": {
     "description": "Search for a YouTube video, or paste a link. In the embedded player you can watch/scrub it locally, silently to everyone else — the \"Send live\" button is what actually starts it on the school speakers.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Schedule",
     "endTimeLabel": "End of playback",
     "endTimeOptional": "(optional)",
-    "endTimeHint": "If the sound is longer, it is faded out and stopped here. No effect on shorter sounds."
+    "endTimeHint": "If the sound is longer, it is faded out and stopped here. No effect on shorter sounds.",
+    "startFromLabel": "Start point",
+    "startFromBeginning": "From the beginning",
+    "startFromPosition": "From {{time}}"
   },
   "playlist": {
     "title": "Playlist builder",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Error checking build status",
     "buildError": "Build error",
     "genericError": "Error: {{message}}",
-    "previewInsecureStream": "{{name}} only serves an http:// stream, which the browser blocks on this secure page. This does NOT affect school playback: the server fetches the stream, so Start radio works."
+    "previewInsecureStream": "{{name}} only serves an http:// stream, which the browser blocks on this secure page. This does NOT affect school playback: the server fetches the stream, so Start radio works.",
+    "previewFileFailed": "Playback failed.",
+    "renameFileFailed": "Rename failed."
   }
 }

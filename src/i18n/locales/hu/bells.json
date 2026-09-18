@@ -98,7 +98,10 @@
     "defaultBadge": "Alapértelmezett",
     "previewButton": "Belehallgat",
     "previewTitle": "Belehallgatás",
-    "closePlayerTitle": "Lejátszó bezárása"
+    "closePlayerTitle": "Lejátszó bezárása",
+    "renameButton": "Átnevezés",
+    "renameLabel": "Új név:",
+    "previewStopButton": "Leállítás"
   },
   "confirm": {
     "loadHolidays": "Betöltöd a(z) {{year}}. év ünnepnapjait?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Nem sikerült törölni.",
     "setDefaultFailed": "Nem sikerült beállítani alapértelmezettként.",
     "notEnoughSpace": "Nincs elég hely! Elérhető: {{available}}, szükséges: {{needed}}",
-    "uploadFailed": "Feltöltési hiba"
+    "uploadFailed": "Feltöltési hiba",
+    "renameSoundFailed": "Az átnevezés nem sikerült.",
+    "previewSoundFailed": "A hang lejátszása nem sikerült."
   },
   "shared": {
     "saveButton": "Mentés",

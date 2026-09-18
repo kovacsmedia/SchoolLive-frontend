@@ -68,7 +68,8 @@
       "playing": "Odtwarzane teraz – naciśnij ponownie, aby zrestartować",
       "error": "Odtwarzanie nie powiodło się",
       "idle": "Odtwórz teraz (na aktualnie wybranym celu)"
-    }
+    },
+    "renameLabel": "Nowa nazwa:"
   },
   "youtube": {
     "description": "Wyszukaj film na YouTube albo wklej link. W osadzonym odtwarzaczu możesz go lokalnie obejrzeć/przewinąć, bezgłośnie dla innych — przycisk „Wyślij na żywo” faktycznie uruchamia go na szkolnych głośnikach.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Zaplanuj",
     "endTimeLabel": "Koniec odtwarzania",
     "endTimeOptional": "(opcjonalnie)",
-    "endTimeHint": "Jeśli dźwięk jest dłuższy, tutaj go wyciszamy i zatrzymujemy. Przy krótszym bez efektu."
+    "endTimeHint": "Jeśli dźwięk jest dłuższy, tutaj go wyciszamy i zatrzymujemy. Przy krótszym bez efektu.",
+    "startFromLabel": "Punkt startowy",
+    "startFromBeginning": "Od początku",
+    "startFromPosition": "Od {{time}}"
   },
   "playlist": {
     "title": "Kreator playlisty",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Błąd podczas sprawdzania statusu",
     "buildError": "Błąd tworzenia",
     "genericError": "Błąd: {{message}}",
-    "previewInsecureStream": "{{name}} udostępnia tylko strumień http://, który przeglądarka blokuje na tej bezpiecznej stronie. NIE wpływa to na odtwarzanie w szkole: strumień pobiera serwer, przycisk Uruchom radio działa."
+    "previewInsecureStream": "{{name}} udostępnia tylko strumień http://, który przeglądarka blokuje na tej bezpiecznej stronie. NIE wpływa to na odtwarzanie w szkole: strumień pobiera serwer, przycisk Uruchom radio działa.",
+    "previewFileFailed": "Odtwarzanie nie powiodło się.",
+    "renameFileFailed": "Zmiana nazwy nie powiodła się."
   }
 }

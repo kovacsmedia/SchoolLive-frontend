@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Compose a new message. Previous messages are available in a separate window.",
-    "historyButton": "Message history"
+    "subtitle": "Compose a new message. Previous messages are available in a separate window."
   },
   "success": {
     "sent": "Message sent successfully!",
@@ -95,37 +94,5 @@
     "button": "Generate & listen back",
     "generating": "Generating…",
     "downloadButton": "Download"
-  },
-  "history": {
-    "loadFailed": "Loading failed",
-    "deleteConfirmSingle": "Delete this message?",
-    "deleteConfirmBulk": "Delete the {{count}} selected messages?",
-    "deleteSelected": "Delete selected ({{count}})",
-    "empty": "No messages have been sent yet",
-    "replayTooltip": "Play again (target + timing selectable)",
-    "noFileTooltip": "No stored file",
-    "replayAction": "Replay",
-    "detailsAction": "Details",
-    "prevPage": "Previous",
-    "nextPage": "Next",
-    "voiceMessage": "Voice message"
-  },
-  "detail": {
-    "title": "Message details",
-    "from": "Sender",
-    "created": "Created",
-    "scheduled": "Scheduled",
-    "played": "Played",
-    "target": "Target",
-    "textLabel": "Text"
-  },
-  "replay": {
-    "title": "Play message again",
-    "storedFileNote": "The stored audio file will be sent out – the ding-dong will not be added again.",
-    "noFileError": "This message has no stored file.",
-    "replayFailed": "Replay failed",
-    "sending": "Sending…",
-    "sendImmediate": "Immediate",
-    "schedule": "Schedule"
   }
 }

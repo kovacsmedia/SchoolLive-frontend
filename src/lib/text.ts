@@ -30,3 +30,19 @@ export function stripAccents(s: string): string {
  *   onChange={e => setName(stripAccents(e.target.value))}
  */
 export const normalizeFileName = stripAccents;
+
+/**
+ * Fájlnév megjelenítéshez: kiterjesztés nélkül.
+ *
+ * MIÉRT: a felhasználót nem érdekli, milyen hangtömörítést használunk, és a
+ * `.opus` mobilképernyőn feleslegesen sok helyet visz el egy amúgy is szűk
+ * listasorban. A tárolt név nem változik – csak azt szabályozza, mit LÁT az
+ * ember.
+ *
+ * Csak a valódi, rövid kiterjesztést vágja le: a "14ora_tanitasvege" típusú
+ * nevekben lévő pontokat nem bántja, mert azok után nem 2-5 betűs végződés áll.
+ */
+export function displayName(filename: string | null | undefined): string {
+  if (!filename) return "";
+  return String(filename).replace(/\.[A-Za-z0-9]{2,5}$/, "");
+}

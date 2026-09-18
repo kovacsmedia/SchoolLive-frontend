@@ -98,7 +98,10 @@
     "defaultBadge": "Zadano",
     "previewButton": "Poslušaj",
     "previewTitle": "Pregled",
-    "closePlayerTitle": "Zatvori player"
+    "closePlayerTitle": "Zatvori player",
+    "renameButton": "Preimenuj",
+    "renameLabel": "Novo ime:",
+    "previewStopButton": "Zaustavi"
   },
   "confirm": {
     "loadHolidays": "Učitati praznike za {{year}}. godinu?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Brisanje nije uspjelo.",
     "setDefaultFailed": "Postavljanje kao zadano nije uspjelo.",
     "notEnoughSpace": "Nema dovoljno prostora! Dostupno: {{available}}, potrebno: {{needed}}",
-    "uploadFailed": "Pogreška prijenosa"
+    "uploadFailed": "Pogreška prijenosa",
+    "renameSoundFailed": "Preimenovanje nije uspjelo.",
+    "previewSoundFailed": "Zvuk se nije mogao reproducirati."
   },
   "shared": {
     "saveButton": "Spremi",

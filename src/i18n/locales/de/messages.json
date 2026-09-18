@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Neue Nachricht erstellen. Frühere Nachrichten sind in einem separaten Fenster verfügbar.",
-    "historyButton": "Frühere Nachrichten"
+    "subtitle": "Neue Nachricht erstellen. Frühere Nachrichten sind in einem separaten Fenster verfügbar."
   },
   "success": {
     "sent": "Die Nachricht wurde erfolgreich gesendet!",
@@ -95,37 +94,5 @@
     "button": "Generieren & anhören",
     "generating": "Wird generiert…",
     "downloadButton": "Herunterladen"
-  },
-  "history": {
-    "loadFailed": "Laden fehlgeschlagen",
-    "deleteConfirmSingle": "Diese Nachricht löschen?",
-    "deleteConfirmBulk": "Die {{count}} ausgewählten Nachrichten löschen?",
-    "deleteSelected": "Ausgewählte löschen ({{count}})",
-    "empty": "Es wurde noch keine Nachricht gesendet",
-    "replayTooltip": "Erneut abspielen (Ziel + Zeitpunkt wählbar)",
-    "noFileTooltip": "Keine gespeicherte Datei",
-    "replayAction": "Erneut",
-    "detailsAction": "Details",
-    "prevPage": "Zurück",
-    "nextPage": "Weiter",
-    "voiceMessage": "Sprachnachricht"
-  },
-  "detail": {
-    "title": "Nachrichtendetails",
-    "from": "Absender",
-    "created": "Erstellt",
-    "scheduled": "Geplant",
-    "played": "Abgespielt",
-    "target": "Ziel",
-    "textLabel": "Text"
-  },
-  "replay": {
-    "title": "Nachricht erneut abspielen",
-    "storedFileNote": "Die gespeicherte Audiodatei wird gesendet – der Dingdong wird nicht erneut hinzugefügt.",
-    "noFileError": "Für diese Nachricht ist keine Datei gespeichert.",
-    "replayFailed": "Erneutes Abspielen fehlgeschlagen",
-    "sending": "Wird gesendet…",
-    "sendImmediate": "Sofort",
-    "schedule": "Planen"
   }
 }

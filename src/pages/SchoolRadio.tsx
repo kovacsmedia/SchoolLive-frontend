@@ -1,7 +1,7 @@
 // src/pages/SchoolRadio.tsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { stripAccents } from "../lib/text";
+import { displayName, stripAccents } from "../lib/text";
 import { apiFetch, getWsUrl, getBaseUrl } from "../lib/api";
 import { VU_GRADIENT, VU_DIM, vuPercent, vuClip, vuRmsDb, vuPeakDb } from "../lib/vuMeter";
 import { useAuth } from "../auth/AuthContext";
@@ -602,45 +602,6 @@ const CSS = `
 // húzás közben. Modul-szinten az azonosság stabil, hooks-szal is biztonságos.
 type LiveState = { active: boolean; paused: boolean; positionSec: number; durationSec?: number; title?: string };
 
-function LiveProgressBar(props: {
-  state: LiveState;
-  onSeek: (sec: number) => void;
-  onTogglePause: () => void;
-  onStop: () => void;
-  live?: boolean;
-}) {
-  const { t } = useTranslation(["radio", "common"]);
-  const { state, onSeek, onTogglePause, onStop, live } = props;
-  const [dragSec, setDragSec] = useState<number | null>(null);
-  const duration = state.durationSec ?? 0;
-  const shown = dragSec ?? state.positionSec;
-  const pct = duration > 0 ? Math.min(100, Math.round((shown / duration) * 100)) : 0;
-
-  return (
-    <div className={`sr-live-bar${live ? " sr-live-bar-live" : ""}`}>
-      <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm" onClick={onTogglePause}
-        title={state.paused ? t("live.play") : t("live.pause")}>
-        {state.paused ? "▶" : "⏸"}
-      </button>
-      <input
-        type="range"
-        className="sr-live-range"
-        style={{ ["--pct" as any]: `${pct}%` }}
-        min={0}
-        max={Math.max(duration, 1)}
-        step={1}
-        value={shown}
-        onChange={(e) => setDragSec(Number(e.target.value))}
-        onMouseUp={() => { if (dragSec !== null) { onSeek(dragSec); setDragSec(null); } }}
-        onTouchEnd={() => { if (dragSec !== null) { onSeek(dragSec); setDragSec(null); } }}
-      />
-      <span className="sr-live-time">{fmtDuration(Math.round(shown))} / {fmtDuration(duration)}</span>
-      {live && <span className="sr-live-label">🔴 {t("live.onAirBadge")}</span>}
-      <button type="button" className="sr-btn sr-btn-danger sr-btn-sm" onClick={onStop} title={t("live.stop")}>⏹</button>
-    </div>
-  );
-}
-
 // ─── YouTube IFrame API – egyszeri, idempotens script-betöltés ─────────────
 let _ytApiPromise: Promise<void> | null = null;
 function loadYoutubeIframeApi(): Promise<void> {
@@ -761,6 +722,19 @@ export default function SchoolRadio() {
   /* A műveleti gombok a lista FÖLÖTT vannak, és a kijelölt állomásra hatnak –
      a soronkénti gombsor túl sok helyet foglalt. */
   const [netSelectedId, setNetSelectedId] = useState<string | null>(null);
+  /* Hangtár: belehallgatás és átnevezés – ugyanaz a minta, mint a netrádiónál
+     és a csengőhangoknál. A sor kijelölhető, a művelet fent van. */
+  const [filePreviewId, setFilePreviewId] = useState<string | null>(null);
+  const filePreviewRef = useRef<HTMLAudioElement | null>(null);
+  const [fileRenaming, setFileRenaming] = useState<{ id: string; value: string } | null>(null);
+  const [fileRenameBusy, setFileRenameBusy] = useState(false);
+  /* A kiválasztott fájl idővonal-pozíciója másodpercben. Ebből indul a
+     belehallgatás és az élő adás is, és ez követi a tényleges lejátszást. */
+  const [filePos, setFilePos] = useState(0);
+  const [fileScrubbing, setFileScrubbing] = useState(false);
+  /* Időzítésnél: a hang elejéről vagy az idővonalon beállított pozícióról
+     induljon-e. A választás csak akkor jelenik meg, ha van hova ugrani. */
+  const [formFromPos, setFormFromPos] = useState(false);
   /*
    * A belehallgatás REJTETT lejátszóval megy.
    *
@@ -938,13 +912,7 @@ export default function SchoolRadio() {
       }
     } catch { /* ignore */ }
   }
-  async function handleLiveStop() {
-    try {
-      await apiFetch("/radio/stop-all", { method: "POST" });
-    } catch { /* ignore */ }
-    setYtLiveIsLive(false);
-    setManualNowPlaying(null);
-  }
+
 
   // ── YouTube IFrame Player életciklus – csak a "youtube" fülön, csak ha
   // van kiválasztott videó. Effektus-alapú (nem a click-handlerben hozzuk
@@ -1474,7 +1442,108 @@ export default function SchoolRadio() {
   // azonnal indítja a hangfájlt a kiválasztott céleszközökön. A komponens
   // jelenlegi cél/group state-jét használjuk (formTarget / formTargetId);
   // ha nincs aktív választás, az "ALL" megy.
-  async function playFileNow(file: RadioFile) {
+  const stopFilePreview = useCallback(() => {
+    const a = filePreviewRef.current;
+    filePreviewRef.current = null;
+    if (a) { try { a.pause(); a.src = ""; } catch { /* ignore */ } }
+    setFilePreviewId(null);
+  }, []);
+
+  useEffect(() => stopFilePreview, [stopFilePreview]);
+
+  /** Él-e ÉPP az élő adásban ez a fájl? A cím alapján, ahogy eddig is. */
+  const liveIsFile = (f: RadioFile | null) =>
+    !!f && !!liveState?.active && liveState.title === f.originalName;
+
+  /*
+   * A JELZŐ KÖVESSE A TÉNYLEGES LEJÁTSZÁST.
+   *
+   * Két forrás lehet: az élő adás (a szerver `/radio/live/status`-a) vagy a
+   * helyi belehallgatás. Az ÉLŐ AZ ERŐSEBB – az szól az iskolában, azt kell
+   * mutatni. Tekerés közben egyik sem írja felül a csúszkát, különben
+   * kirántanánk az ujjad alól.
+   */
+  useEffect(() => {
+    if (fileScrubbing) return;
+    if (liveIsFile(selectedFile)) { setFilePos(liveState!.positionSec); return; }
+    const a = filePreviewRef.current;
+    if (!a || filePreviewId !== selectedFile?.id) return;
+    const id = window.setInterval(() => {
+      if (!filePreviewRef.current) return;
+      setFilePos(filePreviewRef.current.currentTime);
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [liveState, selectedFile, filePreviewId, fileScrubbing]);
+
+  // Másik fájlra váltva a pozíció nulláról indul.
+  useEffect(() => { setFilePos(0); }, [selectedFile?.id]);
+
+  function toggleFilePreview(f: RadioFile) {
+    if (filePreviewId === f.id) { stopFilePreview(); return; }
+    stopFilePreview();
+    const a = new Audio(f.fileUrl);
+    a.preload = "none";
+    // A csúszkán beállított pozícióról indulunk.
+    if (filePos > 0) a.currentTime = filePos;
+    a.onended = () => { if (filePreviewRef.current === a) stopFilePreview(); };
+    a.onerror  = () => {
+      if (filePreviewRef.current !== a) return;
+      showNotice(t("errors.previewFileFailed"));
+      stopFilePreview();
+    };
+    filePreviewRef.current = a;
+    setFilePreviewId(f.id);
+    void a.play().catch((e: any) => {
+      // Megszakított play() nem hiba – épp ezt kértük tőle.
+      if (e?.name === "AbortError") return;
+      if (filePreviewRef.current !== a) return;
+      showNotice(e?.message ?? t("errors.previewFileFailed"));
+      stopFilePreview();
+    });
+  }
+
+  /**
+   * Tekerés vége: a pozíciót oda visszük, ahol a lejátszás TÉNYLEGESEN tart.
+   *
+   * Élő adásnál a szervert ugratjuk (az szól az iskolában), belehallgatásnál
+   * a helyi lejátszót. Ha egyik sem megy, csak a kiindulási pozíciót
+   * jegyezzük meg – onnan fog indulni a következő lejátszás.
+   */
+  async function commitFileSeek() {
+    setFileScrubbing(false);
+    const f = selectedFile;
+    if (!f) return;
+
+    if (liveIsFile(f)) {
+      try { await handleLiveSeek(Math.round(filePos)); } catch { /* ignore */ }
+    }
+    const a = filePreviewRef.current;
+    if (a && filePreviewId === f.id) {
+      try { a.currentTime = filePos; } catch { /* ignore */ }
+    }
+  }
+
+  async function submitFileRename() {
+    if (!fileRenaming) return;
+    const name = fileRenaming.value.trim();
+    if (!name) return;
+    setFileRenameBusy(true);
+    try {
+      await apiFetch(`/radio/files/${fileRenaming.id}/rename`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      setFileRenaming(null);
+      await loadAll();
+    } catch (e: any) {
+      showNotice(e?.message ?? t("errors.renameFileFailed"));
+    } finally {
+      setFileRenameBusy(false);
+    }
+  }
+
+  async function playFileNow(file: RadioFile, startAtSec = 0) {
     // Másik fájl/rádió épp connecting-ben? Ne hagyjuk félbe.
     if (Object.values(fileStatus).some(s => s === "connecting")) return;
     // Új lejátszás → minden korábbi állomány- és stream-státusz reset
@@ -1491,7 +1560,22 @@ export default function SchoolRadio() {
       });
       // Sikeres indítás: zöld + now-playing label
       setFileStatus({ [file.id]: "playing" });
-      setManualNowPlaying({ name: file.originalName, source: "file" });
+      setManualNowPlaying({ name: displayName(file.originalName), source: "file" });
+      /*
+       * A `/play-now` MINDIG az elejéről indít. A csúszkán beállított
+       * pozícióra a MÁR MEGLÉVŐ élő-seek mechanizmussal ugrunk – ugyanaz a
+       * minta, mint a YouTube "élő adásba küldés"-nél. A mixer `seekRadio`-ja
+       * a pending ablakban is elfogadja, tehát nincs fölösleges újraindítás.
+       */
+      if (startAtSec > 0.5) {
+        try {
+          await apiFetch("/radio/live/seek", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ positionSec: Math.round(startAtSec) }),
+          });
+        } catch { /* a sáv úgyis a tényleges állapotot mutatja majd */ }
+      }
       await loadAll();
     } catch (e:any) {
       // 3 sec-ig piros, aztán reset (mint a stream-nél)
@@ -2604,8 +2688,8 @@ export default function SchoolRadio() {
   async function deleteFile(file: RadioFile) {
     const warn =
       file._count.schedules > 0
-        ? t("confirm.deleteFileWithSchedules", { count: file._count.schedules, name: file.originalName })
-        : t("confirm.deleteFile", { name: file.originalName });
+        ? t("confirm.deleteFileWithSchedules", { count: file._count.schedules, name: displayName(file.originalName) })
+        : t("confirm.deleteFile", { name: displayName(file.originalName) });
 
     if (!(await askConfirm(warn))) return;
 
@@ -2745,10 +2829,13 @@ export default function SchoolRadio() {
           targetId: formTarget === "ALL" ? null : formTargetId,
           scheduledAt: scheduledAt.toISOString(),
           ...(endsAt ? { endsAt: endsAt.toISOString() } : {}),
+          // Kezdőpont: a hang elejéről, vagy az idővonalon beállított helyről.
+          ...(formFromPos && filePos > 0.5 ? { startSec: Math.round(filePos) } : {}),
         }),
       });
 
       setFormOpen(false);
+      setFormFromPos(false);
       setFormDate("");
       setFormTime("");
       setFormEndTime("");
@@ -2758,7 +2845,7 @@ export default function SchoolRadio() {
       const data = (e as any)?.data ?? {};
       setFormError(
         data?.conflict
-          ? t("errors.timeConflict", { name: data.conflict.originalName })
+          ? t("errors.timeConflict", { name: displayName(data.conflict.originalName) })
           : (e?.message ?? t("errors.createFailed"))
       );
     } finally {
@@ -3157,6 +3244,17 @@ export default function SchoolRadio() {
               setManualNowPlaying(null);
               setStreamStatus({});
               setFileStatus({});
+              /*
+               * A YOUTUBE-ÁG IS ÁLLJON LE.
+               *
+               * A backend `stop-all`-ja a stream-forrást is leállítja, tehát az
+               * iskolában elhallgat – a FELÜLET viszont "élő"-ben ragadt: a
+               * piros gomb tovább pulzált, a cél-választók tiltva maradtak, és
+               * a helyi lejátszóban tovább szólt a videó. A kezelő így azt
+               * hitte, még megy az adás.
+               */
+              setYtLiveIsLive(false);
+              try { ytPlayerRef.current?.pauseVideo?.(); } catch { /* ignore */ }
               try {
                 await apiFetch("/radio/stop-all", { method: "POST" });
                 await loadAll();
@@ -3686,7 +3784,7 @@ export default function SchoolRadio() {
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#15803d" }}>✅ {t("playlist.builtDone", { name: plBuiltName })}</div>
                   <audio controls src={plBuiltUrl} style={{ width: "100%", height: 32, borderRadius: 8 }} preload="metadata" />
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={plBuiltUrl} download={plBuiltName + ".mp3"} className="sr-btn sr-btn-ghost sr-btn-sm">
+                    <a href={plBuiltUrl} download={plBuiltName + (plBuiltUrl.match(/\.[a-z0-9]+$/i)?.[0] ?? ".opus")} className="sr-btn sr-btn-ghost sr-btn-sm">
                       ⬇ {t("playlist.downloadButton")}
                     </a>
 
@@ -4607,7 +4705,134 @@ export default function SchoolRadio() {
                   </select>
                 )}
               </div>
+
+            {/* ── Műveletek a lista FÖLÖTT ─────────────────────────────────
+                  Ugyanaz a minta, mint a netrádiónál és a csengőhangoknál: a sor
+                  kijelölhető, a gombok fixen itt vannak. Soronként öt ikon egy
+                  hosszú listán tucatnyi gombot jelentett, és a nevet nyomta
+                  össze – mobilon használhatatlanul. */}
+              <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:10}}>
+                <div style={{flex:"1 1 auto",minWidth:0}}>
+                  <div style={{fontSize:11,fontWeight:800,color:"var(--sl-muted)",letterSpacing:0.3,textTransform:"uppercase",marginBottom:6}}>
+                    🎛 {t("netradio.actionsLabel")}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",justifyContent:"flex-end"}}>
+                    {(() => {
+                      const sel  = selectedFile ? files.find(x => x.id === selectedFile.id) ?? null : null;
+                      const fst  = sel ? fileStatus[sel.id] : undefined;
+                      const busy = fst === "connecting";
+                      return (
+                        <>
+                          {/* Piros: ez szólaltatja meg az EGÉSZ iskolában –
+                              ugyanaz a jelzés, mint a netrádiónál. */}
+                          <button type="button" className="sr-btn sr-btn-primary sr-btn-sm"
+                            style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)"}}
+                            onClick={() => sel && void playFileNow(sel, filePos)}
+                            disabled={!sel || busy}
+                            title={t("library.playTooltip.idle")}>
+                            {busy ? `⏳ ${t("busy.saving")}` : fst === "error" ? `✕ ${t("netradio.playButton")}` : `▶ ${t("netradio.playButton")}`}
+                          </button>
+                          <button type="button"
+                            className={`sr-btn sr-btn-sm ${sel && filePreviewId === sel.id ? "sr-btn-primary sr-preview-on" : "sr-btn-ghost"}`}
+                            onClick={() => sel && toggleFilePreview(sel)}
+                            disabled={!sel}
+                            title={t("netradio.previewTooltip")}>
+                            🎧 {t("netradio.previewButton")}
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                            onClick={() => {
+                              if (!sel) return;
+                              const n = new Date();
+                              setFormFileId(sel.id);
+                              setFormDate(n.toISOString().slice(0, 10));
+                              setFormTime(`${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`);
+                              setFormOpen(true);
+                            }}
+                            disabled={!sel}
+                            title={t("schedule.tooltip")}>
+                            ⏰ {t("netradio.scheduleButton")}
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                            onClick={() => sel && setFileRenaming({ id: sel.id, value: displayName(sel.originalName) })}
+                            disabled={!sel}
+                            title={t("netradio.editTooltip")}>
+                            ✏️ {t("netradio.editButton")}
+                          </button>
+                          <button type="button" className="sr-btn sr-btn-danger sr-btn-sm"
+                            onClick={() => sel && void deleteFile(sel)}
+                            disabled={!sel}
+                            title={t("common:actions.delete")}>
+                            🗑
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div style={{fontSize:11,color:"var(--sl-muted)",marginTop:6,textAlign:"right"}}>
+                    {selectedFile
+                      ? `🎵 ${displayName(selectedFile.originalName)}`
+                      : `💡 ${t("netradio.selectHint")}`}
+                  </div>
+
+                  {/* ── Idővonal – CSAK kiválasztott fájlnál ──────────────────
+                      Egyetlen sáv vezérel mindent: innen indul a belehallgatás
+                      és az élő adás is, és ez követi a tényleges lejátszást.
+                      Élő adás közben a tekerés az ISKOLAI lejátszást is odaugratja. */}
+                  {selectedFile && (
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8}}>
+                      {/* Szüneteltetés – korábban a soronkénti élő sávon volt.
+                          Azzal együtt elveszett volna, ezért ide került át. */}
+                      {liveIsFile(selectedFile) && (
+                        <button type="button" className="sr-btn sr-btn-ghost sr-btn-sm"
+                          onClick={() => void handleLiveTogglePause()}
+                          title={liveState?.paused ? t("live.play") : t("live.pause")}>
+                          {liveState?.paused ? "▶" : "⏸"}
+                        </button>
+                      )}
+                      <input
+                        type="range"
+                        className="sr-live-range"
+                        style={{ ["--pct" as any]: `${
+                          (selectedFile.durationSec ?? 0) > 0
+                            ? Math.min(100, Math.round((filePos / (selectedFile.durationSec ?? 1)) * 100))
+                            : 0
+                        }%`, flex: 1 }}
+                        min={0}
+                        max={Math.max(selectedFile.durationSec ?? 0, 1)}
+                        step={1}
+                        value={Math.min(filePos, selectedFile.durationSec ?? 0)}
+                        onMouseDown={() => setFileScrubbing(true)}
+                        onTouchStart={() => setFileScrubbing(true)}
+                        onChange={(e) => setFilePos(Number(e.target.value))}
+                        onMouseUp={() => void commitFileSeek()}
+                        onTouchEnd={() => void commitFileSeek()}
+                      />
+                      <span className="sr-live-time" style={{whiteSpace:"nowrap"}}>
+                        {fmtDuration(Math.round(filePos))} / {fmtDuration(selectedFile.durationSec)}
+                      </span>
+                      {liveIsFile(selectedFile) && (
+                        <span className="sr-live-label">🔴 {t("live.onAirBadge")}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {fileRenaming && (
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:10,
+                           background:"var(--sl-surface)",border:"1px solid var(--sl-border)",borderRadius:8,padding:10}}>
+                <span style={{fontSize:12,color:"var(--sl-muted)"}}>{t("library.renameLabel")}</span>
+                <input autoFocus className="sr-input" style={{flex:1,minWidth:160}}
+                  value={fileRenaming.value} disabled={fileRenameBusy}
+                  onChange={e => setFileRenaming(r => r ? { ...r, value: e.target.value } : r)}
+                  onKeyDown={e => { if (e.key === "Enter") void submitFileRename(); if (e.key === "Escape") setFileRenaming(null); }} />
+                <button className="sr-btn sr-btn-primary sr-btn-sm" disabled={fileRenameBusy || !fileRenaming.value.trim()}
+                  onClick={() => void submitFileRename()}>{t("common:actions.save")}</button>
+                <button className="sr-btn sr-btn-ghost sr-btn-sm" disabled={fileRenameBusy}
+                  onClick={() => setFileRenaming(null)}>{t("common:actions.cancel")}</button>
+              </div>
+            )}
 
             {files.length === 0 && !loading ? (
               <div className="sr-empty">
@@ -4624,8 +4849,8 @@ export default function SchoolRadio() {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
                     <div style={{ minWidth: 0 }}>
-                      <div className="sr-file-name" title={f.originalName}>
-                        🎵 {f.originalName}
+                      <div className="sr-file-name" title={displayName(f.originalName)}>
+                        🎵 {displayName(f.originalName)}
                       </div>
                       <div className="sr-file-meta">
                         <span>⏱ {fmtDuration(f.durationSec)}</span>
@@ -4634,84 +4859,14 @@ export default function SchoolRadio() {
                       </div>
                     </div>
 
-                    <div className="sr-file-actions" onClick={(e) => e.stopPropagation()}>
-                      {(() => {
-                        // A ▶ gomb státusz-vizualizációja egyezik a netrádió
-                        // listán használt logikával (lásd .sr-play-* CSS).
-                        const fst = fileStatus[f.id];
-                        const cls =
-                          fst === "connecting" ? " sr-play-connecting" :
-                          fst === "playing"    ? " sr-play-playing" :
-                          fst === "error"      ? " sr-play-error" : "";
-                        const lbl =
-                          fst === "connecting" ? "⏳" :
-                          fst === "error"      ? "✕" : "▶";
-                        const title =
-                          fst === "connecting" ? t("library.playTooltip.connecting") :
-                          fst === "playing"    ? t("library.playTooltip.playing") :
-                          fst === "error"      ? t("library.playTooltip.error") :
-                          t("library.playTooltip.idle");
-                        return (
-                          <button
-                            className={`sr-btn sr-btn-primary sr-btn-sm${cls}`}
-                            title={title}
-                            onClick={() => void playFileNow(f)}
-                            disabled={fst === "connecting"}
-                            type="button"
-                          >
-                            {lbl}
-                          </button>
-                        );
-                      })()}
-                      <button
-                        className="sr-btn sr-btn-ghost sr-btn-sm"
-                        title={t("schedule.tooltip")}
-                        onClick={() => {
-                          const n = new Date();
-                          setFormFileId(f.id);
-                          setFormDate(n.toISOString().slice(0, 10));
-                          setFormTime(
-                            `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`
-                          );
-                          setFormOpen(true);
-                        }}
-                        type="button"
-                      >
-                        📅
-                      </button>
 
-                      <button
-                        className="sr-btn sr-btn-danger sr-btn-sm"
-                        title={t("common:actions.delete")}
-                        onClick={() => void deleteFile(f)}
-                        type="button"
-                      >
-                        🗑
-                      </button>
-                    </div>
                   </div>
 
-                  {selectedFile?.id === f.id && (
-                    <div className="sr-player" onClick={(e) => e.stopPropagation()}>
-                      <div className="sr-player-name">▶ {f.originalName}</div>
-                      <audio controls src={f.fileUrl} preload="metadata" style={{ width: "100%", height: 32 }} />
-                    </div>
-                  )}
-
-                  {/* ÚJ, additív: ha ez a fájl épp az aktívan sugárzott
-                      (a `/radio/live/status` cím-alapú egyezése), megjelenik
-                      az élő seek-sáv – a fenti helyi belehallgatás VÁLTOZATLAN. */}
-                  {liveState && liveState.title === f.originalName && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <LiveProgressBar
-                        state={liveState}
-                        onSeek={(sec) => void handleLiveSeek(sec)}
-                        onTogglePause={() => void handleLiveTogglePause()}
-                        onStop={() => void handleLiveStop()}
-                        live
-                      />
-                    </div>
-                  )}
+                  {/* A soronkénti lejátszósáv és az élő seek-sáv KIKERÜLT.
+                      Mindkettőt egyetlen idővonal váltja fel a gombsor alatt:
+                      az egy helyen mutatja a pozíciót, és ugyanaz vezérli a
+                      belehallgatást és az élő adást is. Soronként két sáv egy
+                      hosszú listán ugrálóvá tette az elrendezést. */}
                 </div>
               ))}
               </div>
@@ -4798,11 +4953,34 @@ export default function SchoolRadio() {
                     <option value="">{t("schedule.selectFilePlaceholder")}</option>
                     {files.map((f) => (
                       <option key={f.id} value={f.id}>
-                        {f.originalName} ({fmtDuration(f.durationSec)})
+                        {displayName(f.originalName)} ({fmtDuration(f.durationSec)})
                       </option>
                     ))}
                   </select>
                 </div>
+
+                {/* ── Kezdőpont ────────────────────────────────────────────
+                    CSAK akkor jelenik meg, ha a hangtár idővonalán tényleg
+                    be van állítva egy pozíció ÉS ugyanaz a fájl van kiválasztva
+                    az űrlapon. Enélkül a felajánlás félrevezető lenne: egy
+                    másik fájl pozíciójáról indítana. */}
+                {filePos > 0.5 && selectedFile?.id === formFileId && (
+                  <div>
+                    <label className="sr-label">{t("schedule.startFromLabel")}</label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="button"
+                        className={`sr-btn sr-btn-sm ${formFromPos ? "sr-btn-ghost" : "sr-btn-primary"}`}
+                        onClick={() => setFormFromPos(false)}>
+                        ⏮ {t("schedule.startFromBeginning")}
+                      </button>
+                      <button type="button"
+                        className={`sr-btn sr-btn-sm ${formFromPos ? "sr-btn-primary" : "sr-btn-ghost"}`}
+                        onClick={() => setFormFromPos(true)}>
+                        ⏱ {t("schedule.startFromPosition", { time: fmtDuration(Math.round(filePos)) })}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>

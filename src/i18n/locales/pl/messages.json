@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Tworzenie nowej wiadomości. Wcześniejsze są dostępne w osobnym oknie.",
-    "historyButton": "Poprzednie wiadomości"
+    "subtitle": "Tworzenie nowej wiadomości. Wcześniejsze są dostępne w osobnym oknie."
   },
   "success": {
     "sent": "Wiadomość została pomyślnie wysłana!",
@@ -95,37 +94,5 @@
     "button": "Wygeneruj i odsłuchaj",
     "generating": "Generowanie…",
     "downloadButton": "Pobierz"
-  },
-  "history": {
-    "loadFailed": "Ładowanie nie powiodło się",
-    "deleteConfirmSingle": "Usunąć tę wiadomość?",
-    "deleteConfirmBulk": "Usunąć {{count}} zaznaczonych wiadomości?",
-    "deleteSelected": "Usuń zaznaczone ({{count}})",
-    "empty": "Nie wysłano jeszcze żadnej wiadomości",
-    "replayTooltip": "Odtwórz ponownie (można wybrać cel i czas)",
-    "noFileTooltip": "Brak zapisanego pliku",
-    "replayAction": "Ponownie",
-    "detailsAction": "Szczegóły",
-    "prevPage": "Poprzednia",
-    "nextPage": "Następna",
-    "voiceMessage": "Wiadomość głosowa"
-  },
-  "detail": {
-    "title": "Szczegóły wiadomości",
-    "from": "Nadawca",
-    "created": "Utworzono",
-    "scheduled": "Zaplanowano",
-    "played": "Odtworzono",
-    "target": "Cel",
-    "textLabel": "Tekst"
-  },
-  "replay": {
-    "title": "Ponowne odtworzenie wiadomości",
-    "storedFileNote": "Wysyłany jest zapisany plik dźwiękowy – dingdong nie zostanie dodany ponownie.",
-    "noFileError": "Do tej wiadomości nie zapisano pliku.",
-    "replayFailed": "Ponowne odtworzenie nie powiodło się",
-    "sending": "Wysyłanie…",
-    "sendImmediate": "Natychmiast",
-    "schedule": "Zaplanuj"
   }
 }

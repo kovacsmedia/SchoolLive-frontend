@@ -98,7 +98,10 @@
     "defaultBadge": "Domyślny",
     "previewButton": "Odsłuchaj",
     "previewTitle": "Podgląd",
-    "closePlayerTitle": "Zamknij odtwarzacz"
+    "closePlayerTitle": "Zamknij odtwarzacz",
+    "renameButton": "Zmień nazwę",
+    "renameLabel": "Nowa nazwa:",
+    "previewStopButton": "Zatrzymaj"
   },
   "confirm": {
     "loadHolidays": "Wczytać święta na rok {{year}}?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Nie udało się usunąć.",
     "setDefaultFailed": "Nie udało się ustawić jako domyślny.",
     "notEnoughSpace": "Za mało miejsca! Dostępne: {{available}}, potrzebne: {{needed}}",
-    "uploadFailed": "Błąd przesyłania"
+    "uploadFailed": "Błąd przesyłania",
+    "renameSoundFailed": "Zmiana nazwy nie powiodła się.",
+    "previewSoundFailed": "Nie udało się odtworzyć dźwięku."
   },
   "shared": {
     "saveButton": "Zapisz",

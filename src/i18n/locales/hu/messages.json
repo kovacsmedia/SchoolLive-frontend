@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Új üzenet összeállítása. A korábbiak külön ablakban érhetők el.",
-    "historyButton": "Korábbi üzenetek"
+    "subtitle": "Új üzenet összeállítása. A korábbiak külön ablakban érhetők el."
   },
   "success": {
     "sent": "Az üzenet sikeresen elküldve!",
@@ -95,37 +94,5 @@
     "button": "Generálás és visszahallgatás",
     "generating": "Generálás…",
     "downloadButton": "Letöltés"
-  },
-  "history": {
-    "loadFailed": "Betöltés sikertelen",
-    "deleteConfirmSingle": "Törlöd ezt az üzenetet?",
-    "deleteConfirmBulk": "Törlöd a(z) {{count}} kijelölt üzenetet?",
-    "deleteSelected": "Kijelöltek törlése ({{count}})",
-    "empty": "Még nem küldtek üzenetet",
-    "replayTooltip": "Újra bemondatás (cél + időzítés választható)",
-    "noFileTooltip": "Nincs eltárolt fájl",
-    "replayAction": "Újra",
-    "detailsAction": "Részletek",
-    "prevPage": "Előző",
-    "nextPage": "Következő",
-    "voiceMessage": "Hangüzenet"
-  },
-  "detail": {
-    "title": "Üzenet részletei",
-    "from": "Feladó",
-    "created": "Létrehozva",
-    "scheduled": "Ütemezve",
-    "played": "Lejátszva",
-    "target": "Cél",
-    "textLabel": "Szöveg"
-  },
-  "replay": {
-    "title": "Üzenet újra-bemondatása",
-    "storedFileNote": "A tárolt hangfájl megy ki – a dingdong nem kerül rá újra.",
-    "noFileError": "Az üzenetnek nincs eltárolt fájlja.",
-    "replayFailed": "Újrabemondatás sikertelen",
-    "sending": "Küldés…",
-    "sendImmediate": "Azonnali",
-    "schedule": "Ütemezés"
   }
 }

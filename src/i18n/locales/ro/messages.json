@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Compunerea unui mesaj nou. Cele anterioare sunt disponibile într-o fereastră separată.",
-    "historyButton": "Mesaje anterioare"
+    "subtitle": "Compunerea unui mesaj nou. Cele anterioare sunt disponibile într-o fereastră separată."
   },
   "success": {
     "sent": "Mesajul a fost trimis cu succes!",
@@ -95,37 +94,5 @@
     "button": "Generează și ascultă",
     "generating": "Se generează…",
     "downloadButton": "Descarcă"
-  },
-  "history": {
-    "loadFailed": "Încărcarea a eșuat",
-    "deleteConfirmSingle": "Ștergeți acest mesaj?",
-    "deleteConfirmBulk": "Ștergeți cele {{count}} mesaje selectate?",
-    "deleteSelected": "Șterge selectate ({{count}})",
-    "empty": "Nu s-a trimis încă niciun mesaj",
-    "replayTooltip": "Redifuzare (țintă + programare opțională)",
-    "noFileTooltip": "Niciun fișier salvat",
-    "replayAction": "Din nou",
-    "detailsAction": "Detalii",
-    "prevPage": "Anterior",
-    "nextPage": "Următor",
-    "voiceMessage": "Mesaj vocal"
-  },
-  "detail": {
-    "title": "Detaliile mesajului",
-    "from": "Expeditor",
-    "created": "Creat",
-    "scheduled": "Programat",
-    "played": "Redat",
-    "target": "Țintă",
-    "textLabel": "Text"
-  },
-  "replay": {
-    "title": "Redifuzarea mesajului",
-    "storedFileNote": "Se trimite fișierul audio salvat – dingdong-ul nu se mai adaugă din nou.",
-    "noFileError": "Acest mesaj nu are un fișier salvat.",
-    "replayFailed": "Redifuzarea a eșuat",
-    "sending": "Se trimite…",
-    "sendImmediate": "Imediat",
-    "schedule": "Programează"
   }
 }

@@ -1,7 +1,6 @@
 {
   "header": {
-    "subtitle": "Sastavljanje nove poruke. Prethodne su dostupne u zasebnom prozoru.",
-    "historyButton": "Prethodne poruke"
+    "subtitle": "Sastavljanje nove poruke. Prethodne su dostupne u zasebnom prozoru."
   },
   "success": {
     "sent": "Poruka je uspješno poslana!",
@@ -95,37 +94,5 @@
     "button": "Generiraj i preslušaj",
     "generating": "Generiranje…",
     "downloadButton": "Preuzmi"
-  },
-  "history": {
-    "loadFailed": "Učitavanje nije uspjelo",
-    "deleteConfirmSingle": "Izbrisati ovu poruku?",
-    "deleteConfirmBulk": "Izbrisati {{count}} odabranih poruka?",
-    "deleteSelected": "Izbriši odabrane ({{count}})",
-    "empty": "Još nije poslana nijedna poruka",
-    "replayTooltip": "Ponovna reprodukcija (cilj i vrijeme mogu se odabrati)",
-    "noFileTooltip": "Nema spremljene datoteke",
-    "replayAction": "Ponovno",
-    "detailsAction": "Detalji",
-    "prevPage": "Prethodna",
-    "nextPage": "Sljedeća",
-    "voiceMessage": "Glasovna poruka"
-  },
-  "detail": {
-    "title": "Detalji poruke",
-    "from": "Pošiljatelj",
-    "created": "Stvoreno",
-    "scheduled": "Zakazano",
-    "played": "Reproducirano",
-    "target": "Cilj",
-    "textLabel": "Tekst"
-  },
-  "replay": {
-    "title": "Ponovna reprodukcija poruke",
-    "storedFileNote": "Šalje se spremljena audio datoteka – dingdong se ne dodaje ponovno.",
-    "noFileError": "Za ovu poruku nije spremljena datoteka.",
-    "replayFailed": "Ponovna reprodukcija nije uspjela",
-    "sending": "Slanje…",
-    "sendImmediate": "Odmah",
-    "schedule": "Zakaži"
   }
 }

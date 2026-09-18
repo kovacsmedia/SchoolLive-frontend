@@ -98,7 +98,10 @@
     "defaultBadge": "Стандартний",
     "previewButton": "Прослухати",
     "previewTitle": "Попередній перегляд",
-    "closePlayerTitle": "Закрити програвач"
+    "closePlayerTitle": "Закрити програвач",
+    "renameButton": "Перейменувати",
+    "renameLabel": "Нова назва:",
+    "previewStopButton": "Зупинити"
   },
   "confirm": {
     "loadHolidays": "Завантажити свята за {{year}} рік?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Не вдалося видалити.",
     "setDefaultFailed": "Не вдалося встановити як стандартний.",
     "notEnoughSpace": "Недостатньо місця! Доступно: {{available}}, потрібно: {{needed}}",
-    "uploadFailed": "Помилка завантаження"
+    "uploadFailed": "Помилка завантаження",
+    "renameSoundFailed": "Не вдалося перейменувати.",
+    "previewSoundFailed": "Не вдалося відтворити звук."
   },
   "shared": {
     "saveButton": "Зберегти",

@@ -98,7 +98,10 @@
     "defaultBadge": "Implicit",
     "previewButton": "Ascultă",
     "previewTitle": "Previzualizare",
-    "closePlayerTitle": "Închide playerul"
+    "closePlayerTitle": "Închide playerul",
+    "renameButton": "Redenumire",
+    "renameLabel": "Nume nou:",
+    "previewStopButton": "Oprire"
   },
   "confirm": {
     "loadHolidays": "Încărcați sărbătorile pentru anul {{year}}?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Ștergerea nu a reușit.",
     "setDefaultFailed": "Nu a putut fi setat ca implicit.",
     "notEnoughSpace": "Spațiu insuficient! Disponibil: {{available}}, necesar: {{needed}}",
-    "uploadFailed": "Eroare la încărcare"
+    "uploadFailed": "Eroare la încărcare",
+    "renameSoundFailed": "Redenumirea a eșuat.",
+    "previewSoundFailed": "Sunetul nu a putut fi redat."
   },
   "shared": {
     "saveButton": "Salvează",

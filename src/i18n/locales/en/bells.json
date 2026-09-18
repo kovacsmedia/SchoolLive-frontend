@@ -98,7 +98,10 @@
     "defaultBadge": "Default",
     "previewButton": "Preview",
     "previewTitle": "Preview",
-    "closePlayerTitle": "Close player"
+    "closePlayerTitle": "Close player",
+    "renameButton": "Rename",
+    "renameLabel": "New name:",
+    "previewStopButton": "Stop"
   },
   "confirm": {
     "loadHolidays": "Load the holidays for {{year}}?",
@@ -133,7 +136,9 @@
     "deleteFailed": "Failed to delete.",
     "setDefaultFailed": "Failed to set as default.",
     "notEnoughSpace": "Not enough space! Available: {{available}}, needed: {{needed}}",
-    "uploadFailed": "Upload error"
+    "uploadFailed": "Upload error",
+    "renameSoundFailed": "Rename failed.",
+    "previewSoundFailed": "Could not play the sound."
   },
   "shared": {
     "saveButton": "Save",

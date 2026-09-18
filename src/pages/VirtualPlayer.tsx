@@ -17,6 +17,7 @@ import { apiFetch, getApiBaseUrl, getWsUrl, setApiBaseHost, locateNode, setSessi
 import { SnapWsClient } from "../lib/snapWsClient";
 import { getClientKey } from "../lib/clientKey";
 import { tryPlayerRelogin } from "../lib/playerAuth";
+import { displayName } from "../lib/text";
 
 // ─── Típusok ──────────────────────────────────────────────────────────────────
 type PlayerStatus = "registering" | "pending" | "active";
@@ -200,6 +201,30 @@ const CSS = `
     font-size: clamp(22px,4vw,52px); font-weight: 900;
     color: #3b82f6; text-align: center; letter-spacing: -0.5px;
     text-shadow: 0 0 40px rgba(59,130,246,0.5);
+  }
+  /*
+   * RÁDIÓ-SÁV – NEM takarja az órát.
+   *
+   * Korábban a rádió-cím ugyanabban a teljes képernyős fedőrétegben jelent
+   * meg, mint az üzenetek (rgba 0.95 + blur 12px), és mivel mindkettő
+   * középre igazodik, pontosan az órára ült rá. Egy iskolai kijelzőn az idő
+   * a legfontosabb információ – az nem tűnhet el attól, hogy szól a rádió.
+   *
+   * Az üzenet-fedőréteg SZÁNDÉKOSAN marad erős: ott a szöveg elolvasása a
+   * cél, és az néhány másodpercig tart.
+   */
+  .vp-radio-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    padding: 18px 32px;
+    background: linear-gradient(to top, rgba(7,16,31,0.92), rgba(7,16,31,0));
+    animation: vp-fadein 0.35s ease; z-index: 10;
+    pointer-events: none;
+  }
+  .vp-radio-bar .vp-radio-title {
+    font-size: clamp(16px,2.4vw,30px);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 80vw;
   }
   .vp-footer {
     display: flex; align-items: center; justify-content: center;
@@ -738,14 +763,15 @@ export default function VirtualPlayer() {
           </div>
 
           <div className="vp-center">
-            {hud.kind !== "idle" && (
+            {hud.kind === "radio" && (
+              <div className="vp-radio-bar">
+                <div style={{fontSize:28}}>📻</div>
+                <div className="vp-radio-title">{displayName(hud.title) || t("virtualPlayer:hud.defaultRadioTitle")}</div>
+              </div>
+            )}
+            {hud.kind !== "idle" && hud.kind !== "radio" && (
               <div className="vp-msg-overlay">
-                {hud.kind === "radio" ? (
-                  <>
-                    <div style={{fontSize:64}}>📻</div>
-                    <div className="vp-radio-title">{hud.title ?? t("virtualPlayer:hud.defaultRadioTitle")}</div>
-                  </>
-                ) : hud.kind === "tts" ? (
+                {hud.kind === "tts" ? (
                   <>
                     {/* A backend `NOW_PLAYING_INFO.title` TTS-nél a szöveg
                        első ~200 karakterét tartalmazza, ami ugyanaz, mint a

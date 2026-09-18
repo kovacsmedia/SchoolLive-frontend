@@ -68,7 +68,8 @@
       "playing": "Práve hrá – opätovným stlačením reštartujete",
       "error": "Prehrávanie zlyhalo",
       "idle": "Okamžité prehrávanie (na aktuálne zvolenom cieli)"
-    }
+    },
+    "renameLabel": "Nový názov:"
   },
   "youtube": {
     "description": "Vyhľadaj YouTube video, alebo vlož odkaz. V zabudovanom prehrávači si ho môžeš lokálne pozrieť/pretočiť, potichu pre všetkých ostatných — tlačidlo „Odoslať naživo“ ho skutočne spustí na školských reproduktoroch.",
@@ -164,7 +165,10 @@
     "scheduleButton": "Naplánovať",
     "endTimeLabel": "Koniec prehrávania",
     "endTimeOptional": "(nepovinné)",
-    "endTimeHint": "Ak je zvuk dlhší, tu ho stlmíme a zastavíme. Pri kratšom zvuku bez účinku."
+    "endTimeHint": "Ak je zvuk dlhší, tu ho stlmíme a zastavíme. Pri kratšom zvuku bez účinku.",
+    "startFromLabel": "Začiatok",
+    "startFromBeginning": "Od začiatku",
+    "startFromPosition": "Od {{time}}"
   },
   "playlist": {
     "title": "Tvorca playlistu",
@@ -297,6 +301,8 @@
     "buildStatusFetchError": "Chyba pri zisťovaní stavu",
     "buildError": "Chyba zostavenia",
     "genericError": "Chyba: {{message}}",
-    "previewInsecureStream": "{{name}} poskytuje iba http:// stream, ktorý prehliadač na tejto zabezpečenej stránke blokuje. Prehrávanie v škole to NEOVPLYVNÍ: stream sťahuje server, tlačidlo Spustiť rádio funguje."
+    "previewInsecureStream": "{{name}} poskytuje iba http:// stream, ktorý prehliadač na tejto zabezpečenej stránke blokuje. Prehrávanie v škole to NEOVPLYVNÍ: stream sťahuje server, tlačidlo Spustiť rádio funguje.",
+    "previewFileFailed": "Prehrávanie zlyhalo.",
+    "renameFileFailed": "Premenovanie zlyhalo."
   }
 }
